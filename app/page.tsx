@@ -18,8 +18,13 @@ interface SurpriseBag {
   image_url: string
 }
 
+interface Location {
+  lat: number | null
+  lon: number | null
+}
+
 export default function Home() {
-  const [location, setLocation] = useState<{ lat: number | null; lon: number | null }>({ lat: null, lon: null })
+  const [location, setLocation] = useState<Location>({ lat: null, lon: null })
 
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -29,7 +34,7 @@ export default function Home() {
     }
   }, [])
 
-  const { data: bags, isLoading } = useQuery({
+  const { data: bags, isLoading } = useQuery<SurpriseBag[]>({
     queryKey: ['surprise-bags', location.lat, location.lon],
     queryFn: async () => {
       if (!location.lat || !location.lon) return []
@@ -53,10 +58,10 @@ export default function Home() {
       </header>
       
       <main className="p-4 space-y-4">
-        {bags?.length > 0 ? (
+        {bags && bags.length > 0 ? (
           bags.map((bag: SurpriseBag) => (
             <div key={bag.id} className="bg-white rounded-xl shadow-md overflow-hidden">
-              <img src={bag.image_url} className="w-full h-48 object-cover" />
+              <img src={bag.image_url} className="w-full h-48 object-cover" alt={bag.name} />
               <div className="p-4">
                 <h3 className="font-bold text-lg">{bag.name}</h3>
                 <p className="text-gray-500 text-sm">{bag.description}</p>
@@ -74,12 +79,15 @@ export default function Home() {
         ) : (
           <div className="text-center py-12">
             <p>😔 Рядом нет сюрпризов</p>
-            <button onClick={() => {
-              navigator.geolocation.getCurrentPosition((pos) => {
-                setLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude })
-              })
-            }} className="mt-4 bg-green-600 text-white px-6 py-2 rounded-full">
-              Определить местоположение
+            <button 
+              onClick={() => {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                  setLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude })
+                })
+              }} 
+              className="mt-4 bg-green-600 text-white px-6 py-2 rounded-full"
+            >
+              📍 Определить местоположение
             </button>
           </div>
         )}
