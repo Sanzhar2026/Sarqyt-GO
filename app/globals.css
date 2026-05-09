@@ -1,0 +1,33 @@
+/* app/globals.css - для Tailwind CSS v4 */
+
+@import "tailwindcss";
+
+
+
+/* Базовые стили */
+body {
+  background-color: #f5f7fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1f2937;
+}
+
+/* Кастомные классы (Tailwind v4 не использует @layer компонентов так же) */
+.btn-primary {
+  background-color: #22c55e;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #16a34a;
+}
+
+.card {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  overflow: hidden;
+}
