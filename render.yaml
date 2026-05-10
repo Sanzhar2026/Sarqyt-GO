@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: sarqyn-mobile
+    runtime: node
+    repo: https://github.com/Sanzhar2026/sarqyn-mobile
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://toogood-2ncf.onrender.com
