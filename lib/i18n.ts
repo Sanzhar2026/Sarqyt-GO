@@ -36,6 +36,12 @@ export const translations = {
     noBags: 'Жақын маңда тосын сыйлар жоқ',
     locationRequired: 'Орналасқан жеріңізді анықтаңыз',
     locateMe: 'Менің орнымды анықтау',
+    guest: 'Қонақ',
+    subtitle: 'Бүгін не құтқарасыз?',
+    search: 'Мейрамхана немесе тағам іздеу...',
+    preferences: 'Қалауларыңыз',
+    filter: 'Фильтр',
+    iLike: 'Маған ұнайды',
     
     // Order statuses
     statusPending: 'Күтілуде',
@@ -64,6 +70,27 @@ export const translations = {
     forgotPassword: 'Құпия сөзді ұмыттыңыз ба?',
     noAccount: 'Аккаунтыңыз жоқ па?',
     haveAccount: 'Аккаунтыңыз бар ма?',
+    
+    // Cart
+    continueShopping: 'Сатып алуды жалғастыру',
+    delivery: 'Жеткізу',
+    subtotal: 'Тағамдар сомасы',
+    
+    // Profile
+    editProfile: 'Профильді өңдеу',
+    settings: 'Баптаулар',
+    support: 'Қолдау',
+    about: 'Біз туралы',
+    version: 'Нұсқа',
+    
+    // Actions
+    save: 'Сақтау',
+    cancel: 'Болдырмау',
+    confirm: 'Растау',
+    delete: 'Жою',
+    edit: 'Өңдеу',
+    add: 'Қосу',
+    remove: 'Алып тастау',
   },
   
   ru: {
@@ -100,6 +127,12 @@ export const translations = {
     noBags: 'Рядом нет сюрпризов',
     locationRequired: 'Определите ваше местоположение',
     locateMe: 'Определить моё местоположение',
+    guest: 'Гость',
+    subtitle: 'Что спасете сегодня?',
+    search: 'Поиск ресторана или блюда...',
+    preferences: 'Предпочтения',
+    filter: 'Фильтр',
+    iLike: 'Мне нравится',
     
     // Order statuses
     statusPending: 'Ожидает',
@@ -128,6 +161,27 @@ export const translations = {
     forgotPassword: 'Забыли пароль?',
     noAccount: 'Нет аккаунта?',
     haveAccount: 'Уже есть аккаунт?',
+    
+    // Cart
+    continueShopping: 'Продолжить покупки',
+    delivery: 'Доставка',
+    subtotal: 'Сумма блюд',
+    
+    // Profile
+    editProfile: 'Редактировать профиль',
+    settings: 'Настройки',
+    support: 'Поддержка',
+    about: 'О нас',
+    version: 'Версия',
+    
+    // Actions
+    save: 'Сохранить',
+    cancel: 'Отмена',
+    confirm: 'Подтвердить',
+    delete: 'Удалить',
+    edit: 'Редактировать',
+    add: 'Добавить',
+    remove: 'Удалить',
   },
 }
 

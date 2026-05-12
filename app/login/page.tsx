@@ -1,20 +1,61 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+type Language = 'kz' | 'ru';
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')  // ← ДОБАВИТЬ ЭТО!
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const router = useRouter();
+  const [lang, setLang] = useState<Language>('kz');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+  const t = {
+    kz: {
+      title: 'Кіру',
+      email: 'Электрондық пошта',
+      emailPlaceholder: 'example@email.com',
+      password: 'Құпия сөз',
+      submit: 'Кіру',
+      submitting: 'Кіруде...',
+      noAccount: 'Аккаунтыңыз жоқ па?',
+      signup: 'Тіркелу',
+      invalidCredentials: 'Қате электрондық пошта немесе құпия сөз',
+      welcome: 'Қош келдіңіз!',
+    },
+    ru: {
+      title: 'Вход',
+      email: 'Электронная почта',
+      emailPlaceholder: 'example@email.com',
+      password: 'Пароль',
+      submit: 'Войти',
+      submitting: 'Вход...',
+      noAccount: 'Нет аккаунта?',
+      signup: 'Зарегистрироваться',
+      invalidCredentials: 'Неверная почта или пароль',
+      welcome: 'Добро пожаловать!',
+    },
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const toggleLanguage = () => {
+    setLang(lang === 'kz' ? 'ru' : 'kz');
+    setError('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/login', {
@@ -22,69 +63,115 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ phone, password }), // ← ИСПОЛЬЗОВАТЬ password
-      })
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+        credentials: 'include',
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (response.ok && data.success) {
-        router.push('/')
-        router.refresh()
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('user', JSON.stringify(data.user));
+        router.push('/');
+        router.refresh();
       } else {
-        setError(data.error || 'Неверный номер телефона или пароль')
+        setError(data.error || t[lang].invalidCredentials);
       }
-    } catch (err) {
-      setError('Ошибка подключения к серверу')
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(t[lang].invalidCredentials);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-sm">
-        <h1 className="text-2xl font-bold text-emerald-600 text-center mb-6">Sarqyn Food</h1>
-        <h2 className="text-xl font-semibold text-center mb-6">Кіру</h2>
-        
+    <div className="min-h-screen bg-white">
+      {/* Language Switcher */}
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <button
+          onClick={toggleLanguage}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+            lang === 'kz'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          Қазақша
+        </button>
+        <button
+          onClick={toggleLanguage}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+            lang === 'ru'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gray-200 text-gray-700'
+          }`}
+        >
+          Русский
+        </button>
+      </div>
+
+      {/* Food Image Header */}
+      <div 
+        className="h-72 bg-cover bg-center relative"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1565299623643-3f8b3e4d6e3f?q=80&w=2070')"
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/70" />
+        <div className="absolute bottom-6 left-6 text-white">
+          <h1 className="text-3xl font-bold">{t[lang].title}</h1>
+        </div>
+      </div>
+
+      {/* Form Section */}
+      <div className="px-6 -mt-6 relative bg-white rounded-t-3xl pt-8 pb-12">
         {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded-xl mb-4">
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-2xl text-sm">
             {error}
           </div>
         )}
-        
-        <form onSubmit={handleLogin}>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <input
-            type="tel"
-            placeholder="Телефон"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-xl mb-4 focus:outline-none focus:border-emerald-500"
+            type="email"
+            name="email"
+            placeholder={t[lang].emailPlaceholder}
+            value={formData.email}
+            onChange={handleChange}
+            className="w-full px-5 py-4 bg-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base"
             required
           />
+
           <input
             type="password"
-            placeholder="Құпия сөз"
-            value={password}  // ← ДОБАВИТЬ ЭТО!
-            onChange={(e) => setPassword(e.target.value)}  // ← ДОБАВИТЬ ЭТО!
-            className="w-full p-3 border border-gray-300 rounded-xl mb-6 focus:outline-none focus:border-emerald-500"
+            name="password"
+            placeholder={t[lang].password}
+            value={formData.password}
+            onChange={handleChange}
+            className="w-full px-5 py-4 bg-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base"
             required
           />
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
+            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg mt-6 hover:bg-emerald-700 transition disabled:opacity-70"
           >
-            {loading ? 'Кіру...' : 'Кіру'}
+            {loading ? t[lang].submitting : t[lang].submit}
           </button>
         </form>
-        
-        <p className="text-center text-gray-500 mt-6">
-          Есеп жоқ па?{' '}
-          <Link href="/signup" className="text-emerald-600">
-            Тіркелу
+
+        <p className="text-center text-gray-600 mt-8">
+          {t[lang].noAccount}{' '}
+          <Link href="/signup" className="text-emerald-600 font-semibold">
+            {t[lang].signup}
           </Link>
         </p>
       </div>
     </div>
-  )
+  );
 }

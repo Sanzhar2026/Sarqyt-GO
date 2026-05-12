@@ -15,7 +15,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     // Временно используем user_id = 1 (потом заменим на авторизацию)
-    getUserOrders(1)
+    getUserOrders()
       .then(setOrders)
       .catch(console.error)
       .finally(() => setLoading(false))

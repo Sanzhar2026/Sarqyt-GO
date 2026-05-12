@@ -1,39 +1,96 @@
-'use client'
+// components/BottomNav.tsx
+'use client';
 
-import { Home, Search, Heart, ShoppingCart, User } from 'lucide-react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { translations, type Language } from '../../lib/i18n'
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import Logo from './Logo';
 
-const navItems = (t: any) => [
-  { label: t.home, icon: Home, href: '/' },
-  { label: t.discover, icon: Search, href: '/offers' },
-  { label: t.favorites, icon: Heart, href: '/favorites' },
-  { label: t.cart, icon: ShoppingCart, href: '/cart' },
-  { label: t.profile, icon: User, href: '/profile' },
-]
+interface NavItem {
+  labelKz: string;
+  labelRu: string;
+  icon: string;
+  href: string;
+  isCenter?: boolean;
+}
 
-export default function BottomNav() {
-  const pathname = usePathname()
-  // Временно используем русский язык для навигации
-  const t = translations.ru
+const navItems: NavItem[] = [
+  { 
+    labelKz: 'Ашу', 
+    labelRu: 'Открыть',
+    icon: '🔍', 
+    href: '/offers'
+  },
+  { 
+    labelKz: 'Шолу', 
+    labelRu: 'Обзор',
+    icon: '🔭', 
+    href: '/'
+  },
+  { 
+    labelKz: '', 
+    labelRu: '',
+    icon: '💚', 
+    href: '/',
+    isCenter: true 
+  },
+  { 
+    labelKz: 'Себет', 
+    labelRu: 'Корзина',
+    icon: '🛒', 
+    href: '/cart'
+  },
+  { 
+    labelKz: 'Профиль', 
+    labelRu: 'Профиль',
+    icon: '👤', 
+    href: '/profile'
+  },
+];
+
+interface BottomNavProps {
+  lang?: 'kz' | 'ru';
+}
+
+export default function BottomNav({ lang = 'kz' }: BottomNavProps) {
+  const pathname = usePathname();
+
+  const getLabel = (item: NavItem) => {
+    if (lang === 'kz') return item.labelKz;
+    return item.labelRu;
+  };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 max-w-md mx-auto">
-      <div className="flex items-center justify-around py-2">
-        {navItems(t).map(({ label, icon: Icon, href }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`flex flex-col items-center py-1 px-3 text-xs transition-all ${
-              pathname === href ? 'text-emerald-600 scale-110' : 'text-gray-500'
-            }`}
-          >
-            <Icon size={26} strokeWidth={2.25} />
-            <span className="mt-1">{label}</span>
-          </Link>
-        ))}
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-lg rounded-t-2xl max-w-md mx-auto">
+      <div className="flex items-center justify-around py-2 px-4">
+        {navItems.map((item, index) => {
+          const isActive = pathname === item.href || 
+                          (item.href === '/' && pathname === '/');
+
+          if (item.isCenter) {
+            return (
+              <Link href={item.href} key={index} className="flex flex-col items-center -mt-8">
+                <div className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center shadow-xl border-4 border-white">
+                  {/* Логотип в центре нижней навигации */}
+                  <Logo size="small" showText={false} />
+                </div>
+              </Link>
+            );
+          }
+
+          return (
+            <Link 
+              href={item.href} 
+              key={index}
+              className={`flex flex-col items-center py-2 px-4 rounded-xl transition-all ${
+                isActive ? 'text-emerald-600 bg-emerald-50' : 'text-gray-400'
+              }`}
+            >
+              <span className="text-2xl mb-1">{item.icon}</span>
+              <span className="text-xs font-medium">{getLabel(item)}</span>
+            </Link>
+          );
+        })}
       </div>
     </div>
-  )
+  );
 }
