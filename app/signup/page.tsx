@@ -43,7 +43,7 @@ export default function SignupPage() {
 
     try {
       const formattedPhone = formatPhoneNumber(phone)
-      const response = await fetch('http://localhost:8000/api/send-verification', {
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone_number: formattedPhone }),
