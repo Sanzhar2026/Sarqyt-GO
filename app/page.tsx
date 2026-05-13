@@ -1,4 +1,3 @@
-// app/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,10 +19,9 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<Tab>('discover');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [splash, setSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
   const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [userAddress, setUserAddress] = useState<string>('');
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -71,12 +69,17 @@ export default function HomePage() {
     { id: 'desserts', nameKz: 'Тәттілер', nameRu: 'Десерты', emoji: '🍰' }
   ];
 
-  // Splash screen timer
+  // Splash screen
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setSplash(false);
-    }, 3500);
-    return () => clearTimeout(timer);
+    const splashShown = sessionStorage.getItem('splash_shown');
+    if (!splashShown) {
+      setShowSplash(true);
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+        sessionStorage.setItem('splash_shown', 'true');
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Load language
@@ -92,33 +95,51 @@ export default function HomePage() {
     localStorage.setItem('language', newLang);
   };
 
-  // Check auth
+  // ✅ ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ИЗ LOCALSTORAGE (СРАЗУ!)
   useEffect(() => {
-    const checkAuth = async () => {
+    // Сначала проверяем localStorage
+    const storedUser = localStorage.getItem('user');
+// В useEffect загрузки пользователя:
+if (storedUser) {
+  try {
+    const parsed = JSON.parse(storedUser);
+    setUser({
+      name: parsed.full_name || parsed.name,  // ← сначала full_name, потом name
+      id: parsed.id,
+      phone: parsed.phone
+    });
+    console.log('✅ User loaded:', parsed.full_name || parsed.name);
+  } catch(e) {}
+}
+    
+    // Затем проверяем с бэкенда для синхронизации
+    const fetchUser = async () => {
       try {
         const res = await fetch(`${API_URL}/api/check-auth`, { 
-          credentials: 'include' 
+          credentials: 'include'
         });
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated) {
-            setUser({ 
-              name: data.user_name, 
+            const userData = {
+              name: data.user_name,
               id: data.user_id,
-              phone: data.user_phone 
-            });
+              phone: data.user_phone
+            };
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
           }
         }
       } catch (err) {
         console.error(err);
       }
     };
-    checkAuth();
+    fetchUser();
   }, []);
 
   // Get location and load suppliers
   useEffect(() => {
-    if (splash) return;
+    if (showSplash) return;
     
     if (!navigator.geolocation) {
       setLoading(false);
@@ -128,15 +149,7 @@ export default function HomePage() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lon } = pos.coords;
-        
         try {
-          const addressRes = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=${lang === 'kz' ? 'kk' : 'ru'}`
-          );
-          const addressData = await addressRes.json();
-          const address = addressData.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-          setUserAddress(address);
-
           const data = await getNearbyBags(lat, lon, 10);
           setSuppliers(data);
         } catch (err) {
@@ -147,12 +160,14 @@ export default function HomePage() {
       },
       () => setLoading(false)
     );
-  }, [lang, splash]);
+  }, [lang, showSplash]);
 
   const handleLogout = async () => {
     await fetch(`${API_URL}/logout`, { method: 'GET', credentials: 'include' });
+    localStorage.removeItem('user');
+    localStorage.removeItem('isLoggedIn');
     setUser(null);
-    router.refresh();
+    window.location.href = '/';
   };
 
   const handleCategoryClick = (categoryId: string) => {
@@ -164,17 +179,11 @@ export default function HomePage() {
   };
 
   // Splash Screen
-  if (splash) {
+  if (showSplash) {
     return (
       <div className="fixed inset-0 bg-emerald-600 flex flex-col items-center justify-center z-50">
         <div className="text-center">
-          <Image
-            src="/logotype.jpeg"
-            alt="Sarqyn Food Logo"
-            width={360}
-            height={360}
-            className="rounded-full mx-auto mb-6 shadow-xl"
-          />
+          <Image src="/logotype.jpeg" alt="Sarqyn Food Logo" width={360} height={360} className="rounded-full mx-auto mb-6 shadow-xl" />
           <h1 className="text-4xl font-bold text-white mb-2">Sarqyn Food</h1>
           <p className="text-emerald-100 text-sm">Дәмді тағамдар дүниені құтқарады</p>
         </div>
@@ -192,7 +201,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <div>
@@ -200,7 +208,6 @@ export default function HomePage() {
               {t[lang].greeting}, {user ? user.name : t[lang].guest}! 👋
             </h1>
             <p className="text-emerald-100 mt-1">{t[lang].subtitle}</p>
-            
             {user && user.phone && (
               <div className="mt-2 flex items-center gap-2 text-xs bg-white/10 rounded-xl px-3 py-1.5 w-fit">
                 <span>📞</span>
@@ -211,31 +218,18 @@ export default function HomePage() {
           
           <div className="flex gap-2">
             {user ? (
-              <button
-                onClick={handleLogout}
-                className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition flex items-center gap-2"
-              >
+              <button onClick={handleLogout} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition flex items-center gap-2">
                 <span>🚪</span>
                 <span>{t[lang].logout}</span>
               </button>
             ) : (
               <div className="flex gap-2">
-                <Link href="/login">
-                  <button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition">
-                    {t[lang].login}
-                  </button>
-                </Link>
-                <Link href="/signup">
-                  <button className="bg-white/30 hover:bg-white/40 px-4 py-2 rounded-2xl text-sm transition">
-                    {t[lang].register}
-                  </button>
-                </Link>
+                <Link href="/login"><button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition">{t[lang].login}</button></Link>
+                <Link href="/signup"><button className="bg-white/30 hover:bg-white/40 px-4 py-2 rounded-2xl text-sm transition">{t[lang].register}</button></Link>
               </div>
             )}
           </div>
         </div>
-
-        {/* City Display */}
         {location.city && !location.loading && (
           <div className="mt-4 flex items-center gap-2 text-sm bg-white/10 rounded-xl px-4 py-2">
             <span>📍</span>
@@ -244,92 +238,36 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Search */}
       <div className="px-6 -mt-4">
-        <input
-          type="text"
-          placeholder={t[lang].search}
-          className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
+        <input type="text" placeholder={t[lang].search} className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500" />
       </div>
 
-      {/* My Orders Link */}
       {user && (
         <div className="px-6 mt-4">
-          <Link href="/my-orders">
-            <button className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2">
-              <span>📋</span>
-              <span>{t[lang].myOrders}</span>
-            </button>
-          </Link>
+          <Link href="/offers"><button className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"><span>📋</span><span>{t[lang].myOrders}</span></button></Link>
         </div>
       )}
 
-      {/* Tabs */}
       <div className="px-6 mt-6">
         <div className="bg-gray-100 p-1 rounded-3xl flex">
-          <button
-            onClick={() => setActiveTab('preferences')}
-            className={`flex-1 py-3 rounded-3xl font-semibold text-sm transition-all ${
-              activeTab === 'preferences' 
-                ? 'bg-white shadow text-emerald-600' 
-                : 'text-gray-500'
-            }`}
-          >
-            {t[lang].preferences}
-          </button>
-       
+          <button onClick={() => setActiveTab('preferences')} className={`flex-1 py-3 rounded-3xl font-semibold text-sm transition-all ${activeTab === 'preferences' ? 'bg-white shadow text-emerald-600' : 'text-gray-500'}`}>{t[lang].preferences}</button>
+          <button onClick={() => setActiveTab('discover')} className={`flex-1 py-3 rounded-3xl font-semibold text-sm transition-all ${activeTab === 'discover' ? 'bg-white shadow text-emerald-600' : 'text-gray-500'}`}>{t[lang].discover}</button>
         </div>
       </div>
 
-      {/* Content */}
       <div className="px-6 mt-6 pb-24">
         {activeTab === 'preferences' ? (
           <>
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="font-bold text-xl">{t[lang].preferences}</h2>
-              <button className="text-emerald-600 text-sm">{t[lang].filter}</button>
-            </div>
-
+            <div className="flex justify-between items-center mb-5"><h2 className="font-bold text-xl">{t[lang].preferences}</h2><button className="text-emerald-600 text-sm">{t[lang].filter}</button></div>
             <div className="grid grid-cols-2 gap-4">
-              {categories.map((category) => (
-                <CategoryCard
-                  key={category.id}
-                  name={lang === 'kz' ? category.nameKz : category.nameRu}
-                  emoji={category.emoji}
-                  isSelected={selectedCategories.includes(category.id)}
-                  onClick={() => handleCategoryClick(category.id)}
-                  lang={lang}
-                />
-              ))}
+              {categories.map((category) => (<CategoryCard key={category.id} name={lang === 'kz' ? category.nameKz : category.nameRu} emoji={category.emoji} isSelected={selectedCategories.includes(category.id)} onClick={() => handleCategoryClick(category.id)} lang={lang} />))}
             </div>
           </>
         ) : (
           <>
             <h2 className="font-bold text-xl mb-5">🔥 {t[lang].nearbyOffers}</h2>
             <div className="space-y-6">
-              {suppliers.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-3xl">
-                  <div className="text-6xl mb-4">😢</div>
-                  <p className="text-gray-500">{t[lang].noOffers}</p>
-                </div>
-              ) : (
-                suppliers.flatMap(supplier =>
-                  supplier.surprise_bags.map(bag => (
-                    <OfferCard
-                      key={bag.id}
-                      id={bag.id}
-                      name={bag.name}
-                      businessName={supplier.business_name}
-                      distance={`${supplier.distance_km} км`}
-                      price={bag.discounted_price}
-                      originalPrice={bag.original_price}
-                      discount={bag.discount_percentage}
-                      imageUrl={bag.image_url}
-                    />
-                  ))
-                )
-              )}
+              {suppliers.length === 0 ? (<div className="text-center py-20 bg-white rounded-3xl"><div className="text-6xl mb-4">😢</div><p className="text-gray-500">{t[lang].noOffers}</p></div>) : (suppliers.flatMap(supplier => supplier.surprise_bags.map(bag => (<OfferCard key={bag.id} id={bag.id} name={bag.name} businessName={supplier.business_name} distance={`${supplier.distance_km} км`} price={bag.discounted_price} originalPrice={bag.original_price} discount={bag.discount_percentage} imageUrl={bag.image_url} />))))}
             </div>
           </>
         )}
