@@ -24,7 +24,6 @@ export default function CategoryCard({
       onClick={onClick}
       className={`relative bg-white rounded-3xl overflow-hidden shadow-sm active:scale-[0.97] transition-all cursor-pointer border-2 ${isSelected ? 'border-emerald-500' : 'border-transparent'}`}
     >
-      {/* Only emoji, no images */}
       <div className="h-44 flex items-center justify-center text-8xl bg-gradient-to-br from-emerald-50 to-emerald-100">
         {emoji || '🍽️'}
       </div>

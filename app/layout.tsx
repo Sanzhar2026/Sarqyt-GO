@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import './globals.css';
 import BottomNav from './components/BottomNav';
+import Logo from './components/Logo';
 
 type Language = 'kz' | 'ru';
 
@@ -21,16 +22,24 @@ export default function RootLayout({
     }
   }, []);
 
+  const handleLanguageChange = (newLang: Language) => {
+    setLang(newLang);
+    localStorage.setItem('language', newLang);
+  };
+
   return (
-    <html lang={lang}>
+    <html lang={lang} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes" />
         <title>Sarqyn Food</title>
       </head>
       <body className="bg-gray-50">
+        {/* Top Header with Logo - NO Link wrapper */}
+     
+        
         <div className="max-w-md mx-auto relative min-h-screen">
           {children}
-          <BottomNav lang={lang} />
+          <BottomNav lang={lang} onLanguageChange={handleLanguageChange} />
         </div>
       </body>
     </html>

@@ -1,14 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    remotePatterns: [
+  async rewrites() {
+    return [
       {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
+        source: '/api/:path*',
+        destination: 'https://toogood-2ncf.onrender.com/api/:path*',
       },
-    ],
+    ];
   },
 };
 

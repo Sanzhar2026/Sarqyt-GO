@@ -1,8 +1,7 @@
 // components/OfferCard.tsx
 'use client';
 
-import Link from 'next/link';
-import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 type Props = {
   id: number;
@@ -13,7 +12,6 @@ type Props = {
   originalPrice: number;
   discount: number;
   imageUrl?: string;
-  lang?: 'kz' | 'ru';
 };
 
 export default function OfferCard({
@@ -24,54 +22,73 @@ export default function OfferCard({
   price,
   originalPrice,
   discount,
-  imageUrl,
-  lang = 'kz'
 }: Props) {
-  return (
-    <Link href={`/offers/${id}`} className="block cursor-pointer">
-      <div className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition active:scale-[0.98]">
-        <div className="flex gap-4">
-          {/* Image */}
-          <div className="w-24 h-24 rounded-xl bg-gray-200 overflow-hidden flex-shrink-0">
-            {imageUrl ? (
-              <Image 
-                src={imageUrl} 
-                alt={name}
-                width={96}
-                height={96}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-4xl bg-gradient-to-br from-emerald-100 to-emerald-200">
-                🍽️
-              </div>
-            )}
-          </div>
+  const router = useRouter();
 
-          {/* Content */}
-          <div className="flex-1">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-bold text-lg text-gray-800">{name}</h3>
-                <p className="text-gray-500 text-sm mt-0.5">{businessName}</p>
-                <p className="text-gray-400 text-xs mt-1">📍 {distance}</p>
-              </div>
-              {discount > 0 && (
-                <div className="bg-red-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-full">
-                  -{discount}%
-                </div>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2 mt-3">
-              <span className="text-emerald-600 font-bold text-xl">{price} ₸</span>
-              {originalPrice > price && (
-                <span className="text-gray-400 line-through text-sm">{originalPrice} ₸</span>
-              )}
-            </div>
-          </div>
+  const handleBuy = async () => {
+    if (!navigator.geolocation) {
+      alert('Разрешите доступ к геолокации');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+        try {
+          const response = await fetch('http://localhost:8000/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              bag_id: id,
+              lat: lat,
+              lon: lon,
+              address: `${lat}, ${lon}`
+            }),
+          });
+
+          if (response.ok) {
+            const order = await response.json();
+            router.push(`/offers/${order.order_id}`);
+          } else {
+            alert('Ошибка при создании заказа');
+          }
+        } catch (error) {
+          console.error(error);
+          alert('Ошибка при создании заказа');
+        }
+      },
+      () => alert('Не удалось определить местоположение')
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm">
+      <h3 className="font-bold text-lg">{name}</h3>
+      <p className="text-gray-500 text-sm">{businessName}</p>
+      <p className="text-gray-400 text-xs">📍 {distance}</p>
+      
+      <div className="flex justify-between items-center mt-3">
+        <div>
+          <span className="text-emerald-600 font-bold text-xl">{price} ₸</span>
+          {originalPrice > price && (
+            <span className="text-gray-400 line-through text-sm ml-2">{originalPrice} ₸</span>
+          )}
+          {discount > 0 && (
+            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full ml-2">
+              -{discount}%
+            </span>
+          )}
         </div>
+        <button
+          onClick={handleBuy}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold"
+        >
+          Купить 🛒
+        </button>
       </div>
-    </Link>
+    </div>
   );
 }

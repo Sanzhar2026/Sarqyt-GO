@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Logo from '../components/Logo';
 
 type Language = 'kz' | 'ru';
 
@@ -18,7 +19,8 @@ export default function LoginPage() {
 
   const t = {
     kz: {
-      title: 'Кіру',
+      title: 'Қош келдіңіз',
+      subtitle: 'Аккаунтыңызға кіріңіз',
       email: 'Электрондық пошта',
       emailPlaceholder: 'example@email.com',
       password: 'Құпия сөз',
@@ -27,10 +29,10 @@ export default function LoginPage() {
       noAccount: 'Аккаунтыңыз жоқ па?',
       signup: 'Тіркелу',
       invalidCredentials: 'Қате электрондық пошта немесе құпия сөз',
-      welcome: 'Қош келдіңіз!',
     },
     ru: {
-      title: 'Вход',
+      title: 'Добро пожаловать',
+      subtitle: 'Войдите в свой аккаунт',
       email: 'Электронная почта',
       emailPlaceholder: 'example@email.com',
       password: 'Пароль',
@@ -39,7 +41,6 @@ export default function LoginPage() {
       noAccount: 'Нет аккаунта?',
       signup: 'Зарегистрироваться',
       invalidCredentials: 'Неверная почта или пароль',
-      welcome: 'Добро пожаловать!',
     },
   };
 
@@ -89,88 +90,106 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-white">
       {/* Language Switcher */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <button
           onClick={toggleLanguage}
           className={`px-4 py-2 rounded-full text-sm font-medium transition ${
             lang === 'kz'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-gray-200 text-gray-700'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
           }`}
         >
-          Қазақша
+          Қаз
         </button>
         <button
           onClick={toggleLanguage}
           className={`px-4 py-2 rounded-full text-sm font-medium transition ${
             lang === 'ru'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-gray-200 text-gray-700'
+              ? 'bg-emerald-600 text-white shadow-md'
+              : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'
           }`}
         >
-          Русский
+          Рус
         </button>
       </div>
 
-      {/* Food Image Header */}
-      <div 
-        className="h-72 bg-cover bg-center relative"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1565299623643-3f8b3e4d6e3f?q=80&w=2070')"
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/70" />
-        <div className="absolute bottom-6 left-6 text-white">
-          <h1 className="text-3xl font-bold">{t[lang].title}</h1>
-        </div>
+      {/* Logo Section */}
+      <div className="flex justify-center pt-12 pb-4">
+        <Logo size="large" showText={true} />
       </div>
 
       {/* Form Section */}
-      <div className="px-6 -mt-6 relative bg-white rounded-t-3xl pt-8 pb-12">
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-2xl text-sm">
-            {error}
-          </div>
-        )}
+      <div className="px-6 pb-12">
+        <div className="bg-white rounded-3xl shadow-lg p-6">
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">
+            {t[lang].title}
+          </h2>
+          <p className="text-center text-gray-500 text-sm mb-8">
+            {t[lang].subtitle}
+          </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            name="email"
-            placeholder={t[lang].emailPlaceholder}
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full px-5 py-4 bg-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base"
-            required
-          />
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">
+              {error}
+            </div>
+          )}
 
-          <input
-            type="password"
-            name="password"
-            placeholder={t[lang].password}
-            value={formData.password}
-            onChange={handleChange}
-            className="w-full px-5 py-4 bg-gray-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-base"
-            required
-          />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t[lang].email}
+              </label>
+              <input
+                type="email"
+                name="email"
+                placeholder={t[lang].emailPlaceholder}
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition"
+                required
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg mt-6 hover:bg-emerald-700 transition disabled:opacity-70"
-          >
-            {loading ? t[lang].submitting : t[lang].submit}
-          </button>
-        </form>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t[lang].password}
+              </label>
+              <input
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition"
+                required
+              />
+            </div>
 
-        <p className="text-center text-gray-600 mt-8">
-          {t[lang].noAccount}{' '}
-          <Link href="/signup" className="text-emerald-600 font-semibold">
-            {t[lang].signup}
-          </Link>
-        </p>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg mt-6 hover:bg-emerald-700 transition disabled:opacity-70 shadow-md"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  {t[lang].submitting}
+                </span>
+              ) : (
+                t[lang].submit
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-gray-500 mt-8">
+            {t[lang].noAccount}{' '}
+            <Link href="/signup" className="text-emerald-600 font-semibold hover:underline">
+              {t[lang].signup}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

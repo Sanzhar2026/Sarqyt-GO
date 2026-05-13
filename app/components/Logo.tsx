@@ -2,7 +2,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface LogoProps {
   size?: 'small' | 'medium' | 'large';
@@ -10,6 +10,8 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 'medium', showText = true }: LogoProps) {
+  const router = useRouter();
+  
   const sizes = {
     small: { width: 30, height: 30, textSize: 'text-lg', gap: 'gap-1' },
     medium: { width: 40, height: 40, textSize: 'text-xl', gap: 'gap-2' },
@@ -18,8 +20,12 @@ export default function Logo({ size = 'medium', showText = true }: LogoProps) {
 
   const { width, height, textSize, gap } = sizes[size];
 
+  const handleClick = () => {
+    router.push('/');
+  };
+
   return (
-    <Link href="/" className={`flex items-center ${gap}`}>
+    <div onClick={handleClick} className={`flex items-center ${gap} cursor-pointer`}>
       <Image
         src="/icon.png"
         alt="Sarqyn Food Logo"
@@ -31,6 +37,6 @@ export default function Logo({ size = 'medium', showText = true }: LogoProps) {
       {showText && (
         <span className={`${textSize} font-bold text-white`}>Sarqyn Food</span>
       )}
-    </Link>
+    </div>
   );
 }

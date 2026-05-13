@@ -1,7 +1,7 @@
 // components/BottomNav.tsx
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from './Logo';
 
@@ -49,14 +49,20 @@ const navItems: NavItem[] = [
 
 interface BottomNavProps {
   lang?: 'kz' | 'ru';
+  onLanguageChange?: (lang: 'kz' | 'ru') => void;
 }
 
-export default function BottomNav({ lang = 'kz' }: BottomNavProps) {
+export default function BottomNav({ lang = 'kz', onLanguageChange }: BottomNavProps) {
   const pathname = usePathname();
+  const router = useRouter(); // ← ADD useRouter
 
   const getLabel = (item: NavItem) => {
     if (lang === 'kz') return item.labelKz;
     return item.labelRu;
+  };
+
+  const handleNavigation = (href: string) => {
+    router.push(href); // ← Use Next.js router for client-side navigation
   };
 
   return (
@@ -68,12 +74,14 @@ export default function BottomNav({ lang = 'kz' }: BottomNavProps) {
 
           if (item.isCenter) {
             return (
-              <Link href={item.href} key={index} className="flex flex-col items-center -mt-8">
-                <div className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center shadow-xl border-4 border-white">
-                  {/* Логотип в центре нижней навигации */}
+              <div key={index} className="flex flex-col items-center -mt-8">
+                <div 
+                  onClick={() => handleNavigation(item.href)} // ← FIXED
+                  className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center shadow-xl border-4 border-white cursor-pointer"
+                >
                   <Logo size="small" showText={false} />
                 </div>
-              </Link>
+              </div>
             );
           }
 
@@ -90,6 +98,30 @@ export default function BottomNav({ lang = 'kz' }: BottomNavProps) {
             </Link>
           );
         })}
+      </div>
+      
+      {/* Language Switcher at bottom */}
+      <div className="flex justify-center gap-4 py-2 border-t border-gray-100">
+        <button
+          onClick={() => onLanguageChange?.('kz')}
+          className={`text-xs font-medium py-2 px-3 rounded-full transition ${
+            lang === 'kz' 
+              ? 'bg-emerald-600 text-white' 
+              : 'text-gray-500 hover:bg-gray-100'
+          }`}
+        >
+          Қазақша
+        </button>
+        <button
+          onClick={() => onLanguageChange?.('ru')}
+          className={`text-xs font-medium py-2 px-3 rounded-full transition ${
+            lang === 'ru' 
+              ? 'bg-emerald-600 text-white' 
+              : 'text-gray-500 hover:bg-gray-100'
+          }`}
+        >
+          Русский
+        </button>
       </div>
     </div>
   );

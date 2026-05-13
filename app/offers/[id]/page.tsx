@@ -1,69 +1,83 @@
-'use client'
+// app/orders/[id]/page.tsx
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import { useGeolocation } from '../../hooks/useGeolocation';
+
+const DeliveryMap = dynamic(() => import('../../components/DeliveryMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[400px] bg-gray-200 rounded-xl flex items-center justify-center">
+      <div className="animate-spin h-8 w-8 border-b-2 border-emerald-600 rounded-full"></div>
+    </div>
+  )
+});
 
 interface Order {
-  order_id: number
-  order_number: string
-  status: string
-  delivery_status: string
-  bag_name: string
-  supplier_name: string
-  supplier_address: string
-  customer_address: string
-  amount_paid: number
-  pickup_time: string
-  created_at: string
+  order_id: number;
+  order_number: string;
+  status: string;
+  delivery_status: string;
+  bag_name: string;
+  supplier_name: string;
+  supplier_address: string;
+  customer_address: string;
+  amount_paid: number;
+  pickup_time: string;
+  created_at: string;
+  supplier_lat?: number;
+  supplier_lon?: number;
+  customer_lat?: number;
+  customer_lon?: number;
 }
 
 export default function OrderDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const [order, setOrder] = useState<Order | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const params = useParams();
+  const router = useRouter();
+  const location = useGeolocation();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
-      const resolvedParams = await params
-      const orderId = resolvedParams?.id
+      const resolvedParams = await params;
+      const orderId = resolvedParams?.id;
       
-      if (!orderId) return
+      if (!orderId) return;
       
       try {
-        const response = await fetch(`http://localhost:8000/api/orders/${orderId}`)
-        if (!response.ok) throw new Error('Order not found')
-        const data = await response.json()
-        setOrder(data)
+        const response = await fetch(`https://toogood-2ncf.onrender.com/api/orders/${orderId}`);
+        if (!response.ok) throw new Error('Order not found');
+        const data = await response.json();
+        setOrder(data);
       } catch (err) {
-        console.error(err)
-        setError('Заказ не найден')
+        console.error(err);
+        setError('Заказ не найден');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
     
-    fetchOrder()
-  }, [params])
+    fetchOrder();
+  }, [params]);
 
-  // Status color mapping
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500'
-      case 'confirmed': return 'bg-blue-500'
-      case 'preparing': return 'bg-purple-500'
-      case 'ready_for_pickup': return 'bg-orange-500'
-      case 'out_for_delivery': return 'bg-indigo-500'
-      case 'delivered': return 'bg-green-500'
-      case 'cancelled': return 'bg-red-500'
-      default: return 'bg-gray-500'
-    }
-  }
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-500',
+      confirmed: 'bg-blue-500',
+      preparing: 'bg-purple-500',
+      ready_for_pickup: 'bg-orange-500',
+      out_for_delivery: 'bg-indigo-500',
+      delivered: 'bg-green-500',
+      cancelled: 'bg-red-500'
+    };
+    return colors[status] || 'bg-gray-500';
+  };
 
-  // Status text in Kazakh/Russian
-  const getStatusText = (status: string, lang: string = 'kz') => {
+  const getStatusText = (status: string, lang: string = 'ru') => {
     const statusMap: Record<string, { kz: string; ru: string }> = {
       pending: { kz: 'Күтілуде', ru: 'Ожидается' },
       confirmed: { kz: 'Расталды', ru: 'Подтвержден' },
@@ -72,21 +86,21 @@ export default function OrderDetailPage() {
       out_for_delivery: { kz: 'Жеткізілуде', ru: 'Доставляется' },
       delivered: { kz: 'Жеткізілді', ru: 'Доставлен' },
       cancelled: { kz: 'Бас тартылды', ru: 'Отменен' }
-    }
-    return statusMap[status]?.[lang] || status
-  }
+    };
+    return statusMap[status]?.[lang] || status;
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
       </div>
-    )
+    );
   }
 
   if (error || !order) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
         <div className="text-center">
           <div className="text-6xl mb-4">😢</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Заказ не найден</h1>
@@ -99,14 +113,19 @@ export default function OrderDetailPage() {
           </button>
         </div>
       </div>
-    )
+    );
   }
+
+  const supplierLat = order.supplier_lat || location.lat || 43.238;
+  const supplierLon = order.supplier_lon || location.lon || 76.945;
+  const customerLat = order.customer_lat || (location.lat ? location.lat + 0.01 : 43.258);
+  const customerLon = order.customer_lon || (location.lon ? location.lon + 0.01 : 76.925);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-emerald-600 text-white p-6">
-        <button onClick={() => router.back()} className="mb-4 text-white">
+        <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
         </button>
         <h1 className="text-2xl font-bold">Заказ #{order.order_number}</h1>
@@ -114,7 +133,7 @@ export default function OrderDetailPage() {
       </div>
 
       <div className="px-6 py-8">
-        {/* Status */}
+        {/* Status Card */}
         <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <span className="text-gray-600">Статус:</span>
@@ -123,7 +142,7 @@ export default function OrderDetailPage() {
             </span>
           </div>
           
-          {/* Progress bar */}
+          {/* Progress Bar */}
           <div className="mt-4">
             <div className="flex justify-between text-xs text-gray-500 mb-2">
               <span>✅ Заказ</span>
@@ -140,14 +159,41 @@ export default function OrderDetailPage() {
                          order.status === 'confirmed' ? '40%' :
                          order.status === 'preparing' ? '60%' :
                          order.status === 'ready_for_pickup' ? '75%' :
-                         order.status === 'out_for_delivery' ? '90%' : '100%'
+                         order.status === 'out_for_delivery' ? '90%' : 
+                         order.status === 'delivered' ? '100%' : '0%'
                 }}
               />
             </div>
           </div>
         </div>
 
-        {/* Order details */}
+        {/* Map Section - ТОЛЬКО когда заказ в пути или доставлен */}
+        {(order.status === 'out_for_delivery' || order.status === 'delivered') && (
+          <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+            <h2 className="font-bold text-lg mb-4">
+              🗺️ Карта {location.city ? location.city : 'доставки'}
+            </h2>
+            {!location.loading ? (
+              <DeliveryMap
+                supplierLat={supplierLat}
+                supplierLon={supplierLon}
+                customerLat={customerLat}
+                customerLon={customerLon}
+                supplierName={order.supplier_name}
+                customerAddress={order.customer_address || 'Адрес доставки'}
+                userLat={location.lat}
+                userLon={location.lon}
+                orderStatus={order.status}
+              />
+            ) : (
+              <div className="w-full h-[400px] bg-gray-100 rounded-xl flex items-center justify-center">
+                <div className="animate-spin h-8 w-8 border-b-2 border-emerald-600 rounded-full"></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Order Details Card */}
         <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
           <h2 className="font-bold text-lg mb-4">Детали заказа</h2>
           <div className="space-y-3">
@@ -172,7 +218,7 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Location */}
+        {/* Address Card */}
         <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
           <h2 className="font-bold text-lg mb-4">📍 Адрес доставки</h2>
           <p className="text-gray-700">{order.customer_address || 'Адрес не указан'}</p>
@@ -185,14 +231,14 @@ export default function OrderDetailPage() {
           )}
         </div>
 
-        {/* Map placeholder */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">🗺️ Маршрут</h2>
-          <div className="bg-gray-200 rounded-xl h-48 flex items-center justify-center">
-            <p className="text-gray-500">Карта загрузки...</p>
+        {/* User Location Info */}
+        {location.city && !location.loading && order.status !== 'out_for_delivery' && order.status !== 'delivered' && (
+          <div className="bg-blue-50 rounded-2xl p-4 text-sm text-blue-700">
+            <span>📍 Ваше местоположение: {location.city}</span>
+            <p className="text-xs mt-1">Карта появится, когда заказ будет передан в доставку</p>
           </div>
-        </div>
+        )}
       </div>
     </div>
-  )
+  );
 }
