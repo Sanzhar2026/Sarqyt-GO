@@ -36,7 +36,7 @@ interface Order {
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const location = useGeolocation();
+  const location = useGeolocation(); // ← геолокация пользователя
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,10 +116,15 @@ export default function OrderDetailPage() {
     );
   }
 
-  const supplierLat = order.supplier_lat || location.lat || 43.238;
-  const supplierLon = order.supplier_lon || location.lon || 76.945;
-  const customerLat = order.customer_lat || (location.lat ? location.lat + 0.01 : 43.258);
-  const customerLon = order.customer_lon || (location.lon ? location.lon + 0.01 : 76.925);
+  // ✅ ИСПРАВЛЕНО: используем геолокацию пользователя, а не Алматы
+  // Если есть геолокация - используем её, иначе координаты из заказа, иначе Актобе
+  const defaultLat = location.lat || 50.283;
+  const defaultLon = location.lon || 57.167;
+  
+  const supplierLat = order.supplier_lat || defaultLat;
+  const supplierLon = order.supplier_lon || defaultLon;
+  const customerLat = order.customer_lat || (defaultLat + 0.01);
+  const customerLon = order.customer_lon || (defaultLon + 0.01);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -167,11 +172,11 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Map Section - ТОЛЬКО когда заказ в пути или доставлен */}
+        {/* Map Section - только когда заказ в пути или доставлен */}
         {(order.status === 'out_for_delivery' || order.status === 'delivered') && (
           <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
             <h2 className="font-bold text-lg mb-4">
-              🗺️ Карта {location.city ? location.city : 'доставки'}
+              🗺️ Карта {location.city || 'доставки'}
             </h2>
             {!location.loading ? (
               <DeliveryMap
@@ -232,10 +237,9 @@ export default function OrderDetailPage() {
         </div>
 
         {/* User Location Info */}
-        {location.city && !location.loading && order.status !== 'out_for_delivery' && order.status !== 'delivered' && (
+        {location.city && !location.loading && (
           <div className="bg-blue-50 rounded-2xl p-4 text-sm text-blue-700">
             <span>📍 Ваше местоположение: {location.city}</span>
-            <p className="text-xs mt-1">Карта появится, когда заказ будет передан в доставку</p>
           </div>
         )}
       </div>
