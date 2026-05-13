@@ -69,14 +69,16 @@ export default function LoginPage() {
         credentials: 'include',
       });
 
-      const data = await response.json();
+     
+      const data = await response.json()
 
-      if (response.ok && data.success) {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('user', JSON.stringify(data.user));
-        router.push('/');
-        router.refresh();
-      } else {
+if (response.ok && data.success) {
+    // ✅ Сохраняем данные пользователя в localStorage или state
+    localStorage.setItem('user', JSON.stringify(data.user))
+    localStorage.setItem('userId', data.user.id)
+    
+    router.push('/')
+}else {
         setError(data.error || t[lang].invalidCredentials);
       }
     } catch (error) {
