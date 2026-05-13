@@ -11,7 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [lang, setLang] = useState<Language>('kz');
   const [formData, setFormData] = useState({
-    email: '',
+    phone: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
@@ -21,26 +21,26 @@ export default function LoginPage() {
     kz: {
       title: 'Қош келдіңіз',
       subtitle: 'Аккаунтыңызға кіріңіз',
-      email: 'Электрондық пошта',
-      emailPlaceholder: 'example@email.com',
+      phone: 'Телефон нөмірі',
+      phonePlaceholder: '+77071234567',
       password: 'Құпия сөз',
       submit: 'Кіру',
       submitting: 'Кіруде...',
       noAccount: 'Аккаунтыңыз жоқ па?',
       signup: 'Тіркелу',
-      invalidCredentials: 'Қате электрондық пошта немесе құпия сөз',
+      invalidCredentials: 'Қате телефон немесе құпия сөз',
     },
     ru: {
       title: 'Добро пожаловать',
       subtitle: 'Войдите в свой аккаунт',
-      email: 'Электронная почта',
-      emailPlaceholder: 'example@email.com',
+      phone: 'Номер телефона',
+      phonePlaceholder: '+77071234567',
       password: 'Пароль',
       submit: 'Войти',
       submitting: 'Вход...',
       noAccount: 'Нет аккаунта?',
       signup: 'Зарегистрироваться',
-      invalidCredentials: 'Неверная почта или пароль',
+      invalidCredentials: 'Неверный телефон или пароль',
     },
   };
 
@@ -61,11 +61,9 @@ export default function LoginPage() {
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: formData.email,
+          phone: formData.phone,
           password: formData.password,
         }),
         credentials: 'include',
@@ -115,8 +113,8 @@ export default function LoginPage() {
         </button>
       </div>
 
-      {/* Logo Section */}
-      <div className="flex justify-center pt-12 pb-4">
+      {/* Logo Section - ПО ЦЕНТРУ */}
+      <div className="flex flex-col items-center justify-center pt-12 pb-6">
         <Logo size="large" showText={true} />
       </div>
 
@@ -139,13 +137,13 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t[lang].email}
+                {t[lang].phone}
               </label>
               <input
-                type="email"
-                name="email"
-                placeholder={t[lang].emailPlaceholder}
-                value={formData.email}
+                type="tel"
+                name="phone"
+                placeholder={t[lang].phonePlaceholder}
+                value={formData.phone}
                 onChange={handleChange}
                 className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition"
                 required

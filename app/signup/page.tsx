@@ -13,7 +13,8 @@ export default function SignupPage() {
   const [step, setStep] = useState<'phone' | 'verify'>('phone');
   const [phone, setPhone] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +28,8 @@ export default function SignupPage() {
       phone: 'Телефон нөмірі',
       phonePlaceholder: '+77071234567',
       code: 'SMS код',
-      fullName: 'Толық аты-жөні',
+      firstName: 'Аты',
+      lastName: 'Тегі',
       password: 'Құпия сөз',
       confirmPassword: 'Құпия сөзді растаңыз',
       sendCode: 'Код жіберу',
@@ -44,7 +46,8 @@ export default function SignupPage() {
       phone: 'Номер телефона',
       phonePlaceholder: '+77071234567',
       code: 'SMS код',
-      fullName: 'Полное имя',
+      firstName: 'Имя',
+      lastName: 'Фамилия',
       password: 'Пароль',
       confirmPassword: 'Подтвердите пароль',
       sendCode: 'Отправить код',
@@ -119,8 +122,14 @@ export default function SignupPage() {
       return;
     }
 
-    if (!fullName.trim()) {
-      setError(t[lang].fullName + ' ' + (lang === 'kz' ? 'қажет' : 'обязательно'));
+    // ✅ ТОЛЬКО ПРОВЕРКА НА ПУСТОТУ - НЕТ ПРОВЕРКИ НА ЛАТИНИЦУ!
+    if (!firstName.trim()) {
+      setError(t[lang].firstName + ' ' + (lang === 'kz' ? 'қажет' : 'обязательно'));
+      return;
+    }
+
+    if (!lastName.trim()) {
+      setError(t[lang].lastName + ' ' + (lang === 'kz' ? 'қажет' : 'обязательно'));
       return;
     }
 
@@ -130,6 +139,8 @@ export default function SignupPage() {
     try {
       const formattedPhone = formatPhoneNumber(phone);
       const codeToSend = isDemoMode ? '123456' : verificationCode;
+      // ✅ Объединяем имя и фамилию - любые символы разрешены
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
       const response = await fetch('https://toogood-2ncf.onrender.com/api/verify-and-register', {
         method: 'POST',
@@ -165,6 +176,7 @@ export default function SignupPage() {
         setError(data.detail || t[lang].invalidCode);
       }
     } catch (err) {
+      console.error('Signup error:', err);
       setError('Ошибка подключения к серверу');
     } finally {
       setLoading(false);
@@ -197,8 +209,8 @@ export default function SignupPage() {
         </button>
       </div>
 
-      {/* Logo Section */}
-      <div className="flex justify-center pt-12 pb-4">
+      {/* Logo Section - ПО ЦЕНТРУ */}
+      <div className="flex flex-col items-center justify-center pt-12 pb-6">
         <Logo size="large" showText={true} />
       </div>
 
@@ -254,7 +266,7 @@ export default function SignupPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
               {!isDemoMode && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -269,17 +281,31 @@ export default function SignupPage() {
                   />
                 </div>
               )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t[lang].fullName}
-                </label>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder={lang === 'kz' ? 'Аты-жөніңіз' : 'Ваше имя'}
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t[lang].firstName}
+                  </label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder={lang === 'kz' ? 'Атыңыз' : 'Ваше имя'}
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t[lang].lastName}
+                  </label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder={lang === 'kz' ? 'Тегіңіз' : 'Ваша фамилия'}
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
