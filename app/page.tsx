@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getNearbyBags, type Supplier } from '../lib/api';
 import CategoryCard from './components/CategoryCard';
 import OfferCard from './components/OfferCard';
@@ -19,9 +20,12 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<Tab>('discover');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{ name: string; id: number } | null>(null);
+  const [splash, setSplash] = useState(true);
+  const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [userAddress, setUserAddress] = useState<string>('');
+
+  const API_URL = 'https://toogood-2ncf.onrender.com';
 
   const t = {
     kz: {
@@ -67,6 +71,15 @@ export default function HomePage() {
     { id: 'desserts', nameKz: 'Тәттілер', nameRu: 'Десерты', emoji: '🍰' }
   ];
 
+  // Splash screen timer
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSplash(false);
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Load language
   useEffect(() => {
     const savedLang = localStorage.getItem('language') as Language;
     if (savedLang && (savedLang === 'kz' || savedLang === 'ru')) {
@@ -79,13 +92,22 @@ export default function HomePage() {
     localStorage.setItem('language', newLang);
   };
 
+  // Check auth
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('https://toogood-2ncf.onrender.com/api/check-auth', { credentials: 'include' });
+        const res = await fetch(`${API_URL}/api/check-auth`, { 
+          credentials: 'include' 
+        });
         if (res.ok) {
           const data = await res.json();
-          if (data.authenticated) setUser({ name: data.user_name, id: data.user_id });
+          if (data.authenticated) {
+            setUser({ 
+              name: data.user_name, 
+              id: data.user_id,
+              phone: data.user_phone 
+            });
+          }
         }
       } catch (err) {
         console.error(err);
@@ -94,7 +116,10 @@ export default function HomePage() {
     checkAuth();
   }, []);
 
+  // Get location and load suppliers
   useEffect(() => {
+    if (splash) return;
+    
     if (!navigator.geolocation) {
       setLoading(false);
       return;
@@ -122,10 +147,10 @@ export default function HomePage() {
       },
       () => setLoading(false)
     );
-  }, [lang]);
+  }, [lang, splash]);
 
   const handleLogout = async () => {
-    await fetch('https://toogood-2ncf.onrender.com/logout', { method: 'GET', credentials: 'include' });
+    await fetch(`${API_URL}/logout`, { method: 'GET', credentials: 'include' });
     setUser(null);
     router.refresh();
   };
@@ -138,6 +163,25 @@ export default function HomePage() {
     );
   };
 
+  // Splash Screen
+  if (splash) {
+    return (
+      <div className="fixed inset-0 bg-emerald-600 flex flex-col items-center justify-center z-50">
+        <div className="text-center">
+          <Image
+            src="/logotype.jpeg"
+            alt="Sarqyn Food Logo"
+            width={360}
+            height={360}
+            className="rounded-full mx-auto mb-6 shadow-xl"
+          />
+          <h1 className="text-4xl font-bold text-white mb-2">Sarqyn Food</h1>
+          <p className="text-emerald-100 text-sm">Дәмді тағамдар дүниені құтқарады</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading || location.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -148,40 +192,21 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Language Switcher */}
-      <div className="flex justify-end pt-4 px-6">
-        <div className="bg-gray-100 rounded-full p-1 flex gap-1">
-          <button
-            onClick={() => toggleLanguage('kz')}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              lang === 'kz'
-                ? 'bg-emerald-600 text-white'
-                : 'text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Қаз
-          </button>
-          <button
-            onClick={() => toggleLanguage('ru')}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              lang === 'ru'
-                ? 'bg-emerald-600 text-white'
-                : 'text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Рус
-          </button>
-        </div>
-      </div>
-
       {/* Header */}
-      <div className="bg-emerald-600 text-white px-6 pt-4 pb-8">
+      <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold">
               {t[lang].greeting}, {user ? user.name : t[lang].guest}! 👋
             </h1>
             <p className="text-emerald-100 mt-1">{t[lang].subtitle}</p>
+            
+            {user && user.phone && (
+              <div className="mt-2 flex items-center gap-2 text-xs bg-white/10 rounded-xl px-3 py-1.5 w-fit">
+                <span>📞</span>
+                <span>{user.phone}</span>
+              </div>
+            )}
           </div>
           
           <div className="flex gap-2">
@@ -253,16 +278,7 @@ export default function HomePage() {
           >
             {t[lang].preferences}
           </button>
-          <button
-            onClick={() => setActiveTab('discover')}
-            className={`flex-1 py-3 rounded-3xl font-semibold text-sm transition-all ${
-              activeTab === 'discover' 
-                ? 'bg-white shadow text-emerald-600' 
-                : 'text-gray-500'
-            }`}
-          >
-            {t[lang].discover}
-          </button>
+       
         </div>
       </div>
 
@@ -310,7 +326,6 @@ export default function HomePage() {
                       originalPrice={bag.original_price}
                       discount={bag.discount_percentage}
                       imageUrl={bag.image_url}
-                
                     />
                   ))
                 )
