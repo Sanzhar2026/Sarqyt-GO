@@ -134,7 +134,7 @@ export default function ProfilePage() {
           <>
             <Link href="/offers"><div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition"><span className="flex items-center gap-3"><span className="text-2xl">📦</span><span className="font-medium">{t.myOrders}</span></span><span className="text-gray-400">→</span></div></Link>
             <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm"><span className="flex items-center gap-3"><span className="text-2xl">📞</span><span className="font-medium">{t.phone}</span></span><span className="text-gray-500 text-sm">{user?.phone}</span></div>
-            <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm"><span className="flex items-center gap-3"><span className="text-2xl">🌍</span><span className="font-medium">{t.language}</span></span><div className="flex gap-2"><button onClick={() => setLang('kz')} className={`px-3 py-1 rounded-full text-sm ${lang === 'kz' ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>Қаз</button><button onClick={() => setLang('ru')} className={`px-3 py-1 rounded-full text-sm ${lang === 'ru' ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>Рус</button></div></div>
+           
             <button onClick={handleLogout} className="w-full bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:bg-red-50 transition text-red-600"><span className="flex items-center gap-3"><span className="text-2xl">🚪</span><span className="font-medium">{t.logout}</span></span><span className="text-red-400">→</span></button>
           </>
         )}
