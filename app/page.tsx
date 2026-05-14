@@ -8,6 +8,7 @@ import { getNearbyBags, type Supplier } from '../lib/api';
 import CategoryCard from './components/CategoryCard';
 import OfferCard from './components/OfferCard';
 import { useGeolocation } from './hooks/useGeolocation';
+import { setGlobalHideBottomNav } from './layout';
 
 type Tab = 'preferences' | 'discover';
 type Language = 'kz' | 'ru';
@@ -22,6 +23,7 @@ export default function HomePage() {
   const [showSplash, setShowSplash] = useState(false);
   const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -69,16 +71,28 @@ export default function HomePage() {
     { id: 'desserts', nameKz: 'Тәттілер', nameRu: 'Десерты', emoji: '🍰' }
   ];
 
-  // Splash screen
+  // ==================== SPLASH SCREEN ====================
   useEffect(() => {
-    const splashShown = sessionStorage.getItem('splash_shown');
-    if (!splashShown) {
+    // Проверяем, была ли уже загрузка в этой сессии
+    const hasLoaded = sessionStorage.getItem('has_loaded');
+    
+    if (!hasLoaded) {
+      // Первая загрузка в этой вкладке - показываем сплеш
+      setGlobalHideBottomNav(true);
       setShowSplash(true);
+      
       const timer = setTimeout(() => {
         setShowSplash(false);
-        sessionStorage.setItem('splash_shown', 'true');
-      }, 4000);
+        setGlobalHideBottomNav(false);
+        sessionStorage.setItem('has_loaded', 'true');
+      }, 3500);
+      
       return () => clearTimeout(timer);
+    } else {
+      // Перезагрузка страницы - не показываем сплеш
+      setShowSplash(false);
+      setGlobalHideBottomNav(false);
+      setInitialLoad(false);
     }
   }, []);
 
@@ -95,24 +109,20 @@ export default function HomePage() {
     localStorage.setItem('language', newLang);
   };
 
-  // ✅ ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ИЗ LOCALSTORAGE (СРАЗУ!)
+  // Загрузка данных пользователя
   useEffect(() => {
-    // Сначала проверяем localStorage
     const storedUser = localStorage.getItem('user');
-// В useEffect загрузки пользователя:
-if (storedUser) {
-  try {
-    const parsed = JSON.parse(storedUser);
-    setUser({
-      name: parsed.full_name || parsed.name,  // ← сначала full_name, потом name
-      id: parsed.id,
-      phone: parsed.phone
-    });
-    console.log('✅ User loaded:', parsed.full_name || parsed.name);
-  } catch(e) {}
-}
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        setUser({
+          name: parsed.full_name || parsed.name,
+          id: parsed.id,
+          phone: parsed.phone
+        });
+      } catch(e) {}
+    }
     
-    // Затем проверяем с бэкенда для синхронизации
     const fetchUser = async () => {
       try {
         const res = await fetch(`${API_URL}/api/check-auth`, { 
@@ -178,12 +188,25 @@ if (storedUser) {
     );
   };
 
+  // Логотип в БОЛЬШОМ КРУГЕ
+  const LogoCircle = () => (
+    <div className="w-56 h-56 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+      <Image 
+        src="/logotype.jpeg" 
+        alt="Sarqyn Food Logo" 
+        width={220} 
+        height={220} 
+        className="object-cover w-full h-full"
+      />
+    </div>
+  );
+
   // Splash Screen
   if (showSplash) {
     return (
       <div className="fixed inset-0 bg-emerald-600 flex flex-col items-center justify-center z-50">
         <div className="text-center">
-          <Image src="/logotype.jpeg" alt="Sarqyn Food Logo" width={360} height={360} className="rounded-full mx-auto mb-6 shadow-xl" />
+          <LogoCircle />
           <h1 className="text-4xl font-bold text-white mb-2">Sarqyn Food</h1>
           <p className="text-emerald-100 text-sm">Дәмді тағамдар дүниені құтқарады</p>
         </div>
@@ -200,7 +223,7 @@ if (storedUser) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <div>
@@ -267,7 +290,28 @@ if (storedUser) {
           <>
             <h2 className="font-bold text-xl mb-5">🔥 {t[lang].nearbyOffers}</h2>
             <div className="space-y-6">
-              {suppliers.length === 0 ? (<div className="text-center py-20 bg-white rounded-3xl"><div className="text-6xl mb-4">😢</div><p className="text-gray-500">{t[lang].noOffers}</p></div>) : (suppliers.flatMap(supplier => supplier.surprise_bags.map(bag => (<OfferCard key={bag.id} id={bag.id} name={bag.name} businessName={supplier.business_name} distance={`${supplier.distance_km} км`} price={bag.discounted_price} originalPrice={bag.original_price} discount={bag.discount_percentage} imageUrl={bag.image_url} />))))}
+              {suppliers.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-3xl">
+                  <div className="text-6xl mb-4">😢</div>
+                  <p className="text-gray-500">{t[lang].noOffers}</p>
+                </div>
+              ) : (
+                suppliers.flatMap(supplier =>
+                  supplier.surprise_bags.map(bag => (
+                    <OfferCard
+                      key={bag.id}
+                      id={bag.id}
+                      name={bag.name}
+                      businessName={supplier.business_name}
+                      distance={`${supplier.distance_km} км`}
+                      price={bag.discounted_price}
+                      originalPrice={bag.original_price}
+                      discount={bag.discount_percentage}
+                      imageUrl={bag.image_url}
+                    />
+                  ))
+                )
+              )}
             </div>
           </>
         )}

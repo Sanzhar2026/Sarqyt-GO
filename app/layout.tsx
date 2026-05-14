@@ -2,11 +2,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import './globals.css';
 import BottomNav from './components/BottomNav';
-import Logo from './components/Logo';
 
 type Language = 'kz' | 'ru';
+
+// Глобальное состояние для скрытия BottomNav
+let globalHideBottomNav = false;
+export const setGlobalHideBottomNav = (value: boolean) => {
+  globalHideBottomNav = value;
+};
 
 export default function RootLayout({
   children,
@@ -14,12 +20,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [lang, setLang] = useState<Language>('kz');
+  const [hideBottomNav, setHideBottomNav] = useState(true); // ← изначально скрыт
 
   useEffect(() => {
     const savedLang = localStorage.getItem('language') as Language;
     if (savedLang && (savedLang === 'kz' || savedLang === 'ru')) {
       setLang(savedLang);
     }
+    
+    // Функция для обновления состояния из глобальной переменной
+    const checkHideStatus = () => {
+      setHideBottomNav(globalHideBottomNav);
+    };
+    
+    // Интервал для проверки (временное решение)
+    const interval = setInterval(checkHideStatus, 50);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLanguageChange = (newLang: Language) => {
@@ -34,12 +50,10 @@ export default function RootLayout({
         <title>Sarqyn Food</title>
       </head>
       <body className="bg-gray-50">
-        {/* Top Header with Logo - NO Link wrapper */}
-     
-        
         <div className="max-w-md mx-auto relative min-h-screen">
           {children}
-          <BottomNav lang={lang} onLanguageChange={handleLanguageChange} />
+          {/* ✅ BottomNav скрыт до окончания splash screen */}
+          {!hideBottomNav && <BottomNav lang={lang} onLanguageChange={handleLanguageChange} />}
         </div>
       </body>
     </html>
