@@ -9,14 +9,14 @@ import CategoryCard from './components/CategoryCard';
 import OfferCard from './components/OfferCard';
 import { useGeolocation } from './hooks/useGeolocation';
 import { setGlobalHideBottomNav } from './layout';
-
+import { useLanguage } from './layout';
 type Tab = 'preferences' | 'discover';
 type Language = 'kz' | 'ru';
 
 export default function HomePage() {
   const router = useRouter();
   const location = useGeolocation();
-  const [lang, setLang] = useState<Language>('kz');
+   const { lang } = useLanguage(); 
   const [activeTab, setActiveTab] = useState<Tab>('discover');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,18 +97,7 @@ export default function HomePage() {
   }, []);
 
   // Load language
-  useEffect(() => {
-    const savedLang = localStorage.getItem('language') as Language;
-    if (savedLang && (savedLang === 'kz' || savedLang === 'ru')) {
-      setLang(savedLang);
-    }
-  }, []);
-
-  const toggleLanguage = (newLang: Language) => {
-    setLang(newLang);
-    localStorage.setItem('language', newLang);
-  };
-
+  
   // Загрузка данных пользователя
   useEffect(() => {
     const storedUser = localStorage.getItem('user');

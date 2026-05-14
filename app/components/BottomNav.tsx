@@ -4,6 +4,8 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from './Logo';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useLanguage } from '../../app/layout';
 
 interface NavItem {
   labelKz: string;
@@ -47,22 +49,17 @@ const navItems: NavItem[] = [
   },
 ];
 
-interface BottomNavProps {
-  lang?: 'kz' | 'ru';
-  onLanguageChange?: (lang: 'kz' | 'ru') => void;
-}
-
-export default function BottomNav({ lang = 'kz', onLanguageChange }: BottomNavProps) {
+export default function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter(); // ← ADD useRouter
+  const router = useRouter();
+  const { lang, setLang } = useLanguage();
 
   const getLabel = (item: NavItem) => {
-    if (lang === 'kz') return item.labelKz;
-    return item.labelRu;
+    return lang === 'kz' ? item.labelKz : item.labelRu;
   };
 
   const handleNavigation = (href: string) => {
-    router.push(href); // ← Use Next.js router for client-side navigation
+    router.push(href);
   };
 
   return (
@@ -76,7 +73,7 @@ export default function BottomNav({ lang = 'kz', onLanguageChange }: BottomNavPr
             return (
               <div key={index} className="flex flex-col items-center -mt-8">
                 <div 
-                  onClick={() => handleNavigation(item.href)} // ← FIXED
+                  onClick={() => handleNavigation(item.href)}
                   className="w-16 h-16 bg-emerald-600 rounded-full flex items-center justify-center shadow-xl border-4 border-white cursor-pointer"
                 >
                   <Logo size="small" showText={false} />
@@ -100,27 +97,27 @@ export default function BottomNav({ lang = 'kz', onLanguageChange }: BottomNavPr
         })}
       </div>
       
-      {/* Language Switcher at bottom */}
-      <div className="flex justify-center gap-4 py-2 border-t border-gray-100">
+      {/* Language Switcher - уменьшенный */}
+      <div className="flex justify-center gap-2 py-1.5 border-t border-gray-100">
         <button
-          onClick={() => onLanguageChange?.('kz')}
-          className={`text-xs font-medium py-2 px-3 rounded-full transition ${
+          onClick={() => setLang('kz')}
+          className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition ${
             lang === 'kz' 
               ? 'bg-emerald-600 text-white' 
-              : 'text-gray-500 hover:bg-gray-100'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
-          Қазақша
+          Қаз
         </button>
         <button
-          onClick={() => onLanguageChange?.('ru')}
-          className={`text-xs font-medium py-2 px-3 rounded-full transition ${
+          onClick={() => setLang('ru')}
+          className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition ${
             lang === 'ru' 
               ? 'bg-emerald-600 text-white' 
-              : 'text-gray-500 hover:bg-gray-100'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
-          Русский
+          Рус
         </button>
       </div>
     </div>

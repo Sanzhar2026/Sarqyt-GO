@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { translations, type Language } from '@/lib/i18n';
+import { useLanguage } from '../layout';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [lang, setLang] = useState<Language>('kz');
+ const { lang, setLang } = useLanguage();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const t = translations[lang];
@@ -104,8 +105,7 @@ export default function ProfilePage() {
         <div className="flex justify-between items-start mb-6">
           <h1 className="text-2xl font-bold">{t.profile}</h1>
           <div className="flex gap-2">
-            <button onClick={() => setLang('kz')} className={`px-3 py-1 rounded-full text-sm ${lang === 'kz' ? 'bg-white text-emerald-600' : 'bg-white/20'}`}>Қаз</button>
-            <button onClick={() => setLang('ru')} className={`px-3 py-1 rounded-full text-sm ${lang === 'ru' ? 'bg-white text-emerald-600' : 'bg-white/20'}`}>Рус</button>
+        
           </div>
         </div>
         

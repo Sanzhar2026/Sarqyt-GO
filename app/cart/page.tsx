@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { translations, type Language } from '@/lib/i18n';
-
+import { useLanguage } from '../layout';
 interface CartItem {
   id: number;
   name: string;
@@ -16,7 +16,7 @@ interface CartItem {
 
 export default function CartPage() {
   const router = useRouter();
-  const [lang, setLang] = useState<Language>('kz');
+  const { lang, setLang } = useLanguage();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
   const t = translations[lang];

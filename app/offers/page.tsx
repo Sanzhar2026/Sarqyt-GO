@@ -5,12 +5,30 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getNearbyBags, type Supplier } from '../../lib/api';
 import OfferCard from '../components/OfferCard';
+import { useLanguage } from '../layout';
 
 export default function OffersPage() {
   const router = useRouter();
+  const { lang } = useLanguage(); // ← язык для перевода
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Переводы
+  const t = {
+    kz: {
+      title: 'Барлық ұсыныстар',
+      subtitle: 'Жақын маңдағы тосын сыйлар',
+      searchPlaceholder: 'Мейрамхана немесе тағам іздеу...',
+      noResults: 'Тағам табылмады',
+    },
+    ru: {
+      title: 'Все предложения',
+      subtitle: 'Сюрпризы рядом с вами',
+      searchPlaceholder: 'Поиск ресторана или блюда...',
+      noResults: 'Блюда не найдены',
+    },
+  };
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -51,14 +69,14 @@ export default function OffersPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
-        <h1 className="text-2xl font-bold">🔍 Ашу / Открыть</h1>
-        <p className="text-emerald-100 text-sm mt-1">Барлық ұсыныстар</p>
+        <h1 className="text-2xl font-bold">🔍 {t[lang].title}</h1>
+        <p className="text-emerald-100 text-sm mt-1">{t[lang].subtitle}</p>
       </div>
 
       <div className="px-6 -mt-4">
         <input
           type="text"
-          placeholder="Мейрамхана немесе тағам іздеу..."
+          placeholder={t[lang].searchPlaceholder}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -69,7 +87,7 @@ export default function OffersPage() {
         {filteredSuppliers.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl">
             <div className="text-6xl mb-4">🔍</div>
-            <p className="text-gray-500">Тағам табылмады</p>
+            <p className="text-gray-500">{t[lang].noResults}</p>
           </div>
         ) : (
           <div className="space-y-6">
