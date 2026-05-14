@@ -189,18 +189,19 @@ export default function HomePage() {
   };
 
   // Логотип в БОЛЬШОМ КРУГЕ
-  const LogoCircle = () => (
-    <div className="w-56 h-56 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
-      <Image 
-        src="/logotype.jpeg" 
-        alt="Sarqyn Food Logo" 
-        width={220} 
-        height={220} 
-        className="object-cover w-full h-full"
-      />
-    </div>
-  );
-
+ // Логотип в БОЛЬШОМ КРУГЕ (увеличен в 3 раза)
+const LogoCircle = () => (
+  <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+    <Image 
+      src="/logotype.jpeg" 
+      alt="Sarqyn Food Logo" 
+      sizes="(max-width: 768px) 100vw, 320px"
+      width={800} 
+      height={800} 
+      className="object-cover w-full h-full"
+    />
+  </div>
+);
   // Splash Screen
   if (showSplash) {
     return (
