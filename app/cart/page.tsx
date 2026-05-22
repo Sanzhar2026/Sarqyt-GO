@@ -1,230 +1,391 @@
+// app/cart/page.tsx - С ПЕРЕХОДОМ ПО ССЫЛКЕ KASPI
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { translations, type Language } from '@/lib/i18n';
-import { useLanguage } from '../layout';
+import Image from 'next/image';
+import Link from 'next/link';
+
 interface CartItem {
   id: number;
   name: string;
+  businessName: string;
   price: number;
-  originalPrice?: number;
-  supplier: string;
+  originalPrice: number;
+  discount: number;
+  imageUrl: string;
   quantity: number;
-  imageUrl?: string;
 }
 
 export default function CartPage() {
   const router = useRouter();
-  const { lang, setLang } = useLanguage();
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const t = translations[lang];
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('kaspi');
+  const [cardDetails, setCardDetails] = useState({
+    number: '',
+    expiry: '',
+    cvv: '',
+    holder: ''
+  });
+  const [paymentError, setPaymentError] = useState('');
+  const [processingStep, setProcessingStep] = useState<'form' | 'processing' | 'success'>('form');
+
+  // ВАША ССЫЛКА НА KASPI QR
+  const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
   useEffect(() => {
-    const saved = localStorage.getItem('cart');
-    if (saved) {
-      setCart(JSON.parse(saved));
-    }
+    loadCart();
+    window.addEventListener('cartUpdated', loadCart);
+    return () => window.removeEventListener('cartUpdated', loadCart);
   }, []);
 
-  const saveCart = (newCart: CartItem[]) => {
-    setCart(newCart);
-    localStorage.setItem('cart', JSON.stringify(newCart));
+  const loadCart = () => {
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    setCartItems(cart);
   };
 
   const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
+    if (newQuantity < 1) {
       removeItem(id);
       return;
     }
-    const newCart = cart.map(item => 
+    
+    const updatedCart = cartItems.map(item =>
       item.id === id ? { ...item, quantity: newQuantity } : item
     );
-    saveCart(newCart);
+    setCartItems(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    window.dispatchEvent(new Event('cartUpdated'));
   };
 
   const removeItem = (id: number) => {
-    const newCart = cart.filter(item => item.id !== id);
-    saveCart(newCart);
+    const updatedCart = cartItems.filter(item => item.id !== id);
+    setCartItems(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    window.dispatchEvent(new Event('cartUpdated'));
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const deliveryFee = 500;
-  const total = subtotal + deliveryFee;
+  const getTotalPrice = () => {
+    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  };
 
-  const handleCheckout = async () => {
-    setLoading(true);
+  const getTotalItems = () => {
+    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  };
+
+  const handleCheckout = () => {
+    // Открываем модалку с выбором оплаты
+    setPaymentError('');
+    setProcessingStep('form');
+    setShowPaymentModal(true);
+  };
+
+  // 🔥 НОВАЯ ФУНКЦИЯ: переход на Kaspi QR
+  const handleKaspiPayment = () => {
+    // Сохраняем текущую корзину перед переходом
+    localStorage.setItem('pending_order', JSON.stringify({
+      items: cartItems,
+      total: getTotalPrice(),
+      timestamp: Date.now()
+    }));
     
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        const { latitude, longitude } = position.coords;
-        
-        for (const item of cart) {
-          try {
-            await fetch('http://localhost:8000/api/orders', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                bag_id: item.id,
-                lat: latitude,
-                lon: longitude,
-                address: 'Delivery address'
-              }),
-            });
-          } catch (error) {
-            console.error('Order failed:', error);
-          }
-        }
-        
-        localStorage.removeItem('cart');
-        setCart([]);
-        alert(lang === 'kz' ? 'Тапсырыс қабылданды!' : 'Заказ принят!');
-        router.push('/my-orders');
-      });
-    } else {
-      alert(t.locationRequired);
-    }
-    setLoading(false);
+    // Переход на Kaspi QR
+    window.location.href = KASPI_QR_URL;
   };
 
-  if (cart.length === 0) {
+  const validateCardDetails = () => {
+    const cleanNumber = cardDetails.number.replace(/\s/g, '');
+    if (cleanNumber.length !== 16 && cleanNumber.length > 0) {
+      setPaymentError('Введите корректный номер карты (16 цифр)');
+      return false;
+    }
+    return true;
+  };
+
+  const processPayment = async () => {
+    if (!validateCardDetails()) return;
+    
+    setProcessingStep('processing');
+    
+    setTimeout(() => {
+      setProcessingStep('success');
+      localStorage.removeItem('cart');
+      setCartItems([]);
+      
+      setTimeout(() => {
+        setShowPaymentModal(false);
+        router.push('/orders');
+      }, 2000);
+    }, 2000);
+  };
+
+  const formatCardNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    const groups = cleaned.match(/.{1,4}/g);
+    return groups ? groups.join(' ') : cleaned;
+  };
+
+  const formatExpiry = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length >= 2) {
+      return cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4);
+    }
+    return cleaned;
+  };
+
+  const fillDemoCard = (method: string) => {
+    const demos = {
+      kaspi: { number: '4405 1234 5678 9012', expiry: '12/26', cvv: '123' },
+      halyk: { number: '4400 1234 5678 9012', expiry: '12/26', cvv: '123' },
+      mastercard: { number: '5555 1234 5678 9012', expiry: '12/26', cvv: '123' },
+      visa: { number: '4111 1234 5678 9012', expiry: '12/26', cvv: '123' }
+    };
+    const demo = demos[method as keyof typeof demos];
+    if (demo) {
+      setCardDetails({
+        number: demo.number,
+        expiry: demo.expiry,
+        cvv: demo.cvv,
+        holder: 'TEST USER'
+      });
+    }
+  };
+
+  if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 pb-24">
-        <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
-          <div className="flex justify-between items-start">
-            <h1 className="text-2xl font-bold">{t.cart}</h1>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setLang('kz')}
-                className={`px-3 py-1 rounded-full text-sm ${lang === 'kz' ? 'bg-white text-emerald-600' : 'bg-white/20'}`}
-              >
-                Қаз
-              </button>
-              <button
-                onClick={() => setLang('ru')}
-                className={`px-3 py-1 rounded-full text-sm ${lang === 'ru' ? 'bg-white text-emerald-600' : 'bg-white/20'}`}
-              >
-                Рус
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="p-6 text-center">
-          <div className="text-6xl mb-4">🛒</div>
-          <p className="text-gray-500">{t.cartEmpty}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="mt-6 bg-emerald-600 text-white px-6 py-3 rounded-2xl"
-          >
-            {t.discover}
-          </button>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+        <div className="text-center">
+          <div className="text-8xl mb-6">🛒</div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Корзина пуста</h1>
+          <p className="text-gray-500 mb-6">Добавьте товары, чтобы оформить заказ</p>
+          <Link href="/offers">
+            <button className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition">
+              Перейти к покупкам
+            </button>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
-      <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
-        <div className="flex justify-between items-start">
-          <h1 className="text-2xl font-bold">{t.cart}</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setLang('kz')}
-              className={`px-3 py-1 rounded-full text-sm ${lang === 'kz' ? 'bg-white text-emerald-600' : 'bg-white/20'}`}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header как в Kaspi - с кнопкой оплаты вверху */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
+        <div className="px-4 pt-12 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <button 
+              onClick={() => router.back()}
+              className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center"
             >
-              Қаз
+              ←
             </button>
-            <button
-              onClick={() => setLang('ru')}
-              className={`px-3 py-1 rounded-full text-sm ${lang === 'ru' ? 'bg-white text-emerald-600' : 'bg-white/20'}`}
-            >
-              Рус
-            </button>
+            <h1 className="text-xl font-bold text-gray-800">Корзина</h1>
+            <div className="w-10"></div>
           </div>
-        </div>
-        <p className="text-emerald-100 text-sm mt-2">
-          {cart.length} {lang === 'kz' ? 'тағам' : 'блюда'}
-        </p>
-      </div>
-
-      {/* Cart Items */}
-      <div className="p-6 space-y-4">
-        {cart.map((item) => (
-          <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm">
-            <div className="flex gap-4">
-              <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center text-3xl">
-                🍽️
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-lg">{item.name}</h3>
-                <p className="text-gray-500 text-sm">{item.supplier}</p>
-                <div className="flex justify-between items-center mt-2">
-                  <div>
-                    <span className="text-emerald-600 font-bold text-lg">
-                      {item.price} ₸
-                    </span>
-                    {item.originalPrice && item.originalPrice > item.price && (
-                      <span className="text-gray-400 line-through text-sm ml-2">
-                        {item.originalPrice} ₸
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-lg"
-                    >
-                      -
-                    </button>
-                    <span className="w-6 text-center font-medium">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-lg"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
+          
+          <div className="mb-4">
+            <div className="text-2xl font-bold text-emerald-600">
+              {getTotalPrice().toLocaleString()} ₸
             </div>
-          </div>
-        ))}
-
-        {/* Order Summary */}
-        <div className="bg-white rounded-2xl p-5 mt-4 shadow-sm">
-          <h3 className="font-bold text-lg mb-4">{t.total}</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between text-gray-600">
-              <span>{lang === 'kz' ? 'Тағамдар' : 'Блюда'}</span>
-              <span>{subtotal} ₸</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>{lang === 'kz' ? 'Жеткізу' : 'Доставка'}</span>
-              <span>{deliveryFee} ₸</span>
-            </div>
-            <div className="border-t pt-2 mt-2">
-              <div className="flex justify-between font-bold text-lg">
-                <span>{t.total}</span>
-                <span className="text-emerald-600">{total} ₸</span>
-              </div>
+            <div className="text-sm text-gray-500 mt-1">
+              {getTotalItems()} товара
             </div>
           </div>
           
           <button
             onClick={handleCheckout}
-            disabled={loading}
-            className="w-full mt-6 bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg hover:bg-emerald-700 transition disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
-            {loading 
-              ? (lang === 'kz' ? 'Өңделуде...' : 'Обработка...')
-              : t.checkout}
+            <span className="text-xl">💳</span>
+            <span>Оформить заказ</span>
           </button>
         </div>
       </div>
+
+      {/* Cart Items */}
+      <div className="px-4 py-4 space-y-3 pb-8">
+        {cartItems.map((item) => (
+          <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm flex gap-4">
+            <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+              <Image
+                src={item.imageUrl || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop'}
+                alt={item.name}
+                fill
+                className="object-cover"
+              />
+            </div>
+            
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
+              <p className="text-gray-500 text-xs">{item.businessName}</p>
+              <div className="flex items-center justify-between mt-2">
+                <div>
+                  <span className="text-lg font-bold text-emerald-600">{item.price} ₸</span>
+                  {item.originalPrice > item.price && (
+                    <span className="text-gray-400 line-through text-xs ml-2">{item.originalPrice} ₸</span>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition flex items-center justify-center"
+                  >
+                    -
+                  </button>
+                  <span className="font-semibold text-sm min-w-[25px] text-center">{item.quantity}</span>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition flex items-center justify-center"
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className="ml-1 text-red-500 hover:text-red-700 text-sm"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Payment Modal - С ПЕРЕХОДОМ НА KASPI */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="text-6xl mb-3">💳</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Выберите способ оплаты</h2>
+                <p className="text-gray-500">
+                  Сумма: <span className="font-bold text-emerald-600 text-xl">{getTotalPrice()} ₸</span>
+                </p>
+              </div>
+              
+              {/* KASPI QR - КНОПКА С ПЕРЕХОДОМ ПО ССЫЛКЕ */}
+              <button
+                onClick={handleKaspiPayment}
+                className="w-full p-5 rounded-2xl border-2 border-[#EA0033] bg-[#EA0033]/5 mb-4 transition-all hover:shadow-lg active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-[#EA0033] rounded-xl flex items-center justify-center">
+                    <span className="text-white font-bold text-xl">K</span>
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-bold text-lg">Kaspi QR</h3>
+                    <p className="text-sm text-gray-500">Оплата через Kaspi.kz</p>
+                  </div>
+                  <span className="text-2xl">→</span>
+                </div>
+              </button>
+
+              {/* Другие способы оплаты (демо) */}
+              <details className="mt-2">
+                <summary className="text-center text-sm text-gray-400 cursor-pointer py-2">
+                  💳 Другие способы оплаты (демо)
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    {['halyk', 'mastercard', 'visa'].map((method) => (
+                      <button
+                        key={method}
+                        onClick={() => {
+                          setPaymentMethod(method);
+                          fillDemoCard(method);
+                        }}
+                        className={`p-4 rounded-xl border-2 transition-all ${
+                          paymentMethod === method 
+                            ? 'border-emerald-500 bg-emerald-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="text-2xl mb-1">
+                          {method === 'halyk' && '🏦'}
+                          {method === 'mastercard' && '💳'}
+                          {method === 'visa' && '💳'}
+                        </div>
+                        <div className="text-sm font-medium capitalize">{method}</div>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Номер карты</label>
+                      <input
+                        type="text"
+                        placeholder="1234 5678 9012 3456"
+                        value={cardDetails.number}
+                        onChange={(e) => setCardDetails({...cardDetails, number: formatCardNumber(e.target.value)})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl"
+                        maxLength={19}
+                      />
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Срок</label>
+                        <input
+                          type="text"
+                          placeholder="MM/YY"
+                          value={cardDetails.expiry}
+                          onChange={(e) => setCardDetails({...cardDetails, expiry: formatExpiry(e.target.value)})}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl"
+                          maxLength={5}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
+                        <input
+                          type="password"
+                          placeholder="123"
+                          value={cardDetails.cvv}
+                          onChange={(e) => setCardDetails({...cardDetails, cvv: e.target.value.replace(/\D/g, '').slice(0, 3)})}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl"
+                          maxLength={3}
+                        />
+                      </div>
+                    </div>
+                    
+                    {paymentError && (
+                      <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">
+                        ⚠️ {paymentError}
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowPaymentModal(false)}
+                        className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition"
+                      >
+                        Назад
+                      </button>
+                      <button
+                        onClick={processPayment}
+                        className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition"
+                      >
+                        Оплатить (демо)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              <div className="mt-6 p-3 bg-blue-50 rounded-xl">
+                <p className="text-xs text-blue-700 text-center">
+                  🔒 После нажатия вы перейдете в Kaspi.kz для подтверждения платежа
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

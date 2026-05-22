@@ -50,48 +50,57 @@ export default function LoginPage() {
     setError('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  // app/login/page.tsx - исправленный handleSubmit
 
-    try {
-      const response = await fetch(`${API_URL}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
-        credentials: 'include',
-      });
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
 
-      const data = await response.json();
-if (response.ok && data.success) {
-  console.log('✅ Login response:', data); // ← посмотрите что приходит
-  
-  // ✅ Используем full_name, а не name
-  localStorage.setItem('isLoggedIn', 'true');
-  localStorage.setItem('user', JSON.stringify({
-    id: data.user.id,
-    name: data.user.full_name,        // ← full_name
-    full_name: data.user.full_name,   // ← full_name
-    phone: data.user.phone
-  }));
-  console.log('✅ Сохранено в localStorage:', {
-    id: data.user.id,
-    name: data.user.full_name,
-    phone: data.user.phone
-  });
-  window.location.href = '/';
-}
-else {
-        setError(data.error || t[lang].invalidCredentials);
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      setError(t[lang].invalidCredentials);
-    } finally {
-      setLoading(false);
+  try {
+    const response = await fetch(`${API_URL}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, password }),
+      credentials: 'include',  // ← Важно для cookies
+    });
+
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      console.log('✅ Login response:', data);
+      
+      // Сохраняем в localStorage
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('user', JSON.stringify({
+        id: data.user.id,
+        name: data.user.full_name,
+        full_name: data.user.full_name,
+        phone: data.user.phone
+      }));
+      
+      // ✅ ПРОВЕРЯЕМ, УСТАНОВИЛАСЬ ЛИ COOKIE
+      console.log('🍪 Cookies после логина:', document.cookie);
+      
+      // Перенаправляем в корзину или на главную
+      const redirectTo = localStorage.getItem('redirectAfterLogin') || '/';
+      localStorage.removeItem('redirectAfterLogin');
+      
+      // Используем window.location.href для полной перезагрузки
+      window.location.href = redirectTo;
+    } else {
+      setError(data.error || t[lang].invalidCredentials);
     }
-  };
+  } catch (error) {
+    console.error('Login error:', error);
+    setError(t[lang].invalidCredentials);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-white">

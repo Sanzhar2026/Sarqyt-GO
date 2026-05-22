@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,76 +8,116 @@ import { getNearbyBags, type Supplier } from '../lib/api';
 import CategoryCard from './components/CategoryCard';
 import OfferCard from './components/OfferCard';
 import { useGeolocation } from './hooks/useGeolocation';
+import { useWebSocket } from './hooks/useWebSocket';
 import { setGlobalHideBottomNav } from './layout';
 import { useLanguage } from './layout';
+
 type Tab = 'preferences' | 'discover';
-type Language = 'kz' | 'ru';
 
 export default function HomePage() {
   const router = useRouter();
   const location = useGeolocation();
-   const { lang } = useLanguage(); 
+  const { lang } = useLanguage(); 
   const [activeTab, setActiveTab] = useState<Tab>('discover');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);  // ← ОСНОВНОЙ ЛОАДЕР
   const [showSplash, setShowSplash] = useState(false);
   const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [initialLoad, setInitialLoad] = useState(true);
-
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const { isConnected, lastMessage } = useWebSocket('wss://toogood-2ncf.onrender.com/ws');
+  
+  const isMountedRef = useRef(true);
+  const initialLoadDoneRef = useRef(false);  // ← ФЛАГ ДЛЯ ПЕРВОЙ ЗАГРУЗКИ
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  const t = {
-    kz: {
-      greeting: 'Сәлем',
-      guest: 'Қонақ',
-      subtitle: 'Бүгін не құтқарасыз?',
-      logout: 'Шығу',
-      login: 'Кіру',
-      register: 'Тіркелу',
-      search: 'Мейрамхана немесе тағам іздеу...',
-      preferences: 'Қалауларыңыз',
-      discover: 'Жақын ұсыныстар',
-      filter: 'Фильтр',
-      nearbyOffers: 'Жақын маңдағы ұсыныстар',
-      noOffers: 'Қазір жақын маңда ұсыныс жоқ',
-      iLike: 'Маған ұнайды',
-      myOrders: 'Менің тапсырыстарым'
-    },
-    ru: {
-      greeting: 'Привет',
-      guest: 'Гость',
-      subtitle: 'Что спасете сегодня?',
-      logout: 'Выйти',
-      login: 'Войти',
-      register: 'Регистрация',
-      search: 'Поиск ресторана или блюда...',
-      preferences: 'Предпочтения',
-      discover: 'Ближайшие предложения',
-      filter: 'Фильтр',
-      nearbyOffers: 'Предложения рядом',
-      noOffers: 'Рядом нет предложений',
-      iLike: 'Мне нравится',
-      myOrders: 'Мои заказы'
+  // Функция загрузки данных
+  const loadNearbyBags = useCallback(async (showLoading = false, isInitial = false) => {
+    if (!isMountedRef.current) return;
+    
+    if (showLoading && !isInitial) {
+      setIsRefreshing(true);
     }
+    
+    if (!navigator.geolocation) {
+      if (showLoading && !isInitial) setIsRefreshing(false);
+      if (isInitial) setLoading(false);  // ← ВАЖНО!
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        try {
+          const data = await getNearbyBags(lat, lon, 10);
+          if (isMountedRef.current) {
+            setSuppliers(data);
+            setLastUpdate(new Date());
+            console.log('🔄 Данные обновлены:', data.length, 'поставщиков');
+          }
+        } catch (err) {
+          console.error('Ошибка загрузки:', err);
+        } finally {
+          if (isMountedRef.current) {
+            if (showLoading && !isInitial) setIsRefreshing(false);
+            if (isInitial) setLoading(false);  // ← ВАЖНО: выключаем основной лоадер
+          }
+        }
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        if (isMountedRef.current) {
+          if (showLoading && !isInitial) setIsRefreshing(false);
+          if (isInitial) setLoading(false);  // ← ВАЖНО: выключаем даже при ошибке
+        }
+      }
+    );
+  }, []);
+
+  // Слушаем WebSocket сообщения
+  useEffect(() => {
+    if (!lastMessage) return;
+    
+    console.log('📡 WebSocket событие:', lastMessage);
+    
+    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
+      console.log('🆕 Новый сюрприз! Мгновенное обновление...');
+      loadNearbyBags(false, false);
+      
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Новый сюрприз! 🎁', {
+          body: 'Появился новый сюрприз рядом с вами!',
+          icon: '/logo.png'
+        });
+      }
+    }
+    
+    if (lastMessage.type === 'delete_bag') {
+      console.log('🗑️ Сюрприз удален, обновляем список...');
+      loadNearbyBags(false, false);
+    }
+  }, [lastMessage, loadNearbyBags]);
+
+  const handleManualRefresh = () => {
+    loadNearbyBags(true, false);
   };
 
-  const categories = [
-    { id: 'kazakh', nameKz: 'Қазақ тағамы', nameRu: 'Казахская кухня', emoji: '🍖' },
-    { id: 'fastfood', nameKz: 'Фастфуд', nameRu: 'Фастфуд', emoji: '🍔' },
-    { id: 'pizza', nameKz: 'Пицца', nameRu: 'Пицца', emoji: '🍕' },
-    { id: 'healthy', nameKz: 'Здоровое питание', nameRu: 'Здоровое питание', emoji: '🥗' },
-    { id: 'asian', nameKz: 'Азия тағамы', nameRu: 'Азиатская кухня', emoji: '🍜' },
-    { id: 'desserts', nameKz: 'Тәттілер', nameRu: 'Десерты', emoji: '🍰' }
-  ];
-
-  // ==================== SPLASH SCREEN ====================
+  // Запрос разрешения на уведомления
   useEffect(() => {
-    // Проверяем, была ли уже загрузка в этой сессии
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Splash screen
+  useEffect(() => {
+    isMountedRef.current = true;
+    
     const hasLoaded = sessionStorage.getItem('has_loaded');
     
     if (!hasLoaded) {
-      // Первая загрузка в этой вкладке - показываем сплеш
       setGlobalHideBottomNav(true);
       setShowSplash(true);
       
@@ -89,15 +129,11 @@ export default function HomePage() {
       
       return () => clearTimeout(timer);
     } else {
-      // Перезагрузка страницы - не показываем сплеш
       setShowSplash(false);
       setGlobalHideBottomNav(false);
-      setInitialLoad(false);
     }
   }, []);
 
-  // Load language
-  
   // Загрузка данных пользователя
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -136,30 +172,23 @@ export default function HomePage() {
     fetchUser();
   }, []);
 
-  // Get location and load suppliers
+  // 👇 ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ДАННЫХ - ТОЛЬКО 1 РАЗ
   useEffect(() => {
     if (showSplash) return;
     
-    if (!navigator.geolocation) {
-      setLoading(false);
-      return;
+    // Загружаем данные только один раз при монтировании
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+      loadNearbyBags(true, true);  // isInitial = true
     }
+  }, [showSplash, loadNearbyBags]);  // ← УБРАЛ lang из зависимостей
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        try {
-          const data = await getNearbyBags(lat, lon, 10);
-          setSuppliers(data);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoading(false);
-        }
-      },
-      () => setLoading(false)
-    );
-  }, [lang, showSplash]);
+  // Очистка при размонтировании
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     await fetch(`${API_URL}/logout`, { method: 'GET', credentials: 'include' });
@@ -177,21 +206,71 @@ export default function HomePage() {
     );
   };
 
-  // Логотип в БОЛЬШОМ КРУГЕ
- // Логотип в БОЛЬШОМ КРУГЕ (увеличен в 3 раза)
-const LogoCircle = () => (
-  <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
-    <Image 
-      src="/logotype.jpeg" 
-      alt="Sarqyn Food Logo" 
-      sizes="(max-width: 768px) 100vw, 320px"
-      width={800} 
-      height={800} 
-      className="object-cover w-full h-full"
-    />
-  </div>
-);
-  // Splash Screen
+  const t = {
+    kz: {
+      greeting: 'Сәлем',
+      guest: 'Қонақ',
+      subtitle: 'Бүгін не құтқарасыз?',
+      logout: 'Шығу',
+      login: 'Кіру',
+      register: 'Тіркелу',
+      search: 'Мейрамхана немесе тағам іздеу...',
+      preferences: 'Қалауларыңыз',
+      discover: 'Жақын ұсыныстар',
+      filter: 'Фильтр',
+      nearbyOffers: 'Жақын маңдағы ұсыныстар',
+      noOffers: 'Қазір жақын маңда ұсыныс жоқ',
+      iLike: 'Маған ұнайды',
+      myOrders: 'Менің тапсырыстарым',
+      refresh: 'Жаңарту',
+      lastUpdate: 'Соңғы жаңарту',
+      connected: 'Қосылған',
+      disconnected: 'Қосылым жоқ'
+    },
+    ru: {
+      greeting: 'Привет',
+      guest: 'Гость',
+      subtitle: 'Что спасете сегодня?',
+      logout: 'Выйти',
+      login: 'Войти',
+      register: 'Регистрация',
+      search: 'Поиск ресторана или блюда...',
+      preferences: 'Предпочтения',
+      discover: 'Ближайшие предложения',
+      filter: 'Фильтр',
+      nearbyOffers: 'Предложения рядом',
+      noOffers: 'Рядом нет предложений',
+      iLike: 'Мне нравится',
+      myOrders: 'Мои заказы',
+      refresh: 'Обновить',
+      lastUpdate: 'Последнее обновление',
+      connected: 'Подключено',
+      disconnected: 'Нет соединения'
+    }
+  };
+
+  const categories = [
+    { id: 'kazakh', nameKz: 'Қазақ тағамы', nameRu: 'Казахская кухня', emoji: '🍖' },
+    { id: 'fastfood', nameKz: 'Фастфуд', nameRu: 'Фастфуд', emoji: '🍔' },
+    { id: 'pizza', nameKz: 'Пицца', nameRu: 'Пицца', emoji: '🍕' },
+    { id: 'healthy', nameKz: 'Здоровое питание', nameRu: 'Здоровое питание', emoji: '🥗' },
+    { id: 'asian', nameKz: 'Азия тағамы', nameRu: 'Азиатская кухня', emoji: '🍜' },
+    { id: 'desserts', nameKz: 'Тәттілер', nameRu: 'Десерты', emoji: '🍰' }
+  ];
+
+  const LogoCircle = () => (
+    <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+      <Image 
+        src="/logotype.jpeg" 
+        alt="Sarqyn Food Logo" 
+        sizes="(max-width: 768px) 100vw, 320px"
+        width={800} 
+        height={800} 
+        className="object-cover w-full h-full"
+      />
+    </div>
+  );
+
   if (showSplash) {
     return (
       <div className="fixed inset-0 bg-emerald-600 flex flex-col items-center justify-center z-50">
@@ -204,6 +283,7 @@ const LogoCircle = () => (
     );
   }
 
+  // 👇 ТЕПЕРЬ loading правильно выключается
   if (loading || location.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -214,13 +294,27 @@ const LogoCircle = () => (
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Status indicator */}
+      <div className={`fixed top-0 right-0 z-50 m-2 px-2 py-1 rounded-full text-xs ${
+        isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+      }`}>
+        {isConnected ? '🟢 ' + t[lang].connected : '🔴 ' + t[lang].disconnected}
+      </div>
+
+      {/* Rest of your JSX remains the same */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold">
-              {t[lang].greeting}, {user ? user.name : t[lang].guest}! 👋
-            </h1>
-            <p className="text-emerald-100 mt-1">{t[lang].subtitle}</p>
+          
+          <div className="flex items-center gap-2">
+  
+  <div>
+ <h1 className="text-[28px] leading-none font-black tracking-[-1px] text-black">
+      SARQYT <span className="text-[#FF9500]">GO</span>
+    </h1>
+   
+  </div>
+</div>
             {user && user.phone && (
               <div className="mt-2 flex items-center gap-2 text-xs bg-white/10 rounded-xl px-3 py-1.5 w-fit">
                 <span>📞</span>
@@ -243,12 +337,8 @@ const LogoCircle = () => (
             )}
           </div>
         </div>
-        {location.city && !location.loading && (
-          <div className="mt-4 flex items-center gap-2 text-sm bg-white/10 rounded-xl px-4 py-2">
-            <span>📍</span>
-            <span>Ваш город: <strong>{location.city}</strong></span>
-          </div>
-        )}
+        
+   
       </div>
 
       <div className="px-6 -mt-4">
@@ -271,14 +361,43 @@ const LogoCircle = () => (
       <div className="px-6 mt-6 pb-24">
         {activeTab === 'preferences' ? (
           <>
-            <div className="flex justify-between items-center mb-5"><h2 className="font-bold text-xl">{t[lang].preferences}</h2><button className="text-emerald-600 text-sm">{t[lang].filter}</button></div>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="font-bold text-xl">{t[lang].preferences}</h2>
+              <button className="text-emerald-600 text-sm">{t[lang].filter}</button>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              {categories.map((category) => (<CategoryCard key={category.id} name={lang === 'kz' ? category.nameKz : category.nameRu} emoji={category.emoji} isSelected={selectedCategories.includes(category.id)} onClick={() => handleCategoryClick(category.id)} lang={lang} />))}
+              {categories.map((category) => (
+                <CategoryCard 
+                  key={category.id} 
+                  name={lang === 'kz' ? category.nameKz : category.nameRu} 
+                  emoji={category.emoji} 
+                  isSelected={selectedCategories.includes(category.id)} 
+                  onClick={() => handleCategoryClick(category.id)} 
+                  lang={lang} 
+                />
+              ))}
             </div>
           </>
         ) : (
           <>
-            <h2 className="font-bold text-xl mb-5">🔥 {t[lang].nearbyOffers}</h2>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="font-bold text-xl">🔥 {t[lang].nearbyOffers}</h2>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleManualRefresh}
+                  disabled={isRefreshing}
+                  className="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs hover:bg-emerald-700 transition flex items-center gap-1 disabled:opacity-50"
+                >
+                  {isRefreshing ? '🔄 ...' : '🔄 ' + t[lang].refresh}
+                </button>
+              </div>
+            </div>
+            
+            <div className="text-right text-xs text-gray-400 mb-3">
+              {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
+              {isConnected && <span className="ml-2 text-green-500">● Live</span>}
+            </div>
+            
             <div className="space-y-6">
               {suppliers.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-3xl">
@@ -286,10 +405,10 @@ const LogoCircle = () => (
                   <p className="text-gray-500">{t[lang].noOffers}</p>
                 </div>
               ) : (
-                suppliers.flatMap(supplier =>
-                  supplier.surprise_bags.map(bag => (
+                suppliers.flatMap((supplier, supplierIdx) =>
+                  supplier.surprise_bags.map((bag, bagIdx) => (
                     <OfferCard
-                      key={bag.id}
+                      key={`${bag.id}-${lastUpdate.getTime()}-${supplierIdx}-${bagIdx}`}
                       id={bag.id}
                       name={bag.name}
                       businessName={supplier.business_name}

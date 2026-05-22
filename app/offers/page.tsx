@@ -1,114 +1,263 @@
-// app/offers/page.tsx
+// app/offers/page.tsx - Полностью связан с вашим бэкендом
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getNearbyBags, type Supplier } from '../../lib/api';
-import OfferCard from '../components/OfferCard';
-import { useLanguage } from '../layout';
+import Image from 'next/image';
+import Link from 'next/link';
+
+interface SurpriseBag {
+  id: number;
+  name: string;
+  description: string;
+  original_price: number;
+  discounted_price: number;
+  discount_percentage: number;
+  image_url: string;
+  available_quantity: number;
+  supplier_name: string;
+  supplier_id: number;
+}
 
 export default function OffersPage() {
   const router = useRouter();
-  const { lang } = useLanguage(); // ← язык для перевода
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBag, setSelectedBag] = useState<SurpriseBag | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [bookedBags, setBookedBags] = useState<Set<number>>(new Set());
 
-  // Переводы
-  const t = {
-    kz: {
-      title: 'Барлық ұсыныстар',
-      subtitle: 'Жақын маңдағы тосын сыйлар',
-      searchPlaceholder: 'Мейрамхана немесе тағам іздеу...',
-      noResults: 'Тағам табылмады',
-    },
-    ru: {
-      title: 'Все предложения',
-      subtitle: 'Сюрпризы рядом с вами',
-      searchPlaceholder: 'Поиск ресторана или блюда...',
-      noResults: 'Блюда не найдены',
-    },
+  // Загрузка доступных пакетов из бэкенда
+  const fetchBags = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:8000/api/surprise-bags', {
+        credentials: 'include'  // Важно для cookies
+      });
+      const data = await response.json();
+      setBags(data);
+      
+      // Проверяем брони для каждого пакета
+      const booked = new Set<number>();
+      for (const bag of data) {
+        const checkRes = await fetch(`http://localhost:8000/api/bookings/check/${bag.id}`, {
+          credentials: 'include'
+        });
+        const checkData = await checkRes.json();
+        if (checkData.is_booked) {
+          booked.add(bag.id);
+        }
+      }
+      setBookedBags(booked);
+    } catch (error) {
+      console.error('Error fetching bags:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude: lat, longitude: lon } = pos.coords;
-          try {
-            const data = await getNearbyBags(lat, lon, 20);
-            setSuppliers(data);
-          } catch (err) {
-            console.error(err);
-          } finally {
-            setLoading(false);
-          }
-        },
-        () => setLoading(false)
-      );
-    } else {
-      setLoading(false);
-    }
+    fetchBags();
+    // Обновление каждые 30 секунд
+    const interval = setInterval(fetchBags, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.business_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    supplier.surprise_bags.some(bag => 
-      bag.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  const handleSelectBag = (bag: SurpriseBag) => {
+    setSelectedBag(bag);
+    setShowModal(true);
+  };
+
+  const confirmBooking = async () => {
+    if (!selectedBag) return;
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/bookings/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bag_id: selectedBag.id })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Добавляем в корзину через бэкенд
+        await addToCart(selectedBag.id);
+        
+        alert(`✅ ${selectedBag.name} забронирован на 15 минут!`);
+        
+        // Обновляем список
+        await fetchBags();
+        setShowModal(false);
+        
+        // Перенаправляем в корзину
+        router.push('/cart');
+      } else {
+        alert(`❌ ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      alert('Ошибка бронирования');
+    }
+  };
+
+  const addToCart = async (bagId: number) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/cart/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bag_id: bagId, quantity: 1 })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        // Обновляем счетчик в UI
+        window.dispatchEvent(new Event('cartUpdated'));
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('ru-KZ') + ' ₸';
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
-        <h1 className="text-2xl font-bold">🔍 {t[lang].title}</h1>
-        <p className="text-emerald-100 text-sm mt-1">{t[lang].subtitle}</p>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 pt-12 pb-6">
+        <h1 className="text-2xl font-bold">🎁 Сюрприз-пакеты</h1>
+        <p className="text-emerald-100 text-sm mt-1">
+          Выберите свой сюрприз-пакет
+        </p>
       </div>
 
-      <div className="px-6 -mt-4">
-        <input
-          type="text"
-          placeholder={t[lang].searchPlaceholder}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
-      </div>
-
-      <div className="px-6 mt-6 pb-24">
-        {filteredSuppliers.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl">
-            <div className="text-6xl mb-4">🔍</div>
-            <p className="text-gray-500">{t[lang].noResults}</p>
+      {/* Bags Grid */}
+      <div className="px-4 py-6">
+        {bags.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🎁</div>
+            <p className="text-gray-500">Все пакеты временно забронированы</p>
+            <button 
+              onClick={fetchBags}
+              className="mt-4 text-emerald-600 underline"
+            >
+              Обновить
+            </button>
           </div>
         ) : (
-          <div className="space-y-6">
-            {filteredSuppliers.map((supplier) =>
-              supplier.surprise_bags.map((bag) => (
-                <OfferCard
-                  key={bag.id}
-                  id={bag.id}
-                  name={bag.name}
-                  businessName={supplier.business_name}
-                  distance={`${supplier.distance_km} км`}
-                  price={bag.discounted_price}
-                  originalPrice={bag.original_price}
-                  discount={bag.discount_percentage}
-                  imageUrl={bag.image_url}
-                />
-              ))
-            )}
+          <div className="grid grid-cols-1 gap-4">
+            {bags.map((bag) => (
+              <div key={bag.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="relative h-48">
+                  <Image
+                    src={bag.image_url || '/placeholder.jpg'}
+                    alt={bag.name}
+                    fill
+                    className="object-cover"
+                  />
+                  {bag.discount_percentage > 0 && (
+                    <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                      -{bag.discount_percentage}%
+                    </div>
+                  )}
+                  {bookedBags.has(bag.id) && (
+                    <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                      ⏱️ Забронирован
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-800 text-lg">{bag.name}</h3>
+                  <p className="text-gray-500 text-sm">{bag.supplier_name}</p>
+                  <p className="text-gray-600 text-sm mt-2">{bag.description}</p>
+                  
+                  <div className="flex items-center justify-between mt-3">
+                    <div>
+                      <span className="text-xl font-bold text-emerald-600">
+                        {formatPrice(bag.discounted_price)}
+                      </span>
+                      {bag.original_price > bag.discounted_price && (
+                        <span className="text-gray-400 line-through text-sm ml-2">
+                          {formatPrice(bag.original_price)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => handleSelectBag(bag)}
+                      disabled={bookedBags.has(bag.id)}
+                      className={`px-6 py-2 rounded-xl font-semibold transition ${
+                        bookedBags.has(bag.id)
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                      }`}
+                    >
+                      {bookedBags.has(bag.id) ? 'Забронирован' : 'Выбрать'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Booking Modal */}
+      {showModal && selectedBag && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="text-center mb-4">
+              <div className="text-6xl mb-3">⏱️</div>
+              <h2 className="text-2xl font-bold text-gray-800">Подтверждение</h2>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-4 mb-4">
+              <h3 className="font-bold text-gray-800">{selectedBag.name}</h3>
+              <p className="text-gray-600 text-sm mt-1">{selectedBag.description}</p>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-gray-500">Стоимость:</span>
+                <span className="text-xl font-bold text-emerald-600">
+                  {formatPrice(selectedBag.discounted_price)}
+                </span>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 rounded-xl p-4 mb-4 border border-yellow-200">
+              <p className="text-sm text-yellow-700">
+                ⏰ После подтверждения у вас будет <strong>15 минут</strong> на оплату!
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={confirmBooking}
+                className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg"
+              >
+                Забронировать
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
