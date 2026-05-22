@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { useGeolocation } from '../../hooks/useGeolocation';
 
 const DeliveryMap = dynamic(() => import('../../components/DeliveryMap'), {
   ssr: false,
@@ -16,6 +15,7 @@ const DeliveryMap = dynamic(() => import('../../components/DeliveryMap'), {
 });
 
 interface Order {
+  id: number;
   order_id: number;
   order_number: string;
   status: string;
@@ -31,16 +31,57 @@ interface Order {
   supplier_lon?: number;
   customer_lat?: number;
   customer_lon?: number;
+  payment_status?: string;
+  refund_status?: string;
+  refund_amount?: number;
+  refund_reason?: string;
+  delivery_deadline?: string;
+  delivery_started_at?: string;
+  auto_refund_processed?: boolean;
 }
 
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const location = useGeolocation(); // ← геолокация пользователя
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [location, setLocation] = useState<{ lat: number; lon: number; city: string } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(true);
 
+  // Получаем геолокацию
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          setLocation({ lat: latitude, lon: longitude, city: 'Актобе' });
+          
+          try {
+            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`);
+            const geoData = await geoRes.json();
+            const city = geoData.address?.city || geoData.address?.town || geoData.address?.village || 'Актобе';
+            setLocation(prev => prev ? { ...prev, city } : null);
+          } catch (e) {
+            console.error('Geocoding error:', e);
+          }
+          setLocationLoading(false);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setLocationLoading(false);
+        }
+      );
+    } else {
+      setLocationLoading(false);
+    }
+  }, []);
+
+  // Загрузка заказа
   useEffect(() => {
     const fetchOrder = async () => {
       const resolvedParams = await params;
@@ -63,6 +104,103 @@ export default function OrderDetailPage() {
     
     fetchOrder();
   }, [params]);
+
+  // Таймер обратного отсчета для доставки
+  useEffect(() => {
+    if (order?.status === 'out_for_delivery' && order?.delivery_deadline) {
+      const interval = setInterval(() => {
+        const deadline = new Date(order.delivery_deadline!);
+        const now = new Date();
+        const diff = Math.max(0, Math.floor((deadline.getTime() - now.getTime()) / 1000));
+        setTimeLeft(diff);
+        
+        if (diff === 0 && !order.auto_refund_processed) {
+          clearInterval(interval);
+          alert('⏰ Время получения истекло. Будет оформлен автоматический возврат.');
+          fetchOrder();
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [order?.status, order?.delivery_deadline, order?.auto_refund_processed]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const fetchOrder = async () => {
+    const resolvedParams = await params;
+    const orderId = resolvedParams?.id;
+    if (!orderId) return;
+    
+    try {
+      const response = await fetch(`https://toogood-2ncf.onrender.com/api/orders/${orderId}`);
+      const data = await response.json();
+      setOrder(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ ЗАКАЗА
+  const handleReceive = async () => {
+    if (!confirm('Подтверждаете получение заказа? После подтверждения возврат будет невозможен.')) return;
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`https://toogood-2ncf.onrender.com/api/order/${order?.id}/receive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        alert('✅ Заказ получен! Спасибо за покупку.');
+        await fetchOrder();
+      } else {
+        const error = await response.json();
+        alert(`❌ ${error.detail || 'Ошибка'}`);
+      }
+    } catch (err) {
+      alert('❌ Ошибка при подтверждении получения');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ❌ КЛИЕНТ ЗАПРАШИВАЕТ ВОЗВРАТ
+  const handleRequestRefund = async () => {
+    if (!refundReason.trim()) {
+      alert('Укажите причину возврата');
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      const response = await fetch(`https://toogood-2ncf.onrender.com/api/order/${order?.id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason: refundReason })
+      });
+      
+      if (response.ok) {
+        alert('✅ Запрос на возврат отправлен. Администратор рассмотрит его в ближайшее время.');
+        setShowRefundModal(false);
+        setRefundReason('');
+        await fetchOrder();
+      } else {
+        const error = await response.json();
+        alert(`❌ ${error.detail || 'Ошибка'}`);
+      }
+    } catch (err) {
+      alert('❌ Ошибка при отправке запроса');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
@@ -88,6 +226,17 @@ export default function OrderDetailPage() {
       cancelled: { kz: 'Бас тартылды', ru: 'Отменен' }
     };
     return statusMap[status]?.[lang] || status;
+  };
+
+  // Расчет прогресс-бара
+  const getProgressWidth = () => {
+    if (order?.status === 'delivered') return '100%';
+    if (order?.status === 'out_for_delivery') return '90%';
+    if (order?.status === 'ready_for_pickup') return '75%';
+    if (order?.status === 'preparing') return '60%';
+    if (order?.status === 'confirmed') return '40%';
+    if (order?.status === 'pending') return '20%';
+    return '0%';
   };
 
   if (loading) {
@@ -116,10 +265,8 @@ export default function OrderDetailPage() {
     );
   }
 
-  // ✅ ИСПРАВЛЕНО: используем геолокацию пользователя, а не Алматы
-  // Если есть геолокация - используем её, иначе координаты из заказа, иначе Актобе
-  const defaultLat = location.lat || 50.283;
-  const defaultLon = location.lon || 57.167;
+  const defaultLat = location?.lat || 50.283;
+  const defaultLon = location?.lon || 57.167;
   
   const supplierLat = order.supplier_lat || defaultLat;
   const supplierLon = order.supplier_lon || defaultLon;
@@ -127,9 +274,9 @@ export default function OrderDetailPage() {
   const customerLon = order.customer_lon || (defaultLon + 0.01);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-emerald-600 text-white p-6">
+      <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white p-6">
         <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
         </button>
@@ -159,48 +306,104 @@ export default function OrderDetailPage() {
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-emerald-600 transition-all duration-500"
-                style={{ 
-                  width: order.status === 'pending' ? '20%' :
-                         order.status === 'confirmed' ? '40%' :
-                         order.status === 'preparing' ? '60%' :
-                         order.status === 'ready_for_pickup' ? '75%' :
-                         order.status === 'out_for_delivery' ? '90%' : 
-                         order.status === 'delivered' ? '100%' : '0%'
-                }}
+                style={{ width: getProgressWidth() }}
               />
             </div>
           </div>
         </div>
 
-        {/* Map Section - только когда заказ в пути или доставлен */}
+        {/* ============ КНОПКИ ДЛЯ КЛИЕНТА ============ */}
+        
+        {/* ✅ Зеленый блок: заказ в доставке */}
+        {order.status === 'out_for_delivery' && order.payment_status !== 'refunded' && (
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 shadow-sm">
+            <div className="text-center mb-4">
+              <span className="text-5xl">🚚</span>
+              <h2 className="font-bold text-xl text-green-700 mt-2">Ваш заказ в пути!</h2>
+              <p className="text-green-600 text-sm">Курьер уже выехал к вам</p>
+            </div>
+            
+            <div className="text-center mb-6">
+              <p className="text-3xl font-mono font-bold text-green-600">
+                ⏱️ {formatTime(timeLeft)}
+              </p>
+              <p className="text-xs text-gray-500">Осталось времени на получение</p>
+            </div>
+            
+            <button
+              onClick={handleReceive}
+              disabled={submitting}
+              className="w-full bg-green-600 text-white py-4 rounded-xl font-semibold text-lg mb-3 hover:bg-green-700 transition disabled:opacity-50"
+            >
+              ✅ ПОЛУЧИЛ ЗАКАЗ
+            </button>
+            
+            <button
+              onClick={() => setShowRefundModal(true)}
+              disabled={submitting}
+              className="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition disabled:opacity-50"
+            >
+              ❌ ОТКАЗАТЬСЯ ОТ ЗАКАЗА
+            </button>
+          </div>
+        )}
+
+        {/* ✅ Синий блок: заказ успешно доставлен */}
+        {order.status === 'delivered' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
+            <span className="text-5xl">✅</span>
+            <h2 className="font-bold text-xl text-blue-700 mt-2">Заказ успешно доставлен!</h2>
+            <p className="text-blue-600 text-sm mt-1">Спасибо, что выбрали нас</p>
+          </div>
+        )}
+
+        {/* 🟡 Желтый блок: запрос на возврат отправлен */}
+        {order.refund_status === 'requested' && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
+            <span className="text-5xl">⏳</span>
+            <h2 className="font-bold text-xl text-yellow-700 mt-2">Запрос на возврат отправлен</h2>
+            <p className="text-yellow-600 text-sm mt-1">Администратор рассмотрит ваш запрос</p>
+            {order.refund_reason && (
+              <p className="text-xs text-gray-500 mt-3">Причина: {order.refund_reason}</p>
+            )}
+          </div>
+        )}
+
+        {/* 🔴 Красный блок: возврат выполнен */}
+        {(order.payment_status === 'refunded' || order.refund_status === 'completed') && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
+            <span className="text-5xl">💰</span>
+            <h2 className="font-bold text-xl text-red-700 mt-2">Деньги возвращены</h2>
+            <p className="text-red-600 text-sm mt-1">
+              Сумма {order.refund_amount || order.amount_paid} ₸ возвращена на вашу карту
+            </p>
+            {order.refund_reason && (
+              <p className="text-xs text-gray-500 mt-3">Причина: {order.refund_reason}</p>
+            )}
+          </div>
+        )}
+
+        {/* Map Section */}
         {(order.status === 'out_for_delivery' || order.status === 'delivered') && (
           <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
-            <h2 className="font-bold text-lg mb-4">
-              🗺️ Карта {location.city || 'доставки'}
-            </h2>
-            {!location.loading ? (
-              <DeliveryMap
-                supplierLat={supplierLat}
-                supplierLon={supplierLon}
-                customerLat={customerLat}
-                customerLon={customerLon}
-                supplierName={order.supplier_name}
-                customerAddress={order.customer_address || 'Адрес доставки'}
-                userLat={location.lat}
-                userLon={location.lon}
-                orderStatus={order.status}
-              />
-            ) : (
-              <div className="w-full h-[400px] bg-gray-100 rounded-xl flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-b-2 border-emerald-600 rounded-full"></div>
-              </div>
-            )}
+            <h2 className="font-bold text-lg mb-4">🗺️ Карта доставки</h2>
+            <DeliveryMap
+              supplierLat={supplierLat}
+              supplierLon={supplierLon}
+              customerLat={customerLat}
+              customerLon={customerLon}
+              supplierName={order.supplier_name}
+              customerAddress={order.customer_address || 'Адрес доставки'}
+              userLat={location?.lat || defaultLat}
+              userLon={location?.lon || defaultLon}
+              orderStatus={order.status}
+            />
           </div>
         )}
 
         {/* Order Details Card */}
         <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">Детали заказа</h2>
+          <h2 className="font-bold text-lg mb-4">📋 Детали заказа</h2>
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-600">Товар:</span>
@@ -237,15 +440,58 @@ export default function OrderDetailPage() {
         </div>
 
         {/* User Location Info */}
-   {/* User Location Info - STICKY */}
-{/* User Location Info - с отступом для bottom nav */}
-{location.city && !location.loading && (
-  <div className="bg-blue-50 rounded-2xl p-4 mb-24 text-sm text-blue-700">
-    {/* ↑ mb-24 вместо обычного отступа */}
-    <span>📍 Ваше местоположение: {location.city}</span>
-  </div>
-)}
+        {location?.city && !locationLoading && (
+          <div className="bg-blue-50 rounded-2xl p-4 text-sm text-blue-700">
+            <span>📍 Ваше местоположение: {location.city}</span>
+          </div>
+        )}
       </div>
+
+      {/* Модальное окно отказа от заказа */}
+      {showRefundModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="text-center mb-4">
+              <div className="text-5xl mb-2">❌</div>
+              <h2 className="text-xl font-bold">Отказ от заказа</h2>
+              <p className="text-gray-500 text-sm mt-1">
+                Укажите причину отказа. Администратор рассмотрит ваш запрос.
+              </p>
+            </div>
+            
+            <textarea
+              className="w-full p-3 border border-gray-200 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              rows={4}
+              placeholder="Например: передумал, нашел дешевле, не подошел размер..."
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+            />
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleRequestRefund}
+                disabled={submitting}
+                className="flex-1 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {submitting ? 'Отправка...' : 'Отправить запрос'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowRefundModal(false);
+                  setRefundReason('');
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition"
+              >
+                Отмена
+              </button>
+            </div>
+            
+            <p className="text-xs text-gray-400 text-center mt-4">
+              ⏰ После отправки запроса администратор рассмотрит его в течение 24 часов
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
