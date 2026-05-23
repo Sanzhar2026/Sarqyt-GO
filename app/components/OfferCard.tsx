@@ -15,6 +15,7 @@ interface OfferCardProps {
   originalPrice: number;
   discount: number;
   imageUrl: string;
+  onOrderSuccess?: () => void;
 }
 
 export default function OfferCard({
@@ -26,10 +27,13 @@ export default function OfferCard({
   originalPrice,
   discount,
   imageUrl,
+  onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+
+  const API_URL = 'https://toogood-2ncf.onrender.com';
 
   // Проверяем авторизацию
   const isAuthenticated = () => {
@@ -40,8 +44,8 @@ export default function OfferCard({
     return false;
   };
 
-  // ТОЛЬКО ДОБАВЛЕНИЕ В КОРЗИНУ (без создания заказа!)
-  const addToCart = () => {
+  // Добавление в корзину с уменьшением количества
+  const addToCart = async () => {
     if (!isAuthenticated()) {
       setShowAuthModal(true);
       return;
@@ -50,39 +54,48 @@ export default function OfferCard({
     setAddingToCart(true);
     
     try {
-      // Получаем текущую корзину
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      console.log(`🛒 Добавление в корзину: bag_id=${id}`);
       
-      // Проверяем, есть ли уже такой товар
-      const existingItem = cart.find((item: any) => item.id === id);
-      
-      if (existingItem) {
-        existingItem.quantity = (existingItem.quantity || 1) + 1;
-      } else {
-        cart.push({
-          id,
-          name,
-          businessName,
-          price,
-          originalPrice,
-          discount,
-          imageUrl,
+      const response = await fetch(`${API_URL}/api/cart/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          bag_id: id,
           quantity: 1
-        });
+        })
+      });
+
+      const data = await response.json();
+      console.log('📦 Ответ сервера:', data);
+
+      if (response.ok) {
+        // Показываем уведомление
+        if (data.available_quantity === 0) {
+          showNotification('✅ Товар забронирован! Перейдите в корзину для оплаты.', 'success');
+        } else {
+          showNotification(`✅ Товар добавлен в корзину! Осталось ${data.available_quantity} шт.`, 'success');
+        }
+        
+        // ✅ ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ГЛАВНУЮ СТРАНИЦУ
+        if (onOrderSuccess) {
+          onOrderSuccess();
+        }
+        
+        // Дополнительно отправляем событие для обновления
+        window.dispatchEvent(new CustomEvent('refreshOffers'));
+        
+        // Обновляем счетчик в navbar
+        window.dispatchEvent(new Event('cartUpdated'));
+        
+        // Небольшая задержка перед переходом в корзину
+        setTimeout(() => {
+          router.push('/cart');
+        }, 1500);
+        
+      } else {
+        showNotification(data.detail || 'Ошибка при добавлении в корзину', 'error');
       }
-      
-      localStorage.setItem('cart', JSON.stringify(cart));
-      
-      // Показываем уведомление
-      showNotification('Товар добавлен в корзину! 🛒');
-      
-      // Обновляем счетчик в navbar
-      window.dispatchEvent(new Event('cartUpdated'));
-      
-      // Опционально: перенаправляем в корзину через секунду
-      setTimeout(() => {
-        router.push('/cart');
-      }, 1000);
       
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -94,7 +107,9 @@ export default function OfferCard({
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     const notification = document.createElement('div');
-    notification.className = `fixed bottom-24 left-4 right-4 z-50 bg-${type === 'success' ? 'emerald-600' : 'red-600'} text-white rounded-2xl p-4 shadow-xl animate-slide-up`;
+    notification.className = `fixed bottom-24 left-4 right-4 z-50 ${
+      type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+    } text-white rounded-2xl p-4 shadow-xl animate-slide-up`;
     notification.textContent = message;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);

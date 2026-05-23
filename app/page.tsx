@@ -34,57 +34,68 @@ export default function HomePage() {
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
   // Функция загрузки данных - ТОЛЬКО ДОСТУПНЫЕ СЮРПРИЗЫ
-  const loadNearbyBags = useCallback(async (showLoading = false, isInitial = false) => {
-    if (!isMountedRef.current) return;
-    
-    if (showLoading && !isInitial) {
-      setIsRefreshing(true);
-    }
-    
-    if (!navigator.geolocation) {
-      if (showLoading && !isInitial) setIsRefreshing(false);
-      if (isInitial) setLoading(false);
-      return;
-    }
+  // app/page.tsx - найдите функцию loadNearbyBags и ИСПРАВЬТЕ
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        try {
-          const data = await getNearbyBags(lat, lon, 10);
-          
-          // Фильтруем только доступные сюрпризы (available_quantity > 0)
-          const filteredSuppliers = data
-            .map(supplier => ({
-              ...supplier,
-              surprise_bags: supplier.surprise_bags.filter(bag => bag.available_quantity > 0 && bag.is_active !== false)
-            }))
-            .filter(supplier => supplier.surprise_bags.length > 0);
-          
-          if (isMountedRef.current) {
-            setSuppliers(filteredSuppliers);
-            setLastUpdate(new Date());
-            console.log('🔄 Данные обновлены:', filteredSuppliers.length, 'поставщиков, доступных сюрпризов:', 
-              filteredSuppliers.reduce((acc, s) => acc + s.surprise_bags.length, 0));
-          }
-        } catch (err) {
-          console.error('Ошибка загрузки:', err);
-        } finally {
-          if (isMountedRef.current) {
-            if (showLoading && !isInitial) setIsRefreshing(false);
-            if (isInitial) setLoading(false);
-          }
+const loadNearbyBags = useCallback(async (showLoading = false, isInitial = false) => {
+  if (!isMountedRef.current) return;
+  
+  if (showLoading && !isInitial) {
+    setIsRefreshing(true);
+  }
+  
+  if (!navigator.geolocation) {
+    if (showLoading && !isInitial) setIsRefreshing(false);
+    if (isInitial) setLoading(false);
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      try {
+        const data = await getNearbyBags(lat, lon, 10);
+        
+        console.log('📦 ДАННЫЕ ИЗ API:', data);
+        
+        // ✅ ЖЕСТКАЯ ФИЛЬТРАЦИЯ - УБИРАЕМ ВСЕ, ГДЕ available_quantity <= 0
+        const filteredSuppliers = data
+          .map(supplier => ({
+            ...supplier,
+            surprise_bags: supplier.surprise_bags.filter(bag => {
+              // Показываем ТОЛЬКО если есть количество
+              const hasQuantity = bag.available_quantity > 0;
+              if (!hasQuantity) {
+                console.log(`❌ СКРЫВАЕМ ${bag.name}: осталось ${bag.available_quantity}`);
+              }
+              return hasQuantity;
+            })
+          }))
+          .filter(supplier => supplier.surprise_bags.length > 0);
+        
+        console.log('✅ ПОСЛЕ ФИЛЬТРАЦИИ:', filteredSuppliers.length, 'поставщиков');
+        
+        if (isMountedRef.current) {
+          setSuppliers(filteredSuppliers);
+          setLastUpdate(new Date());
         }
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
+      } catch (err) {
+        console.error('Ошибка загрузки:', err);
+      } finally {
         if (isMountedRef.current) {
           if (showLoading && !isInitial) setIsRefreshing(false);
           if (isInitial) setLoading(false);
         }
       }
-    );
-  }, []);
+    },
+    (error) => {
+      console.error('Geolocation error:', error);
+      if (isMountedRef.current) {
+        if (showLoading && !isInitial) setIsRefreshing(false);
+        if (isInitial) setLoading(false);
+      }
+    }
+  );
+}, []);
 
   // Слушаем WebSocket сообщения для обновления в реальном времени
 // app/page.tsx - обновите обработку WebSocket сообщений
@@ -247,7 +258,20 @@ useEffect(() => {
         : [...prev, categoryId]
     );
   };
+// app/page.tsx - добавь этот useEffect
 
+useEffect(() => {
+  const handleRefreshOffers = () => {
+    console.log('🔄 Принудительное обновление списка');
+    loadNearbyBags(false, false);
+  };
+  
+  window.addEventListener('refreshOffers', handleRefreshOffers);
+  
+  return () => {
+    window.removeEventListener('refreshOffers', handleRefreshOffers);
+  };
+}, [loadNearbyBags]);
   const t = {
     kz: {
       greeting: 'Сәлем',

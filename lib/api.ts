@@ -109,8 +109,9 @@ export async function logout(): Promise<void> {
 
 const API_URL = 'https://toogood-2ncf.onrender.com';
 
-export async function getNearbyBags(lat: number, lon: number, radius: number = 10) {
-  // ✅ ВСЕГДА используем переданные координаты, НЕ хардкодим Алматы!
+// lib/api.ts - функция getNearbyBags
+
+export async function getNearbyBags(lat: number, lon: number, radius: number = 10): Promise<Supplier[]> {
   const response = await fetch(
     `${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`,
     { credentials: 'include' }
@@ -121,9 +122,17 @@ export async function getNearbyBags(lat: number, lon: number, radius: number = 1
   }
   
   const data = await response.json();
-  return data.suppliers || [];
+  
+  // ✅ ДОПОЛНИТЕЛЬНАЯ ФИЛЬТРАЦИЯ на клиенте
+  const filteredSuppliers = (data.suppliers || [])
+    .map((supplier: any) => ({
+      ...supplier,
+      surprise_bags: (supplier.surprise_bags || []).filter((bag: any) => bag.available_quantity > 0)
+    }))
+    .filter((supplier: any) => supplier.surprise_bags.length > 0);
+  
+  return filteredSuppliers;
 }
-
 // Create order
 export async function createOrder(
   bagId: number,
