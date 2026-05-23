@@ -1,5 +1,4 @@
-// app/courier/dashboard/page.tsx - исправленная версия
-
+// app/courier/dashboard/page.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -13,21 +12,39 @@ export default function CourierDashboard() {
   const router = useRouter();
   const [isOnline, setIsOnline] = useState(false);
   const [status, setStatus] = useState<any>(null);
-  const [loading, setLoading] = useState(true);  // ← true изначально
+  const [loading, setLoading] = useState(true);
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [proposedOrder, setProposedOrder] = useState<any>(null);
-  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [distanceToCustomer, setDistanceToCustomer] = useState<number | null>(null);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
   const [showOrdersList, setShowOrdersList] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const [locating, setLocating] = useState(false);
   
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
+
+  // Получаем текущее местоположение курьера
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude
+          });
+          console.log(`📍 Текущее положение: ${position.coords.latitude}, ${position.coords.longitude}`);
+        },
+        (error) => console.error('Geolocation error:', error),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  }, []);
 
   // Проверка авторизации курьера
   useEffect(() => {
@@ -43,34 +60,33 @@ export default function CourierDashboard() {
     setLoading(true);
     
     try {
-      // Используем ЭКСКЛЮЗИВНО эндпоинт для курьеров
-      const res = await fetch(`${API_URL}/api/courier/status`, { 
+      const response = await fetch(`${API_URL}/api/courier/status`, {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
       });
       
-      console.log('🔍 Courier auth check response:', res.status);
+      console.log('🔍 Проверка авторизации курьера:', response.status);
       
-      if (res.status === 401) {
-        // Не авторизован как курьер - отправляем на страницу входа курьера
-        console.log('❌ Courier not authenticated, redirecting to /courier/login');
-        router.push('/courier/login');
+      if (response.status === 401) {
+        window.location.replace('/courier/login');
         return;
       }
       
-      if (res.status === 403) {
-        // Курьер не верифицирован
-        console.log('⏳ Courier pending verification');
+      if (response.status === 403) {
         setPendingVerification(true);
         setLoading(false);
         return;
       }
       
-      if (res.ok) {
-        const data = await res.json();
-        console.log('✅ Courier authenticated:', data);
-        
+      if (response.ok) {
+        const data = await response.json();
         if (data.success) {
+          if (!data.is_verified) {
+            setPendingVerification(true);
+            setLoading(false);
+            return;
+          }
+          
           setStatus(data);
           setIsOnline(data.is_online);
           setOrderStatus(data.current_order_status);
@@ -86,18 +102,17 @@ export default function CourierDashboard() {
           
           setLoading(false);
         } else {
-          router.push('/courier/login');
+          window.location.replace('/courier/login');
         }
       } else {
-        router.push('/courier/login');
+        window.location.replace('/courier/login');
       }
     } catch (error) {
       console.error('Auth error:', error);
-      router.push('/courier/login');
+      window.location.replace('/courier/login');
     }
   };
 
-  // Остальные функции остаются без изменений...
   const fetchStatus = async () => {
     try {
       const res = await fetch(`${API_URL}/api/courier/status`, { credentials: 'include' });
@@ -136,7 +151,7 @@ export default function CourierDashboard() {
       const res = await fetch(`${API_URL}/api/courier/available-orders`, { credentials: 'include' });
       const data = await res.json();
       if (data.success) {
-        setAvailableOrders(data.orders);
+        setAvailableOrders(data.orders || []);
       }
     } catch (error) {
       console.error('Error fetching available orders:', error);
@@ -152,24 +167,33 @@ export default function CourierDashboard() {
     };
     
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      
-      if (data.type === 'proposed_order') {
-        setProposedOrder({
-          order_id: data.order_id,
-          distance_km: data.distance_km,
-          expires_in: data.expires_in_seconds
-        });
-        setShowProposalModal(true);
-      } else if (data.type === 'order_assigned') {
-        fetchStatus();
-        fetchCurrentOrder(data.order_id);
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📨 WebSocket message:', data);
+        
+        if (data.type === 'proposed_order') {
+          setProposedOrder({
+            order_id: data.order_id,
+            distance_km: data.distance_km,
+            expires_in: data.expires_in_seconds
+          });
+          setShowProposalModal(true);
+        } else if (data.type === 'order_assigned') {
+          fetchStatus();
+          fetchCurrentOrder(data.order_id);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
       }
     };
     
     ws.onclose = () => {
       console.log('WebSocket disconnected, reconnecting...');
       setTimeout(connectWebSocket, 3000);
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
     };
   };
 
@@ -182,41 +206,88 @@ export default function CourierDashboard() {
           async (position) => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
-            setLocation({ lat, lon });
+            setUserLocation({ lat, lon });
             
             try {
-              const response = await fetch(`${API_URL}/api/courier/update-location`, {
+              await fetch(`${API_URL}/api/courier/update-location`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ lat, lon })
               });
-              
-              const data = await response.json();
-              if (data.status !== orderStatus) {
-                setOrderStatus(data.status);
-              }
             } catch (error) {
               console.error('Error updating location:', error);
             }
           },
-          (error) => {
-            console.error('Geolocation error:', error);
-          },
-          {
-            enableHighAccuracy: true,
-            maximumAge: 5000,
-            timeout: 10000
-          }
+          (error) => console.error('Geolocation error:', error),
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
         );
       }
     }, 3000);
   };
 
-  const goOnline = async () => {
-    setLoading(true);
+  // Функция центрирования карты на текущем положении
+  const centerToMyLocation = () => {
+    console.log('📍 Нажата кнопка геолокации');
+    setLocating(true);
     
     if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log(`📍 Текущие координаты: ${latitude}, ${longitude}`);
+          
+          setUserLocation({ lat: latitude, lon: longitude });
+          
+          // Отправляем событие для карты с увеличенным масштабом
+          window.dispatchEvent(new CustomEvent('centerMap', { 
+            detail: { 
+              lat: latitude, 
+              lon: longitude,
+              zoom: 16
+            } 
+          }));
+          
+          setLocating(false);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          let errorMessage = 'Не удалось определить местоположение. ';
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += 'Разрешите доступ к геолокации.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += 'Информация о местоположении недоступна.';
+              break;
+            case error.TIMEOUT:
+              errorMessage += 'Время ожидания истекло.';
+              break;
+          }
+          alert(errorMessage);
+          setLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      alert('Геолокация не поддерживается');
+      setLocating(false);
+    }
+  };
+
+  // Переключение режима онлайн/офлайн
+  const toggleOnlineMode = async () => {
+    if (switching) return;
+    setSwitching(true);
+    
+    if (!isOnline) {
+      // Выход на линию
+      if (!navigator.geolocation) {
+        alert('Разрешите доступ к геолокации');
+        setSwitching(false);
+        return;
+      }
+      
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
@@ -242,45 +313,40 @@ export default function CourierDashboard() {
           } catch (error) {
             alert('Ошибка при выходе на линию');
           } finally {
-            setLoading(false);
+            setSwitching(false);
           }
         },
         () => {
           alert('Разрешите доступ к геолокации');
-          setLoading(false);
+          setSwitching(false);
         }
       );
     } else {
-      alert('Геолокация не поддерживается');
-      setLoading(false);
-    }
-  };
-
-  const goOffline = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/api/courier/go-offline`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      
-      const data = await res.json();
-      if (data.success) {
-        setIsOnline(false);
-        if (locationIntervalRef.current) {
-          clearInterval(locationIntervalRef.current);
-          locationIntervalRef.current = null;
+      // Уход с линии
+      try {
+        const res = await fetch(`${API_URL}/api/courier/go-offline`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          setIsOnline(false);
+          if (locationIntervalRef.current) {
+            clearInterval(locationIntervalRef.current);
+            locationIntervalRef.current = null;
+          }
+          if (wsRef.current) {
+            wsRef.current.close();
+          }
+        } else {
+          alert(data.message || 'Ошибка');
         }
-        if (wsRef.current) {
-          wsRef.current.close();
-        }
-      } else {
-        alert(data.message || 'Ошибка');
+      } catch (error) {
+        alert('Ошибка при уходе с линии');
+      } finally {
+        setSwitching(false);
       }
-    } catch (error) {
-      alert('Ошибка при уходе с линии');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -394,7 +460,6 @@ export default function CourierDashboard() {
           <h1 className="text-2xl font-bold mb-2">Заявка на рассмотрении</h1>
           <p className="text-gray-500 mb-6">
             Ваша заявка на регистрацию курьера еще не подтверждена администратором.
-            Пожалуйста, подождите.
           </p>
           <Link href="/profile">
             <button className="bg-emerald-600 text-white px-6 py-3 rounded-xl">
@@ -406,7 +471,6 @@ export default function CourierDashboard() {
     );
   }
 
-  // Остальной JSX остается без изменений...
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -415,8 +479,13 @@ export default function CourierDashboard() {
           <div>
             <h1 className="text-2xl font-bold">🚚 Панель курьера</h1>
             <p className="text-emerald-100 text-sm mt-1">
-              {isOnline ? 'Вы на линии' : 'Вы офлайн'}
+              {status?.first_name} {status?.last_name}
             </p>
+            {userLocation && (
+              <p className="text-emerald-100 text-xs mt-1 opacity-70">
+                📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}
+              </p>
+            )}
           </div>
           <Link href="/profile" className="bg-white/20 rounded-full p-2">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -426,72 +495,112 @@ export default function CourierDashboard() {
         </div>
       </div>
 
-      {/* Карта */}
-      <div className="h-64 m-4 rounded-2xl overflow-hidden shadow-lg">
+      {/* Карта с кнопками */}
+      <div className="relative h-80 m-4 rounded-2xl overflow-hidden shadow-lg">
         <CourierMap
           orderId={currentOrder?.id}
           restaurantLocation={currentOrder?.supplier ? { lat: currentOrder.supplier.lat, lon: currentOrder.supplier.lon } : undefined}
           customerLocation={currentOrder?.customer_lat ? { lat: currentOrder.customer_lat, lon: currentOrder.customer_lon } : undefined}
         />
+        
+        {/* Кнопка геолокации */}
+        <button
+          onClick={centerToMyLocation}
+          disabled={locating}
+          className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95 disabled:opacity-50"
+          style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+          title="Мое местоположение"
+        >
+          {locating ? (
+            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          )}
+        </button>
+        
+        {/* Кнопка показать всех курьеров */}
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('fitBoundsToCouriers'));
+          }}
+          className="absolute bottom-4 left-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95"
+          style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+          title="Показать всех курьеров"
+        >
+          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+              d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7 17H3v2h4v-2z" />
+          </svg>
+        </button>
       </div>
 
-      {/* Статус бар */}
-      <div className="px-4 mb-4">
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <div className="flex justify-between items-center">
+      {/* Ползунок переключения режима */}
+      <div className="px-4 mb-6">
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+              <span className="text-2xl">{isOnline ? '🟢' : '⚫'}</span>
               <div>
-                <p className="font-semibold">
-                  {status?.first_name} {status?.last_name}
+                <p className="font-semibold text-lg">
+                  {isOnline ? 'На линии' : 'Офлайн'}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {status?.courier_type === 'driver' ? '🚗 На машине' : '🚶 Пеший'} • 
-                  Рейтинг: {status?.rating} ⭐ • 
-                  Доставок: {status?.total_deliveries}
+                  {isOnline 
+                    ? 'Вы готовы принимать заказы' 
+                    : 'Включите режим чтобы получать заказы'}
                 </p>
               </div>
             </div>
-            {orderStatus && (
-              <span className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
-                {getStatusText(orderStatus)}
+            
+            {/* Toggle Switch */}
+            <button
+              onClick={toggleOnlineMode}
+              disabled={switching}
+              className={`relative w-16 h-8 rounded-full transition-all duration-300 ${
+                isOnline ? 'bg-emerald-600' : 'bg-gray-300'
+              } ${switching ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 flex items-center justify-center text-xs ${
+                  isOnline ? 'translate-x-8' : 'translate-x-0'
+                }`}
+              >
+                {isOnline ? '✓' : '○'}
               </span>
-            )}
+            </button>
           </div>
+          
+          {isOnline && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">Статус:</span>
+                <span className="text-emerald-600 font-medium flex items-center gap-1">
+                  <span className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse"></span>
+                  Принимаю заказы
+                </span>
+              </div>
+              {orderStatus && (
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-gray-500">Текущий статус:</span>
+                  <span className="text-blue-600 font-medium">{getStatusText(orderStatus)}</span>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {!isOnline && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-sm text-gray-400 text-center">
+                💤 Нажмите на ползунок чтобы выйти на линию
+              </p>
+            </div>
+          )}
         </div>
-      </div>
-
-      {/* Кнопки управления */}
-      <div className="px-4 mb-6">
-        {!isOnline ? (
-          <button
-            onClick={goOnline}
-            disabled={loading}
-            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <>
-                <span>🟢</span> Выйти на линию
-              </>
-            )}
-          </button>
-        ) : (
-          <button
-            onClick={goOffline}
-            disabled={loading}
-            className="w-full bg-red-600 text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <>
-                <span>⚫</span> Уйти с линии
-              </>
-            )}
-          </button>
-        )}
       </div>
 
       {/* Текущий заказ */}
@@ -513,14 +622,6 @@ export default function CourierDashboard() {
                 <span className="text-gray-500">Сумма:</span>
                 <span className="font-bold text-emerald-600">{currentOrder.amount_paid} ₸</span>
               </div>
-              {currentOrder.delivery_deadline && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Доставить до:</span>
-                  <span className="font-medium text-orange-600">
-                    {new Date(currentOrder.delivery_deadline).toLocaleTimeString()}
-                  </span>
-                </div>
-              )}
             </div>
             
             {orderStatus === 'almost_done' && (
@@ -592,7 +693,6 @@ export default function CourierDashboard() {
                 Предложение действует {proposedOrder.expires_in} секунд
               </p>
             </div>
-            
             <div className="flex gap-3">
               <button
                 onClick={acceptProposal}
@@ -607,18 +707,6 @@ export default function CourierDashboard() {
                 Отклонить
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Инструкция */}
-      {isOnline && !currentOrder && (
-        <div className="px-4 pb-20">
-          <div className="bg-blue-50 rounded-2xl p-4">
-            <p className="text-sm text-blue-700">
-              💡 Вы на линии! Система автоматически предложит заказ, когда вы будете рядом с рестораном.
-              Также вы можете выбрать заказ из списка выше.
-            </p>
           </div>
         </div>
       )}

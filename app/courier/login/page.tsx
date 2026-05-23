@@ -1,7 +1,7 @@
 // app/courier/login/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,6 +12,39 @@ export default function CourierLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const checkAlreadyLoggedIn = async () => {
+      try {
+        const response = await fetch('https://toogood-2ncf.onrender.com/api/courier/status', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        console.log('🔍 Проверка статуса курьера:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📦 Данные курьера:', data);
+          
+          // ✅ ВАЖНО: проверяем success И is_verified
+          if (data.success && data.is_verified === true) {
+            console.log('✅ Курьер авторизован, редирект в дашборд');
+            // Используем window.location.replace чтобы избежать истории
+            window.location.replace('/courier/dashboard');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка проверки авторизации:', error);
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+    
+    checkAlreadyLoggedIn();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,6 +53,8 @@ export default function CourierLogin() {
     setPendingVerification(false);
 
     try {
+      console.log('🔐 Попытка входа курьера:', phone);
+      
       const response = await fetch('https://toogood-2ncf.onrender.com/api/courier/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -28,22 +63,41 @@ export default function CourierLogin() {
       });
 
       const data = await response.json();
+      console.log('📥 Ответ сервера:', response.status, data);
 
       if (response.ok && data.success) {
-        localStorage.setItem('courier', JSON.stringify(data.courier));
-        router.push('/courier/dashboard');
+        localStorage.setItem('courier', JSON.stringify({
+          ...data.courier,
+          is_verified: true
+        }));
+        
+        console.log('✅ Успешный вход');
+        // Используем replace чтобы нельзя было вернуться на страницу логина
+        window.location.replace('/courier/dashboard');
       } else if (response.status === 403) {
         setPendingVerification(true);
         setError(data.detail || 'Ваша учетная запись ожидает подтверждения администратора');
       } else {
-        setError(data.detail || 'Неверный телефон или пароль');
+        setError(data.detail || data.message || 'Неверный телефон или пароль');
       }
     } catch (err) {
-      setError('Ошибка подключения');
+      console.error('❌ Ошибка входа:', err);
+      setError('Ошибка подключения к серверу');
     } finally {
       setLoading(false);
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-b-2 border-emerald-600 rounded-full mx-auto"></div>
+          <p className="text-gray-500 mt-3 text-sm">Проверка...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
@@ -60,7 +114,7 @@ export default function CourierLogin() {
               <div className="text-center">
                 <div className="text-2xl mb-2">⏳</div>
                 <p className="font-medium">Ваша заявка на рассмотрении</p>
-                <p className="text-xs mt-1">Администратор проверит данные и подтвердит аккаунт в ближайшее время</p>
+                <p className="text-xs mt-1">Администратор проверит данные и подтвердит аккаунт</p>
               </div>
             ) : (
               error
@@ -101,6 +155,12 @@ export default function CourierLogin() {
               Стать курьером
             </Link>
           </p>
+        </div>
+        
+        <div className="text-center mt-4">
+          <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">
+            ← На главную
+          </Link>
         </div>
       </div>
     </div>

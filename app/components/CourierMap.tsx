@@ -62,16 +62,60 @@ export default function CourierMap({
   const [couriers, setCouriers] = useState<Map<number, CourierLocation>>(new Map());
   const [selectedCourier, setSelectedCourier] = useState<number | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
-  const [courierMarker, setCourierMarker] = useState<any>(null);
-  const [courierAnimation, setCourierAnimation] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   
   const mapRef = useRef<any>(null);
   const mapInstanceRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const markersRef = useRef<Map<number, any>>(new Map());
-  const animationRef = useRef<any>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
+
+  // ✅ 1. Получаем реальное местоположение пользователя
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Геолокация не поддерживается');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        setUserLocation({ lat, lon });
+        console.log(`📍 Текущее положение пользователя: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+        setLocationError(null);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        setLocationError('Не удалось определить местоположение');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  }, []);
+
+  // ✅ 2. Определяем центр карты на основе доступных данных
+  useEffect(() => {
+    // Приоритет: ресторан > клиент > пользователь
+    if (restaurantLocation?.lat && restaurantLocation?.lon) {
+      setMapCenter([restaurantLocation.lat, restaurantLocation.lon]);
+      console.log(`🎯 Центр карты: Ресторан (${restaurantLocation.lat}, ${restaurantLocation.lon})`);
+    } else if (customerLocation?.lat && customerLocation?.lon) {
+      setMapCenter([customerLocation.lat, customerLocation.lon]);
+      console.log(`🎯 Центр карты: Клиент (${customerLocation.lat}, ${customerLocation.lon})`);
+    } else if (userLocation?.lat && userLocation?.lon) {
+      setMapCenter([userLocation.lat, userLocation.lon]);
+      console.log(`🎯 Центр карты: Пользователь (${userLocation.lat}, ${userLocation.lon})`);
+    } else {
+      console.warn('⚠️ Нет координат для отображения карты');
+    }
+  }, [restaurantLocation, customerLocation, userLocation]);
 
   // Загрузка карты
   useEffect(() => {
@@ -85,10 +129,11 @@ export default function CourierMap({
   // Инициализация карты после загрузки
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return;
+    if (!mapCenter) return;
     
-    const center: [number, number] = [43.238, 76.945];
+    const [centerLat, centerLon] = mapCenter;
     
-    mapInstanceRef.current = L.map(mapRef.current).setView(center, 12);
+    mapInstanceRef.current = L.map(mapRef.current).setView([centerLat, centerLon], 12);
     
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -97,11 +142,10 @@ export default function CourierMap({
       minZoom: 3
     }).addTo(mapInstanceRef.current);
     
-    // Добавляем контролы
     L.control.zoom({ position: 'topright' }).addTo(mapInstanceRef.current);
     
-    setMapLoaded(true);
-  }, [mapLoaded]);
+    console.log(`🗺️ Карта инициализирована с центром: ${centerLat}, ${centerLon}`);
+  }, [mapLoaded, mapCenter]);
 
   // Создание иконок
   const getCourierIcon = (status?: string) => {
@@ -111,7 +155,7 @@ export default function CourierMap({
     
     return L.divIcon({
       html: `<div class="relative">
-               <div class="w-10 h-10 bg-${color} rounded-full flex items-center justify-center text-white text-xl shadow-lg animate-pulse" style="background-color: ${color}">
+               <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg animate-pulse" style="background-color: ${color}">
                  🚚
                </div>
                <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full" style="background-color: ${color}"></div>
@@ -146,14 +190,13 @@ export default function CourierMap({
     
     const startPoint = L.latLng(oldLat, oldLon);
     const endPoint = L.latLng(newLat, newLon);
-    const duration = 2000; // 2 секунды анимации
+    const duration = 2000;
     const startTime = performance.now();
     
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
       
-      // Интерполяция позиции
       const lat = startPoint.lat + (endPoint.lat - startPoint.lat) * progress;
       const lng = startPoint.lng + (endPoint.lng - startPoint.lng) * progress;
       
@@ -178,20 +221,16 @@ export default function CourierMap({
       const icon = getCourierIcon(courier.current_order_status);
       
       if (existingMarker) {
-        // Получаем старую позицию
         const oldLatLng = existingMarker.getLatLng();
         const oldLat = oldLatLng.lat;
         const oldLon = oldLatLng.lng;
         
-        // Если позиция изменилась, анимируем
         if (Math.abs(oldLat - courier.lat) > 0.0001 || Math.abs(oldLon - courier.lon) > 0.0001) {
           animateCourierMovement(existingMarker, courier.lat, courier.lon, oldLat, oldLon);
         }
         
-        // Обновляем попап
         existingMarker.bindPopup(createPopupContent(courier));
       } else {
-        // Создаем новый маркер
         const marker = L.marker([courier.lat, courier.lon], { icon })
           .addTo(mapInstanceRef.current)
           .bindPopup(createPopupContent(courier));
@@ -200,7 +239,6 @@ export default function CourierMap({
       }
     });
     
-    // Удаляем маркеры курьеров, которых больше нет
     markersRef.current.forEach((marker, id) => {
       if (!couriers.has(id)) {
         marker.remove();
@@ -209,7 +247,6 @@ export default function CourierMap({
     });
   }, [couriers]);
 
-  // Создание контента попапа
   const createPopupContent = (courier: CourierLocation) => {
     const div = document.createElement('div');
     div.className = 'min-w-[200px]';
@@ -246,7 +283,6 @@ export default function CourierMap({
       </button>
     `;
     
-    // Обработчик для кнопки
     setTimeout(() => {
       const btn = div.querySelector('.center-btn');
       if (btn) {
@@ -266,26 +302,20 @@ export default function CourierMap({
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     
-    // Ресторан
     if (restaurantLocation) {
-      const restaurantMarker = L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon: getRestaurantIcon() })
+      L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon: getRestaurantIcon() })
         .addTo(mapInstanceRef.current)
         .bindPopup('<div class="text-center"><div class="text-2xl">🍽️</div><p class="font-semibold">Ресторан</p><p class="text-xs">Точка выдачи</p></div>');
-      
-      return () => restaurantMarker.remove();
     }
   }, [restaurantLocation, mapLoaded]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     
-    // Клиент
     if (customerLocation) {
-      const customerMarker = L.marker([customerLocation.lat, customerLocation.lon], { icon: getCustomerIcon() })
+      L.marker([customerLocation.lat, customerLocation.lon], { icon: getCustomerIcon() })
         .addTo(mapInstanceRef.current)
         .bindPopup('<div class="text-center"><div class="text-2xl">🏠</div><p class="font-semibold">Клиент</p><p class="text-xs">Точка доставки</p></div>');
-      
-      return () => customerMarker.remove();
     }
   }, [customerLocation, mapLoaded]);
 
@@ -316,8 +346,6 @@ export default function CourierMap({
         if (data.type === 'courier_location') {
           setCouriers(prev => {
             const newMap = new Map(prev);
-            const existing = newMap.get(data.courier_id);
-            
             newMap.set(data.courier_id, {
               courier_id: data.courier_id,
               first_name: data.first_name || 'Курьер',
@@ -331,7 +359,6 @@ export default function CourierMap({
               current_order_status: data.current_order_status
             });
             
-            // Если это выбранный курьер, центрируем карту
             if (selectedCourier === data.courier_id && mapInstanceRef.current) {
               mapInstanceRef.current.setView([data.lat, data.lon], 15);
             }
@@ -400,7 +427,6 @@ export default function CourierMap({
     }
   }, [mapLoaded, API_URL]);
 
-  // Центрирование на всех курьерах
   const fitBoundsToCouriers = () => {
     if (!mapInstanceRef.current || couriers.size === 0) return;
     
@@ -420,26 +446,53 @@ export default function CourierMap({
       bounds.extend([customerLocation.lat, customerLocation.lon]);
     }
     
+    if (userLocation) {
+      bounds.extend([userLocation.lat, userLocation.lon]);
+    }
+    
     if (bounds.isValid()) {
       mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
   };
 
-  // Центрирование на текущем местоположении
   const centerToMyLocation = () => {
-    if (navigator.geolocation && mapInstanceRef.current) {
+    if (userLocation && mapInstanceRef.current) {
+      mapInstanceRef.current.setView([userLocation.lat, userLocation.lon], 14);
+    } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((pos) => {
-        mapInstanceRef.current.setView([pos.coords.latitude, pos.coords.longitude], 14);
+        mapInstanceRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 14);
       });
+    } else {
+      alert('Геолокация недоступна');
     }
   };
 
-  if (!mapLoaded) {
+  // Показываем ошибку или загрузку
+  if (locationError) {
     return (
-      <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center">
+      <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center" style={{ height }}>
+        <div className="text-center p-4">
+          <div className="text-4xl mb-3">📍</div>
+          <p className="text-red-500 text-sm">{locationError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!mapLoaded || !mapCenter) {
+    return (
+      <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center" style={{ height }}>
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-b-2 border-emerald-600 rounded-full mx-auto"></div>
-          <p className="text-sm text-gray-500 mt-2">Загрузка карты...</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {!mapCenter ? 'Определение местоположения...' : 'Загрузка карты...'}
+          </p>
         </div>
       </div>
     );

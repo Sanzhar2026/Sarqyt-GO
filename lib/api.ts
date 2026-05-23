@@ -105,19 +105,23 @@ export async function logout(): Promise<void> {
 }
 
 // Get nearby suppliers (for homepage)
-export async function getNearbyBags(
-  lat: number, 
-  lon: number, 
-  radius: number = 10
-): Promise<Supplier[]> {
+// app/lib/api.ts - исправленный
+
+const API_URL = 'https://toogood-2ncf.onrender.com';
+
+export async function getNearbyBags(lat: number, lon: number, radius: number = 10) {
+  // ✅ ВСЕГДА используем переданные координаты, НЕ хардкодим Алматы!
   const response = await fetch(
-    `${API_BASE}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`
-  )
+    `${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`,
+    { credentials: 'include' }
+  );
+  
   if (!response.ok) {
-    throw new Error(`Failed to fetch nearby bags: ${response.status}`)
+    throw new Error('Failed to fetch nearby bags');
   }
-  const data = await response.json()
-  return data.suppliers
+  
+  const data = await response.json();
+  return data.suppliers || [];
 }
 
 // Create order

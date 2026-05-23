@@ -22,12 +22,36 @@ interface LeafletMapProps {
 
 export default function LeafletMap({ startLat, startLon, endLat, endLon, onLocationFound }: LeafletMapProps) {
   const mapRef = useRef<L.Map | null>(null)
+  const [userLocation, setUserLocation] = useState<{lat: number; lon: number} | null>(null)
+
+  // Получаем реальное местоположение пользователя
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords
+          setUserLocation({ lat: latitude, lon: longitude })
+          if (onLocationFound) {
+            onLocationFound(latitude, longitude)
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error)
+        }
+      )
+    }
+  }, [onLocationFound])
 
   useEffect(() => {
-    if (!mapRef.current) {
-      // Центр карты (Алматы по умолчанию)
-      const centerLat = startLat || 43.238
-      const centerLon = startLon || 76.945
+    if (!mapRef.current && (userLocation || startLat)) {
+      // ✅ Используем реальные координаты, а не Алматы
+      const centerLat = startLat || userLocation?.lat || 0
+      const centerLon = startLon || userLocation?.lon || 0
+      
+      if (centerLat === 0 && centerLon === 0) {
+        console.warn('Нет координат для отображения карты')
+        return
+      }
       
       mapRef.current = L.map('map').setView([centerLat, centerLon], 13)
       
@@ -42,7 +66,7 @@ export default function LeafletMap({ startLat, startLon, endLat, endLon, onLocat
         mapRef.current = null
       }
     }
-  }, [])
+  }, [userLocation, startLat, startLon])
   
   useEffect(() => {
     if (mapRef.current && startLat && startLon) {
