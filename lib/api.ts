@@ -28,7 +28,18 @@ export interface Supplier {
   rating: number
   surprise_bags: SurpriseBag[]
 }
+// lib/api.ts - добавьте в типы WebSocket сообщений
 
+export interface WebSocketMessage {
+  type: 'new_bag' | 'update_bag' | 'delete_bag' | 'bag_quantity_updated';
+  data?: {
+    bag_id: number;
+    available_quantity: number;
+    is_active: boolean;
+    old_quantity?: number;
+  };
+  timestamp?: string;
+}
 export interface SurpriseBag {
   id: number
   name: string

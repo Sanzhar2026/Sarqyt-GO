@@ -87,50 +87,61 @@ export default function HomePage() {
   }, []);
 
   // Слушаем WebSocket сообщения для обновления в реальном времени
-  useEffect(() => {
-    if (!lastMessage) return;
+// app/page.tsx - обновите обработку WebSocket сообщений
+
+// Слушаем WebSocket сообщения для обновления в реальном времени
+useEffect(() => {
+  if (!lastMessage) return;
+  
+  console.log('📡 WebSocket событие:', lastMessage);
+  
+  // Обновление при появлении нового сюрприза
+  if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
+    console.log('🆕 Новый сюрприз! Мгновенное обновление...');
+    loadNearbyBags(false, false);
     
-    console.log('📡 WebSocket событие:', lastMessage);
-    
-    // Обновление при появлении нового сюрприза
-    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
-      console.log('🆕 Новый сюрприз! Мгновенное обновление...');
-      loadNearbyBags(false, false);
-      
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Новый сюрприз! 🎁', {
-          body: 'Появился новый сюрприз рядом с вами!',
-          icon: '/logo.png'
-        });
-      }
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Новый сюрприз! 🎁', {
+        body: 'Появился новый сюрприз рядом с вами!',
+        icon: '/logo.png'
+      });
     }
+  }
+  
+  // Обновление при удалении или изменении количества
+  if (lastMessage.type === 'delete_bag') {
+    console.log('🗑️ Сюрприз удален, обновляем список...');
+    loadNearbyBags(false, false);
+  }
+  
+  // ============ ГЛАВНОЕ: ОБРАБОТКА ОБНОВЛЕНИЯ КОЛИЧЕСТВА ============
+  if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
+    const { bag_id, available_quantity, is_active } = lastMessage.data;
+    console.log(`📦 Сюрприз ${bag_id}: осталось ${available_quantity}, активен: ${is_active}`);
     
-    // Обновление при удалении или изменении количества
-    if (lastMessage.type === 'delete_bag' || lastMessage.type === 'bag_quantity_updated') {
-      console.log('🗑️ Сюрприз обновлен или удален, обновляем список...');
-      loadNearbyBags(false, false);
-    }
-    
-    // Обработка обновления количества конкретного сюрприза
-    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
-      const { bag_id, available_quantity, is_active } = lastMessage.data;
-      console.log(`📦 Сюрприз ${bag_id}: осталось ${available_quantity}, активен: ${is_active}`);
-      
-      // Обновляем локальное состояние без полной перезагрузки
-      setSuppliers(prevSuppliers => {
-        return prevSuppliers
-          .map(supplier => ({
-            ...supplier,
-            surprise_bags: supplier.surprise_bags.map(bag => 
+    // Обновляем локальное состояние БЕЗ ПОЛНОЙ ПЕРЕЗАГРУЗКИ
+    setSuppliers(prevSuppliers => {
+      const newSuppliers = prevSuppliers
+        .map(supplier => ({
+          ...supplier,
+          surprise_bags: supplier.surprise_bags
+            .map(bag => 
               bag.id === bag_id 
                 ? { ...bag, available_quantity: available_quantity, is_active: is_active }
                 : bag
-            ).filter(bag => bag.available_quantity > 0 && bag.is_active !== false)
-          }))
-          .filter(supplier => supplier.surprise_bags.length > 0);
-      });
-    }
-  }, [lastMessage, loadNearbyBags]);
+            )
+            .filter(bag => bag.available_quantity > 0) // Убираем если 0
+        }))
+        .filter(supplier => supplier.surprise_bags.length > 0); // Убираем поставщиков без сюрпризов
+      
+      console.log('🔄 Локальное обновление:', newSuppliers.length, 'поставщиков');
+      return newSuppliers;
+    });
+    
+    // Дополнительно обновляем время последнего обновления
+    setLastUpdate(new Date());
+  }
+}, [lastMessage, loadNearbyBags]);
 
   const handleManualRefresh = () => {
     loadNearbyBags(true, false);
