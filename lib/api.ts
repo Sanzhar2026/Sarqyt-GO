@@ -42,6 +42,7 @@ export interface SurpriseBag {
   available_quantity: number
   pickup_start_time?: string
   pickup_end_time?: string
+  is_active?: boolean; 
 }
 
 // Order interface

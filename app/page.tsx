@@ -20,7 +20,7 @@ export default function HomePage() {
   const { lang } = useLanguage(); 
   const [activeTab, setActiveTab] = useState<Tab>('discover');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);  // ← ОСНОВНОЙ ЛОАДЕР
+  const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(false);
   const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -30,10 +30,10 @@ export default function HomePage() {
   const { isConnected, lastMessage } = useWebSocket('wss://toogood-2ncf.onrender.com/ws');
   
   const isMountedRef = useRef(true);
-  const initialLoadDoneRef = useRef(false);  // ← ФЛАГ ДЛЯ ПЕРВОЙ ЗАГРУЗКИ
+  const initialLoadDoneRef = useRef(false);
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Функция загрузки данных
+  // Функция загрузки данных - ТОЛЬКО ДОСТУПНЫЕ СЮРПРИЗЫ
   const loadNearbyBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
     
@@ -43,7 +43,7 @@ export default function HomePage() {
     
     if (!navigator.geolocation) {
       if (showLoading && !isInitial) setIsRefreshing(false);
-      if (isInitial) setLoading(false);  // ← ВАЖНО!
+      if (isInitial) setLoading(false);
       return;
     }
 
@@ -52,17 +52,27 @@ export default function HomePage() {
         const { latitude: lat, longitude: lon } = pos.coords;
         try {
           const data = await getNearbyBags(lat, lon, 10);
+          
+          // Фильтруем только доступные сюрпризы (available_quantity > 0)
+          const filteredSuppliers = data
+            .map(supplier => ({
+              ...supplier,
+              surprise_bags: supplier.surprise_bags.filter(bag => bag.available_quantity > 0 && bag.is_active !== false)
+            }))
+            .filter(supplier => supplier.surprise_bags.length > 0);
+          
           if (isMountedRef.current) {
-            setSuppliers(data);
+            setSuppliers(filteredSuppliers);
             setLastUpdate(new Date());
-            console.log('🔄 Данные обновлены:', data.length, 'поставщиков');
+            console.log('🔄 Данные обновлены:', filteredSuppliers.length, 'поставщиков, доступных сюрпризов:', 
+              filteredSuppliers.reduce((acc, s) => acc + s.surprise_bags.length, 0));
           }
         } catch (err) {
           console.error('Ошибка загрузки:', err);
         } finally {
           if (isMountedRef.current) {
             if (showLoading && !isInitial) setIsRefreshing(false);
-            if (isInitial) setLoading(false);  // ← ВАЖНО: выключаем основной лоадер
+            if (isInitial) setLoading(false);
           }
         }
       },
@@ -70,18 +80,19 @@ export default function HomePage() {
         console.error('Geolocation error:', error);
         if (isMountedRef.current) {
           if (showLoading && !isInitial) setIsRefreshing(false);
-          if (isInitial) setLoading(false);  // ← ВАЖНО: выключаем даже при ошибке
+          if (isInitial) setLoading(false);
         }
       }
     );
   }, []);
 
-  // Слушаем WebSocket сообщения
+  // Слушаем WebSocket сообщения для обновления в реальном времени
   useEffect(() => {
     if (!lastMessage) return;
     
     console.log('📡 WebSocket событие:', lastMessage);
     
+    // Обновление при появлении нового сюрприза
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
       console.log('🆕 Новый сюрприз! Мгновенное обновление...');
       loadNearbyBags(false, false);
@@ -94,9 +105,30 @@ export default function HomePage() {
       }
     }
     
-    if (lastMessage.type === 'delete_bag') {
-      console.log('🗑️ Сюрприз удален, обновляем список...');
+    // Обновление при удалении или изменении количества
+    if (lastMessage.type === 'delete_bag' || lastMessage.type === 'bag_quantity_updated') {
+      console.log('🗑️ Сюрприз обновлен или удален, обновляем список...');
       loadNearbyBags(false, false);
+    }
+    
+    // Обработка обновления количества конкретного сюрприза
+    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
+      const { bag_id, available_quantity, is_active } = lastMessage.data;
+      console.log(`📦 Сюрприз ${bag_id}: осталось ${available_quantity}, активен: ${is_active}`);
+      
+      // Обновляем локальное состояние без полной перезагрузки
+      setSuppliers(prevSuppliers => {
+        return prevSuppliers
+          .map(supplier => ({
+            ...supplier,
+            surprise_bags: supplier.surprise_bags.map(bag => 
+              bag.id === bag_id 
+                ? { ...bag, available_quantity: available_quantity, is_active: is_active }
+                : bag
+            ).filter(bag => bag.available_quantity > 0 && bag.is_active !== false)
+          }))
+          .filter(supplier => supplier.surprise_bags.length > 0);
+      });
     }
   }, [lastMessage, loadNearbyBags]);
 
@@ -172,16 +204,15 @@ export default function HomePage() {
     fetchUser();
   }, []);
 
-  // 👇 ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ДАННЫХ - ТОЛЬКО 1 РАЗ
+  // ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ДАННЫХ - ТОЛЬКО 1 РАЗ
   useEffect(() => {
     if (showSplash) return;
     
-    // Загружаем данные только один раз при монтировании
     if (!initialLoadDoneRef.current) {
       initialLoadDoneRef.current = true;
-      loadNearbyBags(true, true);  // isInitial = true
+      loadNearbyBags(true, true);
     }
-  }, [showSplash, loadNearbyBags]);  // ← УБРАЛ lang из зависимостей
+  }, [showSplash, loadNearbyBags]);
 
   // Очистка при размонтировании
   useEffect(() => {
@@ -283,7 +314,6 @@ export default function HomePage() {
     );
   }
 
-  // 👇 ТЕПЕРЬ loading правильно выключается
   if (loading || location.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -301,20 +331,16 @@ export default function HomePage() {
         {isConnected ? '🟢 ' + t[lang].connected : '🔴 ' + t[lang].disconnected}
       </div>
 
-      {/* Rest of your JSX remains the same */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <div>
-          
-          <div className="flex items-center gap-2">
-  
-  <div>
- <h1 className="text-[28px] leading-none font-black tracking-[-1px] text-black">
-      SARQYT <span className="text-[#FF9500]">GO</span>
-    </h1>
-   
-  </div>
-</div>
+            <div className="flex items-center gap-2">
+              <div>
+                <h1 className="text-[28px] leading-none font-black tracking-[-1px] text-black">
+                  SARQYT <span className="text-[#FF9500]">GO</span>
+                </h1>
+              </div>
+            </div>
             {user && user.phone && (
               <div className="mt-2 flex items-center gap-2 text-xs bg-white/10 rounded-xl px-3 py-1.5 w-fit">
                 <span>📞</span>
@@ -337,8 +363,6 @@ export default function HomePage() {
             )}
           </div>
         </div>
-        
-   
       </div>
 
       <div className="px-6 -mt-4">
@@ -347,7 +371,12 @@ export default function HomePage() {
 
       {user && (
         <div className="px-6 mt-4">
-          <Link href="/offers"><button className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"><span>📋</span><span>{t[lang].myOrders}</span></button></Link>
+          <Link href="/orders">
+            <button className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2">
+              <span>📋</span>
+              <span>{t[lang].myOrders}</span>
+            </button>
+          </Link>
         </div>
       )}
 
@@ -403,6 +432,12 @@ export default function HomePage() {
                 <div className="text-center py-20 bg-white rounded-3xl">
                   <div className="text-6xl mb-4">😢</div>
                   <p className="text-gray-500">{t[lang].noOffers}</p>
+                  <button 
+                    onClick={handleManualRefresh}
+                    className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm"
+                  >
+                    🔄 Обновить
+                  </button>
                 </div>
               ) : (
                 suppliers.flatMap((supplier, supplierIdx) =>
