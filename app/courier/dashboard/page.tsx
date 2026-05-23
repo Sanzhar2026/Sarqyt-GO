@@ -228,53 +228,64 @@ export default function CourierDashboard() {
 
   // Функция центрирования карты на текущем положении
   const centerToMyLocation = () => {
-    console.log('📍 Нажата кнопка геолокации');
-    setLocating(true);
-    
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          console.log(`📍 Текущие координаты: ${latitude}, ${longitude}`);
-          
-          setUserLocation({ lat: latitude, lon: longitude });
-          
-          // Отправляем событие для карты с увеличенным масштабом
-          window.dispatchEvent(new CustomEvent('centerMap', { 
-            detail: { 
-              lat: latitude, 
-              lon: longitude,
-              zoom: 16
-            } 
-          }));
-          
-          setLocating(false);
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          let errorMessage = 'Не удалось определить местоположение. ';
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage += 'Разрешите доступ к геолокации.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage += 'Информация о местоположении недоступна.';
-              break;
-            case error.TIMEOUT:
-              errorMessage += 'Время ожидания истекло.';
-              break;
-          }
-          alert(errorMessage);
-          setLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      alert('Геолокация не поддерживается');
-      setLocating(false);
-    }
-  };
-
+  console.log('📍 Нажата кнопка геолокации');
+  setLocating(true);
+  
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log(`📍 Текущие координаты: ${latitude}, ${longitude}`);
+        
+        setUserLocation({ lat: latitude, lon: longitude });
+        
+        // Отправляем событие для карты
+        window.dispatchEvent(new CustomEvent('centerMap', { 
+          detail: { 
+            lat: latitude, 
+            lon: longitude,
+            zoom: 17  // Максимальное увеличение
+          } 
+        }));
+        
+        setLocating(false);
+        
+        // Дополнительно: показываем уведомление
+        showToast('📍 Ваше местоположение определено', 'success');
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        let errorMessage = 'Не удалось определить местоположение. ';
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage += 'Разрешите доступ к геолокации в настройках браузера.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage += 'Информация о местоположении недоступна.';
+            break;
+          case error.TIMEOUT:
+            errorMessage += 'Время ожидания истекло. Попробуйте еще раз.';
+            break;
+        }
+        alert(errorMessage);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  } else {
+    alert('Геолокация не поддерживается вашим браузером');
+    setLocating(false);
+  }
+};
+const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const toast = document.createElement('div');
+  toast.className = `fixed bottom-24 left-4 right-4 z-[2000] p-4 rounded-xl text-white text-center transition-all duration-300 ${
+    type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+  }`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2000);
+};
   // Переключение режима онлайн/офлайн
   const toggleOnlineMode = async () => {
     if (switching) return;
