@@ -1,4 +1,5 @@
-// app/courier/dashboard/page.tsx
+// app/courier/dashboard/page.tsx - исправленная версия
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -12,7 +13,7 @@ export default function CourierDashboard() {
   const router = useRouter();
   const [isOnline, setIsOnline] = useState(false);
   const [status, setStatus] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);  // ← true изначально
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [proposedOrder, setProposedOrder] = useState<any>(null);
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -21,16 +22,16 @@ export default function CourierDashboard() {
   const [showProposalModal, setShowProposalModal] = useState(false);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
   const [showOrdersList, setShowOrdersList] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(false);
   
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Загрузка статуса при монтировании
+  // Проверка авторизации курьера
   useEffect(() => {
-    checkAuth();
-    fetchStatus();
+    checkCourierAuth();
     
     return () => {
       if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
@@ -38,21 +39,65 @@ export default function CourierDashboard() {
     };
   }, []);
 
-  // Проверка авторизации
-  const checkAuth = async () => {
+  const checkCourierAuth = async () => {
+    setLoading(true);
+    
     try {
-      const res = await fetch(`${API_URL}/api/check-auth`, { credentials: 'include' });
-      const data = await res.json();
-      if (!data.authenticated) {
-        router.push('/login');
+      // Используем ЭКСКЛЮЗИВНО эндпоинт для курьеров
+      const res = await fetch(`${API_URL}/api/courier/status`, { 
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      console.log('🔍 Courier auth check response:', res.status);
+      
+      if (res.status === 401) {
+        // Не авторизован как курьер - отправляем на страницу входа курьера
+        console.log('❌ Courier not authenticated, redirecting to /courier/login');
+        router.push('/courier/login');
+        return;
+      }
+      
+      if (res.status === 403) {
+        // Курьер не верифицирован
+        console.log('⏳ Courier pending verification');
+        setPendingVerification(true);
+        setLoading(false);
+        return;
+      }
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log('✅ Courier authenticated:', data);
+        
+        if (data.success) {
+          setStatus(data);
+          setIsOnline(data.is_online);
+          setOrderStatus(data.current_order_status);
+          
+          if (data.is_online && !locationIntervalRef.current) {
+            startLocationTracking();
+            connectWebSocket();
+          }
+          
+          if (data.current_order_id) {
+            fetchCurrentOrder(data.current_order_id);
+          }
+          
+          setLoading(false);
+        } else {
+          router.push('/courier/login');
+        }
+      } else {
+        router.push('/courier/login');
       }
     } catch (error) {
       console.error('Auth error:', error);
-      router.push('/login');
+      router.push('/courier/login');
     }
   };
 
-  // Получение статуса курьера
+  // Остальные функции остаются без изменений...
   const fetchStatus = async () => {
     try {
       const res = await fetch(`${API_URL}/api/courier/status`, { credentials: 'include' });
@@ -76,7 +121,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Получение текущего заказа
   const fetchCurrentOrder = async (orderId: number) => {
     try {
       const res = await fetch(`${API_URL}/api/orders/${orderId}`, { credentials: 'include' });
@@ -87,7 +131,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Получение доступных заказов
   const fetchAvailableOrders = async () => {
     try {
       const res = await fetch(`${API_URL}/api/courier/available-orders`, { credentials: 'include' });
@@ -100,7 +143,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Подключение WebSocket для получения предложений
   const connectWebSocket = () => {
     const ws = new WebSocket(`${API_URL.replace('https', 'wss')}/ws/courier-tracking`);
     wsRef.current = ws;
@@ -131,7 +173,6 @@ export default function CourierDashboard() {
     };
   };
 
-  // Отслеживание геолокации
   const startLocationTracking = () => {
     if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
     
@@ -172,7 +213,6 @@ export default function CourierDashboard() {
     }, 3000);
   };
 
-  // Выход на линию
   const goOnline = async () => {
     setLoading(true);
     
@@ -216,7 +256,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Уход с линии
   const goOffline = async () => {
     setLoading(true);
     try {
@@ -245,7 +284,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Принять предложенный заказ
   const acceptProposal = async () => {
     if (!proposedOrder) return;
     
@@ -270,7 +308,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Отклонить предложенный заказ
   const declineProposal = async () => {
     if (!proposedOrder) return;
     
@@ -290,7 +327,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Завершить доставку
   const completeDelivery = async () => {
     if (!currentOrder) return;
     
@@ -312,7 +348,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Выбрать заказ из списка
   const selectOrder = async (orderId: number) => {
     try {
       const res = await fetch(`${API_URL}/api/courier/accept-order/${orderId}`, {
@@ -333,7 +368,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // Получить статус на русском
   const getStatusText = (status: string) => {
     switch (status) {
       case 'almost_done': return '🔔 Почти закончил';
@@ -344,6 +378,35 @@ export default function CourierDashboard() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
+      </div>
+    );
+  }
+
+  if (pendingVerification) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="bg-white rounded-2xl p-8 text-center max-w-md">
+          <div className="text-6xl mb-4">⏳</div>
+          <h1 className="text-2xl font-bold mb-2">Заявка на рассмотрении</h1>
+          <p className="text-gray-500 mb-6">
+            Ваша заявка на регистрацию курьера еще не подтверждена администратором.
+            Пожалуйста, подождите.
+          </p>
+          <Link href="/profile">
+            <button className="bg-emerald-600 text-white px-6 py-3 rounded-xl">
+              Вернуться в профиль
+            </button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Остальной JSX остается без изменений...
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
