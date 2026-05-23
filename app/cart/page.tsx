@@ -1,4 +1,4 @@
-// app/cart/page.tsx - С ПЕРЕХОДОМ ПО ССЫЛКЕ KASPI
+// app/cart/page.tsx - С ТАЙМЕРОМ ОПЛАТЫ
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,6 +17,12 @@ interface CartItem {
   quantity: number;
 }
 
+interface Reservation {
+  id: number;
+  expires_at: string;
+  bag_id: number;
+}
+
 export default function CartPage() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -30,15 +36,65 @@ export default function CartPage() {
   });
   const [paymentError, setPaymentError] = useState('');
   const [processingStep, setProcessingStep] = useState<'form' | 'processing' | 'success'>('form');
+  
+  // ============ ТАЙМЕР ============
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showTimerWarning, setShowTimerWarning] = useState(false);
 
-  // ВАША ССЫЛКА НА KASPI QR
   const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
   useEffect(() => {
     loadCart();
+    checkReservation();
     window.addEventListener('cartUpdated', loadCart);
     return () => window.removeEventListener('cartUpdated', loadCart);
   }, []);
+
+  // Проверка активной резервации
+  const checkReservation = async () => {
+    try {
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/reservation', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.reservation) {
+        setReservation(data.reservation);
+      }
+    } catch (error) {
+      console.error('Error checking reservation:', error);
+    }
+  };
+
+  // Таймер обратного отсчета
+  useEffect(() => {
+    if (!reservation?.expires_at) return;
+
+    const interval = setInterval(() => {
+      const expires = new Date(reservation.expires_at);
+      const now = new Date();
+      const diff = expires.getTime() - now.getTime();
+      
+      if (diff <= 0) {
+        setTimeLeft(0);
+        clearInterval(interval);
+        // Время истекло - очищаем корзину и показываем сообщение
+        alert('⏰ Время бронирования истекло! Товар возвращен в продажу.');
+        localStorage.removeItem('cart');
+        setCartItems([]);
+        setReservation(null);
+        router.push('/');
+      } else {
+        setTimeLeft(Math.floor(diff / 1000));
+        // Предупреждение за 1 минуту
+        if (diff <= 60000 && !showTimerWarning) {
+          setShowTimerWarning(true);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [reservation, router, showTimerWarning]);
 
   const loadCart = () => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -75,22 +131,20 @@ export default function CartPage() {
   };
 
   const handleCheckout = () => {
-    // Открываем модалку с выбором оплаты
     setPaymentError('');
     setProcessingStep('form');
     setShowPaymentModal(true);
   };
 
-  // 🔥 НОВАЯ ФУНКЦИЯ: переход на Kaspi QR
   const handleKaspiPayment = () => {
-    // Сохраняем текущую корзину перед переходом
+    // Сохраняем данные перед переходом
     localStorage.setItem('pending_order', JSON.stringify({
       items: cartItems,
       total: getTotalPrice(),
+      reservation_id: reservation?.id,
       timestamp: Date.now()
     }));
     
-    // Переход на Kaspi QR
     window.location.href = KASPI_QR_URL;
   };
 
@@ -107,6 +161,20 @@ export default function CartPage() {
     if (!validateCardDetails()) return;
     
     setProcessingStep('processing');
+    
+    // Подтверждаем резервацию
+    if (reservation) {
+      try {
+        await fetch('https://toogood-2ncf.onrender.com/api/payment/confirm-reservation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reservation_id: reservation.id })
+        });
+      } catch (error) {
+        console.error('Error confirming reservation:', error);
+      }
+    }
     
     setTimeout(() => {
       setProcessingStep('success');
@@ -152,6 +220,13 @@ export default function CartPage() {
     }
   };
 
+  // Форматирование времени
+  const formatTimeLeft = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
@@ -171,7 +246,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header как в Kaspi - с кнопкой оплаты вверху */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
         <div className="px-4 pt-12 pb-4">
           <div className="flex items-center justify-between mb-4">
@@ -185,6 +260,29 @@ export default function CartPage() {
             <div className="w-10"></div>
           </div>
           
+          {/* ============ ТАЙМЕР ============ */}
+          {timeLeft !== null && timeLeft > 0 && (
+            <div className={`mb-4 p-4 rounded-2xl ${showTimerWarning ? 'bg-red-50 border border-red-200' : 'bg-yellow-50'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">⏰</span>
+                  <div>
+                    <p className={`text-sm font-semibold ${showTimerWarning ? 'text-red-600' : 'text-yellow-700'}`}>
+                      Время бронирования
+                    </p>
+                    <p className={`text-2xl font-mono font-bold ${showTimerWarning ? 'text-red-600 animate-pulse' : 'text-yellow-700'}`}>
+                      {formatTimeLeft(timeLeft)}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Оплатите до истечения</p>
+                  <p className="text-xs text-gray-400">Иначе товар вернется в продажу</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="mb-4">
             <div className="text-2xl font-bold text-emerald-600">
               {getTotalPrice().toLocaleString()} ₸
@@ -196,10 +294,11 @@ export default function CartPage() {
           
           <button
             onClick={handleCheckout}
-            className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            disabled={timeLeft === 0}
+            className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-xl">💳</span>
-            <span>Оформить заказ</span>
+            <span>{timeLeft === 0 ? 'Время истекло' : 'Оформить заказ'}</span>
           </button>
         </div>
       </div>
@@ -255,7 +354,7 @@ export default function CartPage() {
         ))}
       </div>
 
-      {/* Payment Modal - С ПЕРЕХОДОМ НА KASPI */}
+      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -266,9 +365,14 @@ export default function CartPage() {
                 <p className="text-gray-500">
                   Сумма: <span className="font-bold text-emerald-600 text-xl">{getTotalPrice()} ₸</span>
                 </p>
+                {timeLeft && timeLeft > 0 && (
+                  <p className="text-sm text-orange-600 mt-2">
+                    ⏰ Осталось: {formatTimeLeft(timeLeft)}
+                  </p>
+                )}
               </div>
               
-              {/* KASPI QR - КНОПКА С ПЕРЕХОДОМ ПО ССЫЛКЕ */}
+              {/* KASPI QR */}
               <button
                 onClick={handleKaspiPayment}
                 className="w-full p-5 rounded-2xl border-2 border-[#EA0033] bg-[#EA0033]/5 mb-4 transition-all hover:shadow-lg active:scale-[0.98]"
@@ -285,7 +389,7 @@ export default function CartPage() {
                 </div>
               </button>
 
-              {/* Другие способы оплаты (демо) */}
+              {/* Другие способы оплаты */}
               <details className="mt-2">
                 <summary className="text-center text-sm text-gray-400 cursor-pointer py-2">
                   💳 Другие способы оплаты (демо)
