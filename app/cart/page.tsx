@@ -1,4 +1,4 @@
-// app/cart/page.tsx - С ТАЙМЕРОМ ОПЛАТЫ И КНОПКАМИ ЯЗЫКА (ИСПРАВЛЕННЫЙ)
+// app/cart/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -38,15 +38,14 @@ export default function CartPage() {
   });
   const [paymentError, setPaymentError] = useState('');
   const [processingStep, setProcessingStep] = useState<'form' | 'processing' | 'success'>('form');
-  
-  // ============ ТАЙМЕР ============
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showTimerWarning, setShowTimerWarning] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [customerAddress, setCustomerAddress] = useState('');
 
   const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
-  // Тексты на двух языках
   const t = {
     kz: {
       cart: 'Себет',
@@ -70,7 +69,9 @@ export default function CartPage() {
       shop: 'Сатып алу',
       bookingExpired: 'Броньдеу уақыты аяқталды! Тауар сатылымға қайтарылды.',
       bookingWarning: 'Броньдеу уақыты аяқталуға жақын',
-      timeRemaining: 'Қалған уақыт'
+      timeRemaining: 'Қалған уақыт',
+      deliveryAddress: 'Жеткізу мекенжайы',
+      enterAddress: 'Мекенжайыңызды енгізіңіз'
     },
     ru: {
       cart: 'Корзина',
@@ -94,9 +95,38 @@ export default function CartPage() {
       shop: 'Перейти к покупкам',
       bookingExpired: 'Время бронирования истекло! Товар возвращен в продажу.',
       bookingWarning: 'Время бронирования истекает',
-      timeRemaining: 'Осталось'
+      timeRemaining: 'Осталось',
+      deliveryAddress: 'Адрес доставки',
+      enterAddress: 'Введите ваш адрес'
     }
   };
+
+  // Получаем геолокацию при загрузке
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          setUserLocation({ lat, lon });
+          
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`
+            );
+            const data = await response.json();
+            const address = data.display_name || `${lat}, ${lon}`;
+            setCustomerAddress(address);
+          } catch (error) {
+            setCustomerAddress(`${lat}, ${lon}`);
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+        }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     loadCart();
@@ -105,52 +135,31 @@ export default function CartPage() {
     return () => window.removeEventListener('cartUpdated', loadCart);
   }, []);
 
-  // Проверка активной резервации
   const checkReservation = async () => {
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/reservation', {
         credentials: 'include'
       });
       const data = await response.json();
-      console.log('🔍 Резервация из бэкенда:', data);
-      
       if (data.reservation) {
-        // ✅ ИСПРАВЛЕНИЕ: добавляем 'Z' для правильного парсинга UTC
-        let expiresAt = data.reservation.expires_at;
-        if (expiresAt && !expiresAt.endsWith('Z')) {
-          expiresAt = expiresAt + 'Z';
-        }
-        console.log('📅 expires_at после исправления:', expiresAt);
-        
-        setReservation({
-          ...data.reservation,
-          expires_at: expiresAt
-        });
+        setReservation(data.reservation);
       }
     } catch (error) {
       console.error('Error checking reservation:', error);
     }
   };
 
-  // Таймер обратного отсчета - ИСПРАВЛЕННЫЙ
   useEffect(() => {
-    if (!reservation?.expires_at) {
-      console.log('❌ Нет expires_at в резервации');
-      return;
-    }
+    if (!reservation?.expires_at) return;
 
-    // ✅ ПРАВИЛЬНОЕ ПРЕОБРАЗОВАНИЕ UTC в локальное время
-    const expires = new Date(reservation.expires_at);
+    let expiresAt = reservation.expires_at;
+    if (expiresAt && !expiresAt.endsWith('Z')) {
+      expiresAt = expiresAt + 'Z';
+    }
+    const expires = new Date(expiresAt);
     const now = new Date();
     
-    console.log('📅 expires (ISO):', reservation.expires_at);
-    console.log('📅 expires (local):', expires.toString());
-    console.log('🕐 now (local):', now.toString());
-    console.log('📊 diff (ms):', expires.getTime() - now.getTime());
-    
-    // Если expires уже в прошлом - показываем ошибку
     if (expires.getTime() <= now.getTime()) {
-      console.error('⚠️ Резервация уже истекла!');
       setTimeLeft(0);
       alert(`⏰ ${t[lang].bookingExpired}`);
       localStorage.removeItem('cart');
@@ -193,7 +202,6 @@ export default function CartPage() {
       removeItem(id);
       return;
     }
-    
     const updatedCart = cartItems.map(item =>
       item.id === id ? { ...item, quantity: newQuantity } : item
     );
@@ -218,19 +226,67 @@ export default function CartPage() {
   };
 
   const handleCheckout = () => {
+    if (!customerAddress) {
+      alert('Пожалуйста, укажите адрес доставки');
+      return;
+    }
     setPaymentError('');
     setProcessingStep('form');
     setShowPaymentModal(true);
   };
 
-  const handleKaspiPayment = () => {
-    localStorage.setItem('pending_order', JSON.stringify({
-      items: cartItems,
-      total: getTotalPrice(),
-      reservation_id: reservation?.id,
-      timestamp: Date.now()
-    }));
-    window.location.href = KASPI_QR_URL;
+  // ✅ СОЗДАНИЕ ЗАКАЗА ПЕРЕД ОПЛАТОЙ
+  const createOrders = async () => {
+    const createdOrders = [];
+    
+    for (const item of cartItems) {
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          bag_id: item.id,
+          lat: userLocation?.lat || 43.238,
+          lon: userLocation?.lon || 76.945,
+          address: customerAddress
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || `Ошибка создания заказа для ${item.name}`);
+      }
+      
+      const order = await response.json();
+      createdOrders.push(order);
+    }
+    
+    return createdOrders;
+  };
+
+  const handleKaspiPayment = async () => {
+    setProcessingStep('processing');
+    
+    try {
+      // ✅ 1. Сначала создаем заказы
+      const orders = await createOrders();
+      console.log('✅ Заказы созданы:', orders);
+      
+      // ✅ 2. Сохраняем данные перед переходом в Kaspi
+      localStorage.setItem('pending_order', JSON.stringify({
+        orders: orders,
+        total: getTotalPrice(),
+        timestamp: Date.now()
+      }));
+      
+      // ✅ 3. Переходим в Kaspi QR
+      window.location.href = KASPI_QR_URL;
+      
+    } catch (error) {
+      console.error('Error creating orders:', error);
+      alert(error instanceof Error ? error.message : 'Ошибка при создании заказа');
+      setProcessingStep('form');
+    }
   };
 
   const validateCardDetails = () => {
@@ -241,60 +297,43 @@ export default function CartPage() {
     }
     return true;
   };
-const processPayment = async () => {
-  setProcessingStep('processing');
-  
-  // ✅ Получаем реальный адрес пользователя
-  let customerAddress = 'Адрес не указан';
-  let customerLat = null;
-  let customerLon = null;
-  
-  // Получаем геолокацию для адреса
-  if (navigator.geolocation) {
-    await new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        customerLat = position.coords.latitude;
-        customerLon = position.coords.longitude;
-        
-        try {
-          const geoRes = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${customerLat}&lon=${customerLon}&accept-language=ru`
-          );
-          const geoData = await geoRes.json();
-          customerAddress = geoData.display_name || `${customerLat}, ${customerLon}`;
-        } catch (e) {
-          customerAddress = `${customerLat}, ${customerLon}`;
-        }
-        resolve(true);
-      }, () => resolve(true), { timeout: 5000 });
-    });
-  }
-  
-  // Создаем заказы с реальным адресом
-  for (const item of cartItems) {
-    await fetch('https://toogood-2ncf.onrender.com/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        bag_id: item.id,
-        lat: customerLat || 43.238,
-        lon: customerLon || 76.945,
-        address: customerAddress
-      })
-    });
-  }
+
+  const processPayment = async () => {
+    if (!validateCardDetails()) return;
     
-    setTimeout(() => {
-      setProcessingStep('success');
-      localStorage.removeItem('cart');
-      setCartItems([]);
+    setProcessingStep('processing');
+    
+    try {
+      // Создаем заказы
+      const orders = await createOrders();
+      console.log('✅ Заказы созданы:', orders);
+      
+      // Подтверждаем резервацию
+      if (reservation) {
+        await fetch('https://toogood-2ncf.onrender.com/api/payment/confirm-reservation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ reservation_id: reservation.id })
+        });
+      }
       
       setTimeout(() => {
-        setShowPaymentModal(false);
-        router.push('/orders');
+        setProcessingStep('success');
+        localStorage.removeItem('cart');
+        setCartItems([]);
+        
+        setTimeout(() => {
+          setShowPaymentModal(false);
+          router.push('/orders');
+        }, 2000);
       }, 2000);
-    }, 2000);
+      
+    } catch (error) {
+      console.error('Payment error:', error);
+      setPaymentError('Ошибка при оформлении заказа');
+      setProcessingStep('form');
+    }
   };
 
   const formatCardNumber = (value: string) => {
@@ -354,7 +393,6 @@ const processPayment = async () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header с кнопками языка */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
         <div className="px-4 pt-12 pb-4">
           <div className="flex items-center justify-between mb-4">
@@ -366,14 +404,11 @@ const processPayment = async () => {
             </button>
             <h1 className="text-xl font-bold text-gray-800">{t[lang].cart}</h1>
             
-            {/* Кнопки языка */}
             <div className="flex gap-1">
               <button
                 onClick={() => setLang('kz')}
                 className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'kz' 
-                    ? 'bg-emerald-600 text-white' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  lang === 'kz' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
                 }`}
               >
                 Қаз
@@ -381,9 +416,7 @@ const processPayment = async () => {
               <button
                 onClick={() => setLang('ru')}
                 className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'ru' 
-                    ? 'bg-emerald-600 text-white' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  lang === 'ru' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
                 }`}
               >
                 Рус
@@ -391,7 +424,20 @@ const processPayment = async () => {
             </div>
           </div>
           
-          {/* ТАЙМЕР */}
+          {/* Поле для ввода адреса */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              📍 {t[lang].deliveryAddress}
+            </label>
+            <input
+              type="text"
+              placeholder={t[lang].enterAddress}
+              value={customerAddress}
+              onChange={(e) => setCustomerAddress(e.target.value)}
+              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            />
+          </div>
+          
           {timeLeft !== null && timeLeft > 0 && (
             <div className={`mb-4 p-4 rounded-2xl ${showTimerWarning ? 'bg-red-50 border border-red-200' : 'bg-yellow-50'}`}>
               <div className="flex items-center justify-between">
@@ -425,8 +471,8 @@ const processPayment = async () => {
           
           <button
             onClick={handleCheckout}
-            disabled={timeLeft === 0}
-            className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={timeLeft === 0 || !customerAddress}
+            className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-xl">💳</span>
             <span>{timeLeft === 0 ? t[lang].timeExpired : t[lang].checkout}</span>
@@ -461,23 +507,17 @@ const processPayment = async () => {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition flex items-center justify-center"
-                  >
-                    -
-                  </button>
+                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  >-</button>
                   <span className="font-semibold text-sm min-w-[25px] text-center">{item.quantity}</span>
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition flex items-center justify-center"
-                  >
-                    +
-                  </button>
+                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  >+</button>
                   <button
                     onClick={() => removeItem(item.id)}
                     className="ml-1 text-red-500 hover:text-red-700 text-sm"
-                  >
-                    🗑️
-                  </button>
+                  >🗑️</button>
                 </div>
               </div>
             </div>
@@ -506,7 +546,7 @@ const processPayment = async () => {
               {/* KASPI QR */}
               <button
                 onClick={handleKaspiPayment}
-                className="w-full p-5 rounded-2xl border-2 border-[#EA0033] bg-[#EA0033]/5 mb-4 transition-all hover:shadow-lg active:scale-[0.98]"
+                className="w-full p-5 rounded-2xl border-2 border-[#EA0033] bg-[#EA0033]/5 mb-4 transition-all hover:shadow-lg"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-[#EA0033] rounded-xl flex items-center justify-center">
@@ -520,7 +560,6 @@ const processPayment = async () => {
                 </div>
               </button>
 
-              {/* Другие способы оплаты */}
               <details className="mt-2">
                 <summary className="text-center text-sm text-gray-400 cursor-pointer py-2">
                   💳 {t[lang].otherMethods}
@@ -535,9 +574,7 @@ const processPayment = async () => {
                           fillDemoCard(method);
                         }}
                         className={`p-4 rounded-xl border-2 transition-all ${
-                          paymentMethod === method 
-                            ? 'border-emerald-500 bg-emerald-50' 
-                            : 'border-gray-200 hover:border-gray-300'
+                          paymentMethod === method ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200'
                         }`}
                       >
                         <div className="text-2xl mb-1">
@@ -589,21 +626,19 @@ const processPayment = async () => {
                     </div>
                     
                     {paymentError && (
-                      <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">
-                        ⚠️ {paymentError}
-                      </div>
+                      <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">⚠️ {paymentError}</div>
                     )}
                     
                     <div className="flex gap-3">
                       <button
                         onClick={() => setShowPaymentModal(false)}
-                        className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50 transition"
+                        className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold"
                       >
                         {t[lang].back}
                       </button>
                       <button
                         onClick={processPayment}
-                        className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition"
+                        className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-semibold"
                       >
                         {t[lang].pay}
                       </button>

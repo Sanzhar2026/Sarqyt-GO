@@ -69,33 +69,62 @@ export default function OffersPage() {
     setShowModal(true);
   };
 
-  const confirmBooking = async () => {
-    if (!selectedBag) return;
+  // app/offers/page.tsx - исправленная функция
+
+const confirmBooking = async () => {
+  if (!selectedBag) return;
+  
+  try {
+    const response = await fetch('https://toogood-2ncf.onrender.com/api/bookings/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ bag_id: selectedBag.id })
+    });
     
-    try {
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/bookings/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ bag_id: selectedBag.id })
-      });
+    const data = await response.json();
+    
+    if (data.success) {
+      // ✅ Добавляем в корзину (localStorage)
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const existingItem = cart.find((item: any) => item.id === selectedBag.id);
       
-      const data = await response.json();
-      
-      if (data.success) {
-        await addToCart(selectedBag.id);
-        alert(`✅ ${selectedBag.name} забронирован на 15 минут!`);
-        await fetchBags();
-        setShowModal(false);
-        router.push('/cart');
+      if (existingItem) {
+        existingItem.quantity += 1;
       } else {
-        alert(`❌ ${data.message}`);
+        cart.push({
+          id: selectedBag.id,
+          name: selectedBag.name,
+          businessName: selectedBag.supplier_name,
+          price: selectedBag.discounted_price,
+          originalPrice: selectedBag.original_price,
+          discount: selectedBag.discount_percentage,
+          imageUrl: selectedBag.image_url,
+          quantity: 1
+        });
       }
-    } catch (error) {
-      console.error('Booking error:', error);
-      alert('Ошибка бронирования');
+      
+      localStorage.setItem('cart', JSON.stringify(cart));
+      
+      // Обновляем счетчик в navbar
+      window.dispatchEvent(new Event('cartUpdated'));
+      
+      alert(`✅ ${selectedBag.name} добавлен в корзину! У вас 15 минут на оплату.`);
+      
+      // Обновляем список бронирований
+      await fetchBags();
+      setShowModal(false);
+      
+      // ✅ Перенаправляем в корзину
+      router.push('/cart');
+    } else {
+      alert(`❌ ${data.message}`);
     }
-  };
+  } catch (error) {
+    console.error('Booking error:', error);
+    alert('Ошибка бронирования');
+  }
+};
 
   const addToCart = async (bagId: number) => {
     try {
