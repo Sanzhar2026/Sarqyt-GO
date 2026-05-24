@@ -1,7 +1,7 @@
 // app/components/OfferCard.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -32,22 +32,62 @@ export default function OfferCard({
   const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+  const [isAuth, setIsAuth] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
 
-  // ✅ API_URL определен внутри компонента
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Проверяем авторизацию
-  const isAuthenticated = () => {
-    if (typeof window !== 'undefined') {
-      const user = localStorage.getItem('user');
-      return !!user;
-    }
-    return false;
-  };
+  // ✅ Проверяем авторизацию через API (более надежно)
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/check-auth`, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        setIsAuth(data.authenticated === true);
+        
+        // Если авторизован, сохраняем в localStorage
+        if (data.authenticated && data.user_id) {
+          localStorage.setItem('user', JSON.stringify({
+            id: data.user_id,
+            name: data.user_name || 'User',
+            phone: data.user_phone || ''
+          }));
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        // Fallback на localStorage
+        const user = localStorage.getItem('user');
+        setIsAuth(!!user);
+      } finally {
+        setAuthChecking(false);
+      }
+    };
+    
+    checkAuth();
+  }, [API_URL]);
 
   // Добавление в корзину
   const addToCart = async () => {
-    if (!isAuthenticated()) {
+    // ✅ Сначала проверяем авторизацию через API
+    let authenticated = isAuth;
+    
+    if (!authenticated) {
+      try {
+        const response = await fetch(`${API_URL}/api/check-auth`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        authenticated = data.authenticated === true;
+        setIsAuth(authenticated);
+      } catch (error) {
+        console.error('Auth check error:', error);
+      }
+    }
+    
+    if (!authenticated) {
       setShowAuthModal(true);
       return;
     }
@@ -71,7 +111,7 @@ export default function OfferCard({
       console.log('📦 Ответ сервера:', data);
 
       if (response.ok) {
-        // ✅ Добавляем в localStorage
+        // Добавляем в localStorage
         const cart = JSON.parse(localStorage.getItem('cart') || '[]');
         const existingItem = cart.find((item: any) => item.id === id);
         
@@ -92,25 +132,26 @@ export default function OfferCard({
         
         localStorage.setItem('cart', JSON.stringify(cart));
         
-        // Показываем уведомление
         showNotification('✅ Товар добавлен в корзину!', 'success');
         
-        // Обновляем счетчик в navbar
         window.dispatchEvent(new Event('cartUpdated'));
         
-        // Обновляем главную страницу
         if (onOrderSuccess) {
           onOrderSuccess();
         }
         window.dispatchEvent(new CustomEvent('refreshOffers'));
         
-        // ✅ Переход на страницу offers (список предложений)
         setTimeout(() => {
           router.push('/offers');
         }, 1000);
         
       } else {
-        showNotification(data.detail || 'Ошибка при добавлении в корзину', 'error');
+        if (response.status === 401) {
+          setShowAuthModal(true);
+          showNotification('Пожалуйста, войдите в аккаунт', 'error');
+        } else {
+          showNotification(data.detail || 'Ошибка при добавлении', 'error');
+        }
       }
       
     } catch (error) {
@@ -130,6 +171,22 @@ export default function OfferCard({
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
   };
+
+  if (authChecking) {
+    return (
+      <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
+        <div className="h-48 bg-gray-200"></div>
+        <div className="p-4">
+          <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
+          <div className="flex justify-between">
+            <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -197,7 +254,10 @@ export default function OfferCard({
             
             <div className="space-y-3">
               <button
-                onClick={() => router.push('/login')}
+                onClick={() => {
+                  localStorage.setItem('redirectAfterLogin', window.location.pathname);
+                  router.push('/login');
+                }}
                 className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition"
               >
                 Войти

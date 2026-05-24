@@ -73,7 +73,9 @@ export default function RootLayout({
       <html lang="kz" suppressHydrationWarning>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes" />
-          <title>Sarqyn Food</title>
+          // app/layout.tsx - добавьте в head
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+          <title>Sarqyt GO</title>
         </head>
         <body className="bg-gray-50">
           <div className="max-w-md mx-auto relative min-h-screen">
