@@ -1,114 +1,87 @@
-// app/layout.tsx
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+// app/layout.tsx (оставьте как есть)
+'use client';
+
+import { useState, useEffect, createContext, useContext } from 'react';
+import { usePathname } from 'next/navigation';
 import './globals.css';
-import { Suspense } from 'react';
+import BottomNav from './components/BottomNav';
 
-const inter = Inter({ subsets: ['latin', 'cyrillic'] });
+type Language = 'kz' | 'ru';
 
-export const metadata: Metadata = {
-  title: 'Sarqyn GO - Доставка еды',
-  description: 'Спасайте еду от выброса вместе с Sarqyn GO',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Sarqyn GO',
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: true,
-  },
-};
-
-// Глобальная переменная для скрытия навбара
-let hideBottomNav = false;
-
-export const setGlobalHideBottomNav = (hide: boolean) => {
-  hideBottomNav = hide;
-};
-
-// Функция для использования языка (будет работать на клиенте)
-export const useLanguage = () => {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('language');
-    if (stored === 'kz' || stored === 'ru') {
-      return { lang: stored as 'kz' | 'ru', setLang: (lang: 'kz' | 'ru') => {
-        localStorage.setItem('language', lang);
-        if (typeof window !== 'undefined') {
-          window.location.reload();
-        }
-      } };
-    }
-  }
-  return { 
-    lang: 'ru' as 'kz' | 'ru', 
-    setLang: (lang: 'kz' | 'ru') => {
-      localStorage.setItem('language', lang);
-      if (typeof window !== 'undefined') {
-        window.location.reload();
-      }
-    } 
-  };
-};
-
-// Создаем клиентский компонент для BottomNav
-function ClientBottomNav() {
-  const [shouldShow, setShouldShow] = useState(false);
-  
-  useEffect(() => {
-    setShouldShow(!hideBottomNav);
-    
-    // Подписываемся на изменения hideBottomNav
-    const checkInterval = setInterval(() => {
-      setShouldShow(!hideBottomNav);
-    }, 100);
-    
-    return () => clearInterval(checkInterval);
-  }, []);
-  
-  if (!shouldShow) return null;
-  
-  // Динамический импорт BottomNav (только на клиенте)
-  const BottomNav = dynamic(() => import('./components/BottomNav'), { ssr: false });
-  return <BottomNav />;
+// ==================== КОНТЕКСТ ЯЗЫКА ====================
+interface LanguageContextType {
+  lang: Language;
+  setLang: (lang: Language) => void;
 }
 
-// Импортируем необходимые хуки
-import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export const useLanguage = () => {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error('useLanguage must be used within LanguageProvider');
+  }
+  return context;
+};
+
+const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
+  const [lang, setLang] = useState<Language>('kz');
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem('language') as Language;
+    if (savedLang && (savedLang === 'kz' || savedLang === 'ru')) {
+      setLang(savedLang);
+    }
+  }, []);
+
+  const handleSetLang = (newLang: Language) => {
+    setLang(newLang);
+    localStorage.setItem('language', newLang);
+  };
+
+  return (
+    <LanguageContext.Provider value={{ lang: lang, setLang: handleSetLang }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+};
+// =======================================================
+
+// Глобальное состояние для скрытия BottomNav
+let globalHideBottomNav = false;
+export const setGlobalHideBottomNav = (value: boolean) => {
+  globalHideBottomNav = value;
+};
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [hideBottomNav, setHideBottomNav] = useState(true);
+
+  useEffect(() => {
+    const checkHideStatus = () => {
+      setHideBottomNav(globalHideBottomNav);
+    };
+    const interval = setInterval(checkHideStatus, 50);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <html lang="ru">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-        <meta name="theme-color" content="#059669" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <link rel="apple-touch-icon" href="/icon-192x192.png" />
-      </head>
-      <body className={inter.className}>
-        <LanguageProvider>
-          <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-              <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
-            </div>
-          }>
+    <LanguageProvider>
+      <html lang="kz" suppressHydrationWarning>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes" />
+          <title>Sarqyn Food</title>
+        </head>
+        <body className="bg-gray-50">
+          <div className="max-w-md mx-auto relative min-h-screen">
             {children}
-          </Suspense>
-          <ClientBottomNav />
-        </LanguageProvider>
-      </body>
-    </html>
+            {!hideBottomNav && <BottomNav />}
+          </div>
+        </body>
+      </html>
+    </LanguageProvider>
   );
 }
-
-// LanguageProvider компонент (должен быть отдельно)
-import {LanguageProvider} from './providers';

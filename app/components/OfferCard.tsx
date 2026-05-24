@@ -15,6 +15,9 @@ interface OfferCardProps {
   originalPrice: number;
   discount: number;
   imageUrl: string;
+  description?: string;
+  category?: string;
+  items?: string[];
   onOrderSuccess?: () => void;
 }
 
@@ -27,67 +30,96 @@ export default function OfferCard({
   originalPrice,
   discount,
   imageUrl,
+  description,
+  category,
+  items,
   onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
-  const [isAuth, setIsAuth] = useState(false);
-  const [authChecking, setAuthChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ Проверяем авторизацию через API (более надежно)
+  // ✅ Проверка авторизации (работает и на телефоне)
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Сначала проверяем localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          setIsAuthenticated(true);
+          setAuthChecked(true);
+          return;
+        }
+        
+        // Проверяем через API
         const response = await fetch(`${API_URL}/api/check-auth`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' }
         });
         const data = await response.json();
-        setIsAuth(data.authenticated === true);
         
-        // Если авторизован, сохраняем в localStorage
-        if (data.authenticated && data.user_id) {
+        if (data.authenticated) {
+          setIsAuthenticated(true);
           localStorage.setItem('user', JSON.stringify({
             id: data.user_id,
             name: data.user_name || 'User',
             phone: data.user_phone || ''
           }));
+        } else {
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        // Fallback на localStorage
-        const user = localStorage.getItem('user');
-        setIsAuth(!!user);
+        // Fallback: проверяем localStorage еще раз
+        const storedUser = localStorage.getItem('user');
+        setIsAuthenticated(!!storedUser);
       } finally {
-        setAuthChecking(false);
+        setAuthChecked(true);
       }
     };
     
     checkAuth();
   }, [API_URL]);
 
-  // Добавление в корзину
-  const addToCart = async () => {
-    // ✅ Сначала проверяем авторизацию через API
-    let authenticated = isAuth;
-    
-    if (!authenticated) {
-      try {
-        const response = await fetch(`${API_URL}/api/check-auth`, {
-          credentials: 'include'
-        });
-        const data = await response.json();
-        authenticated = data.authenticated === true;
-        setIsAuth(authenticated);
-      } catch (error) {
-        console.error('Auth check error:', error);
-      }
+  const getCategoryImage = (cat: string, nm: string) => {
+    const lowerName = nm.toLowerCase();
+    if (lowerName.includes('бургер') || lowerName.includes('burger')) {
+      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
     }
-    
-    if (!authenticated) {
+    if (lowerName.includes('пицца') || lowerName.includes('pizza')) {
+      return 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop';
+    }
+    if (lowerName.includes('суши') || lowerName.includes('ролл')) {
+      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
+    }
+    if (lowerName.includes('салат')) {
+      return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop';
+    }
+    if (lowerName.includes('кола') || lowerName.includes('лимонад') || cat === 'drinks') {
+      return 'https://images.unsplash.com/photo-1543253687-c931c8e01820?w=400&h=300&fit=crop';
+    }
+    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+  };
+
+  const formatItemsList = () => {
+    if (!items || items.length === 0) return null;
+    const displayItems = items.slice(0, 3);
+    const remainingCount = items.length - 3;
+    return (
+      <div className="mt-2 text-xs text-gray-500">
+        <span className="font-medium text-gray-600">🍽️ Состав:</span>{' '}
+        {displayItems.join(' • ')}
+        {remainingCount > 0 && <span className="text-emerald-600"> +{remainingCount}</span>}
+      </div>
+    );
+  };
+
+  const addToCart = async () => {
+    if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
@@ -95,23 +127,16 @@ export default function OfferCard({
     setAddingToCart(true);
     
     try {
-      console.log(`🛒 Добавление в корзину: bag_id=${id}`);
-      
       const response = await fetch(`${API_URL}/api/cart/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          bag_id: id,
-          quantity: 1
-        })
+        body: JSON.stringify({ bag_id: id, quantity: 1 })
       });
 
       const data = await response.json();
-      console.log('📦 Ответ сервера:', data);
 
       if (response.ok) {
-        // Добавляем в localStorage
         const cart = JSON.parse(localStorage.getItem('cart') || '[]');
         const existingItem = cart.find((item: any) => item.id === id);
         
@@ -119,41 +144,27 @@ export default function OfferCard({
           existingItem.quantity += 1;
         } else {
           cart.push({
-            id: id,
-            name: name,
-            businessName: businessName,
-            price: price,
-            originalPrice: originalPrice,
-            discount: discount,
-            imageUrl: imageUrl,
-            quantity: 1
+            id, name, businessName, price, originalPrice, discount,
+            imageUrl: imageUrl || getCategoryImage(category || '', name),
+            quantity: 1, description, items
           });
         }
         
         localStorage.setItem('cart', JSON.stringify(cart));
         
         showNotification('✅ Товар добавлен в корзину!', 'success');
-        
         window.dispatchEvent(new Event('cartUpdated'));
-        
-        if (onOrderSuccess) {
-          onOrderSuccess();
-        }
+        if (onOrderSuccess) onOrderSuccess();
         window.dispatchEvent(new CustomEvent('refreshOffers'));
         
-        setTimeout(() => {
-          router.push('/offers');
-        }, 1000);
-        
+        setTimeout(() => router.push('/offers'), 1000);
+      } else if (response.status === 401) {
+        setIsAuthenticated(false);
+        localStorage.removeItem('user');
+        setShowAuthModal(true);
       } else {
-        if (response.status === 401) {
-          setShowAuthModal(true);
-          showNotification('Пожалуйста, войдите в аккаунт', 'error');
-        } else {
-          showNotification(data.detail || 'Ошибка при добавлении', 'error');
-        }
+        showNotification(data.detail || 'Ошибка при добавлении', 'error');
       }
-      
     } catch (error) {
       console.error('Error adding to cart:', error);
       showNotification('Ошибка при добавлении в корзину', 'error');
@@ -164,15 +175,14 @@ export default function OfferCard({
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     const notification = document.createElement('div');
-    notification.className = `fixed bottom-24 left-4 right-4 z-50 ${
-      type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
-    } text-white rounded-2xl p-4 shadow-xl animate-slide-up`;
+    notification.className = `fixed bottom-24 left-4 right-4 z-50 ${type === 'success' ? 'bg-emerald-600' : 'bg-red-600'} text-white rounded-2xl p-4 shadow-xl animate-slide-up`;
     notification.textContent = message;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
   };
 
-  if (authChecking) {
+  // Показываем скелетон пока проверяется авторизация
+  if (!authChecked) {
     return (
       <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
         <div className="h-48 bg-gray-200"></div>
@@ -194,7 +204,7 @@ export default function OfferCard({
         <Link href={`/offers/${id}`}>
           <div className="relative h-48">
             <Image
-              src={imageUrl || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop'}
+              src={imageUrl || getCategoryImage(category || '', name)}
               alt={name}
               fill
               className="object-cover"
@@ -204,14 +214,21 @@ export default function OfferCard({
                 -{discount}%
               </div>
             )}
+            {category && (
+              <div className="absolute top-3 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs backdrop-blur-sm">
+                {category === 'drinks' ? '🥤' : category === 'pizza' ? '🍕' : '🍽️'} {category}
+              </div>
+            )}
           </div>
         </Link>
         
         <div className="p-4">
           <Link href={`/offers/${id}`}>
-            <h3 className="font-bold text-lg mb-1 hover:text-emerald-600 transition">{name}</h3>
+            <h3 className="font-bold text-lg mb-1 hover:text-emerald-600 transition line-clamp-1">{name}</h3>
           </Link>
-          <p className="text-gray-500 text-sm mb-2">{businessName} • {distance}</p>
+          <p className="text-gray-500 text-sm mb-1">{businessName} • {distance}</p>
+          {description && <p className="text-gray-600 text-sm mb-2 line-clamp-2">{description}</p>}
+          {formatItemsList()}
           
           <div className="flex items-center justify-between mt-3">
             <div>
