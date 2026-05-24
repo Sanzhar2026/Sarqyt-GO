@@ -1,3 +1,4 @@
+// app/page.tsx - исправленный хедер с кнопками языка
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -17,7 +18,7 @@ type Tab = 'preferences' | 'discover';
 export default function HomePage() {
   const router = useRouter();
   const location = useGeolocation();
-  const { lang } = useLanguage(); 
+  const { lang, setLang } = useLanguage(); 
   const [activeTab, setActiveTab] = useState<Tab>('discover');
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,132 +34,119 @@ export default function HomePage() {
   const initialLoadDoneRef = useRef(false);
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Функция загрузки данных - ТОЛЬКО ДОСТУПНЫЕ СЮРПРИЗЫ
-  // app/page.tsx - найдите функцию loadNearbyBags и ИСПРАВЬТЕ
+  // Функция загрузки данных
+  const loadNearbyBags = useCallback(async (showLoading = false, isInitial = false) => {
+    if (!isMountedRef.current) return;
+    
+    if (showLoading && !isInitial) {
+      setIsRefreshing(true);
+    }
+    
+    if (!navigator.geolocation) {
+      if (showLoading && !isInitial) setIsRefreshing(false);
+      if (isInitial) setLoading(false);
+      return;
+    }
 
-const loadNearbyBags = useCallback(async (showLoading = false, isInitial = false) => {
-  if (!isMountedRef.current) return;
-  
-  if (showLoading && !isInitial) {
-    setIsRefreshing(true);
-  }
-  
-  if (!navigator.geolocation) {
-    if (showLoading && !isInitial) setIsRefreshing(false);
-    if (isInitial) setLoading(false);
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const { latitude: lat, longitude: lon } = pos.coords;
-      try {
-        const data = await getNearbyBags(lat, lon, 10);
-        
-        console.log('📦 ДАННЫЕ ИЗ API:', data);
-        
-        // ✅ ЖЕСТКАЯ ФИЛЬТРАЦИЯ - УБИРАЕМ ВСЕ, ГДЕ available_quantity <= 0
-        const filteredSuppliers = data
-          .map(supplier => ({
-            ...supplier,
-            surprise_bags: supplier.surprise_bags.filter(bag => {
-              // Показываем ТОЛЬКО если есть количество
-              const hasQuantity = bag.available_quantity > 0;
-              if (!hasQuantity) {
-                console.log(`❌ СКРЫВАЕМ ${bag.name}: осталось ${bag.available_quantity}`);
-              }
-              return hasQuantity;
-            })
-          }))
-          .filter(supplier => supplier.surprise_bags.length > 0);
-        
-        console.log('✅ ПОСЛЕ ФИЛЬТРАЦИИ:', filteredSuppliers.length, 'поставщиков');
-        
-        if (isMountedRef.current) {
-          setSuppliers(filteredSuppliers);
-          setLastUpdate(new Date());
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        try {
+          const data = await getNearbyBags(lat, lon, 10);
+          
+          console.log('📦 ДАННЫЕ ИЗ API:', data);
+          
+          const filteredSuppliers = data
+            .map(supplier => ({
+              ...supplier,
+              surprise_bags: supplier.surprise_bags.filter(bag => {
+                const hasQuantity = bag.available_quantity > 0;
+                if (!hasQuantity) {
+                  console.log(`❌ СКРЫВАЕМ ${bag.name}: осталось ${bag.available_quantity}`);
+                }
+                return hasQuantity;
+              })
+            }))
+            .filter(supplier => supplier.surprise_bags.length > 0);
+          
+          console.log('✅ ПОСЛЕ ФИЛЬТРАЦИИ:', filteredSuppliers.length, 'поставщиков');
+          
+          if (isMountedRef.current) {
+            setSuppliers(filteredSuppliers);
+            setLastUpdate(new Date());
+          }
+        } catch (err) {
+          console.error('Ошибка загрузки:', err);
+        } finally {
+          if (isMountedRef.current) {
+            if (showLoading && !isInitial) setIsRefreshing(false);
+            if (isInitial) setLoading(false);
+          }
         }
-      } catch (err) {
-        console.error('Ошибка загрузки:', err);
-      } finally {
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
         if (isMountedRef.current) {
           if (showLoading && !isInitial) setIsRefreshing(false);
           if (isInitial) setLoading(false);
         }
       }
-    },
-    (error) => {
-      console.error('Geolocation error:', error);
-      if (isMountedRef.current) {
-        if (showLoading && !isInitial) setIsRefreshing(false);
-        if (isInitial) setLoading(false);
+    );
+  }, []);
+
+  // WebSocket обработка
+  useEffect(() => {
+    if (!lastMessage) return;
+    
+    console.log('📡 WebSocket событие:', lastMessage);
+    
+    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
+      console.log('🆕 Новый сюрприз! Мгновенное обновление...');
+      loadNearbyBags(false, false);
+      
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Новый сюрприз! 🎁', {
+          body: 'Появился новый сюрприз рядом с вами!',
+          icon: '/logo.png'
+        });
       }
     }
-  );
-}, []);
-
-  // Слушаем WebSocket сообщения для обновления в реальном времени
-// app/page.tsx - обновите обработку WebSocket сообщений
-
-// Слушаем WebSocket сообщения для обновления в реальном времени
-useEffect(() => {
-  if (!lastMessage) return;
-  
-  console.log('📡 WebSocket событие:', lastMessage);
-  
-  // Обновление при появлении нового сюрприза
-  if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
-    console.log('🆕 Новый сюрприз! Мгновенное обновление...');
-    loadNearbyBags(false, false);
     
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Новый сюрприз! 🎁', {
-        body: 'Появился новый сюрприз рядом с вами!',
-        icon: '/logo.png'
-      });
+    if (lastMessage.type === 'delete_bag') {
+      console.log('🗑️ Сюрприз удален, обновляем список...');
+      loadNearbyBags(false, false);
     }
-  }
-  
-  // Обновление при удалении или изменении количества
-  if (lastMessage.type === 'delete_bag') {
-    console.log('🗑️ Сюрприз удален, обновляем список...');
-    loadNearbyBags(false, false);
-  }
-  
-  // ============ ГЛАВНОЕ: ОБРАБОТКА ОБНОВЛЕНИЯ КОЛИЧЕСТВА ============
-  if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
-    const { bag_id, available_quantity, is_active } = lastMessage.data;
-    console.log(`📦 Сюрприз ${bag_id}: осталось ${available_quantity}, активен: ${is_active}`);
     
-    // Обновляем локальное состояние БЕЗ ПОЛНОЙ ПЕРЕЗАГРУЗКИ
-    setSuppliers(prevSuppliers => {
-      const newSuppliers = prevSuppliers
-        .map(supplier => ({
-          ...supplier,
-          surprise_bags: supplier.surprise_bags
-            .map(bag => 
-              bag.id === bag_id 
-                ? { ...bag, available_quantity: available_quantity, is_active: is_active }
-                : bag
-            )
-            .filter(bag => bag.available_quantity > 0) // Убираем если 0
-        }))
-        .filter(supplier => supplier.surprise_bags.length > 0); // Убираем поставщиков без сюрпризов
+    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
+      const { bag_id, available_quantity, is_active } = lastMessage.data;
+      console.log(`📦 Сюрприз ${bag_id}: осталось ${available_quantity}, активен: ${is_active}`);
       
-      console.log('🔄 Локальное обновление:', newSuppliers.length, 'поставщиков');
-      return newSuppliers;
-    });
-    
-    // Дополнительно обновляем время последнего обновления
-    setLastUpdate(new Date());
-  }
-}, [lastMessage, loadNearbyBags]);
+      setSuppliers(prevSuppliers => {
+        const newSuppliers = prevSuppliers
+          .map(supplier => ({
+            ...supplier,
+            surprise_bags: supplier.surprise_bags
+              .map(bag => 
+                bag.id === bag_id 
+                  ? { ...bag, available_quantity: available_quantity, is_active: is_active }
+                  : bag
+              )
+              .filter(bag => bag.available_quantity > 0)
+          }))
+          .filter(supplier => supplier.surprise_bags.length > 0);
+        
+        console.log('🔄 Локальное обновление:', newSuppliers.length, 'поставщиков');
+        return newSuppliers;
+      });
+      
+      setLastUpdate(new Date());
+    }
+  }, [lastMessage, loadNearbyBags]);
 
   const handleManualRefresh = () => {
     loadNearbyBags(true, false);
   };
 
-  // Запрос разрешения на уведомления
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
@@ -226,7 +214,7 @@ useEffect(() => {
     fetchUser();
   }, []);
 
-  // ПЕРВОНАЧАЛЬНАЯ ЗАГРУЗКА ДАННЫХ - ТОЛЬКО 1 РАЗ
+  // Первоначальная загрузка
   useEffect(() => {
     if (showSplash) return;
     
@@ -236,12 +224,26 @@ useEffect(() => {
     }
   }, [showSplash, loadNearbyBags]);
 
-  // Очистка при размонтировании
+  // Очистка
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
   }, []);
+
+  // Обновление при событии
+  useEffect(() => {
+    const handleRefreshOffers = () => {
+      console.log('🔄 Принудительное обновление списка');
+      loadNearbyBags(false, false);
+    };
+    
+    window.addEventListener('refreshOffers', handleRefreshOffers);
+    
+    return () => {
+      window.removeEventListener('refreshOffers', handleRefreshOffers);
+    };
+  }, [loadNearbyBags]);
 
   const handleLogout = async () => {
     await fetch(`${API_URL}/logout`, { method: 'GET', credentials: 'include' });
@@ -258,20 +260,7 @@ useEffect(() => {
         : [...prev, categoryId]
     );
   };
-// app/page.tsx - добавь этот useEffect
 
-useEffect(() => {
-  const handleRefreshOffers = () => {
-    console.log('🔄 Принудительное обновление списка');
-    loadNearbyBags(false, false);
-  };
-  
-  window.addEventListener('refreshOffers', handleRefreshOffers);
-  
-  return () => {
-    window.removeEventListener('refreshOffers', handleRefreshOffers);
-  };
-}, [loadNearbyBags]);
   const t = {
     kz: {
       greeting: 'Сәлем',
@@ -366,6 +355,7 @@ useEffect(() => {
         {isConnected ? '🟢 ' + t[lang].connected : '🔴 ' + t[lang].disconnected}
       </div>
 
+      {/* Header с логотипом и кнопками языка */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <div>
@@ -385,6 +375,30 @@ useEffect(() => {
           </div>
           
           <div className="flex gap-2">
+            {/* Кнопки языка - внутри хедера */}
+            <div className="flex gap-1 mr-2">
+              <button
+                onClick={() => setLang('kz')}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                  lang === 'kz' 
+                    ? 'bg-white text-emerald-600' 
+                    : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                Қаз
+              </button>
+              <button
+                onClick={() => setLang('ru')}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                  lang === 'ru' 
+                    ? 'bg-white text-emerald-600' 
+                    : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                Рус
+              </button>
+            </div>
+            
             {user ? (
               <button onClick={handleLogout} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition flex items-center gap-2">
                 <span>🚪</span>

@@ -1,10 +1,11 @@
-// app/offers/page.tsx - Полностью связан с вашим бэкендом
+// app/offers/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useLanguage } from '../layout';
 
 interface SurpriseBag {
   id: number;
@@ -21,32 +22,33 @@ interface SurpriseBag {
 
 export default function OffersPage() {
   const router = useRouter();
+  const { lang, setLang } = useLanguage();
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBag, setSelectedBag] = useState<SurpriseBag | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [bookedBags, setBookedBags] = useState<Set<number>>(new Set());
 
-  // Загрузка доступных пакетов из бэкенда
   const fetchBags = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/api/surprise-bags', {
-        credentials: 'include'  // Важно для cookies
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags', {
+        credentials: 'include'
       });
       const data = await response.json();
       setBags(data);
       
-      // Проверяем брони для каждого пакета
       const booked = new Set<number>();
       for (const bag of data) {
-        const checkRes = await fetch(`http://localhost:8000/api/bookings/check/${bag.id}`, {
-          credentials: 'include'
-        });
-        const checkData = await checkRes.json();
-        if (checkData.is_booked) {
-          booked.add(bag.id);
-        }
+        try {
+          const checkRes = await fetch(`https://toogood-2ncf.onrender.com/api/bookings/check/${bag.id}`, {
+            credentials: 'include'
+          });
+          const checkData = await checkRes.json();
+          if (checkData.is_booked) {
+            booked.add(bag.id);
+          }
+        } catch (e) {}
       }
       setBookedBags(booked);
     } catch (error) {
@@ -58,7 +60,6 @@ export default function OffersPage() {
 
   useEffect(() => {
     fetchBags();
-    // Обновление каждые 30 секунд
     const interval = setInterval(fetchBags, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -72,7 +73,7 @@ export default function OffersPage() {
     if (!selectedBag) return;
     
     try {
-      const response = await fetch('http://localhost:8000/api/bookings/create', {
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/bookings/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -82,16 +83,10 @@ export default function OffersPage() {
       const data = await response.json();
       
       if (data.success) {
-        // Добавляем в корзину через бэкенд
         await addToCart(selectedBag.id);
-        
         alert(`✅ ${selectedBag.name} забронирован на 15 минут!`);
-        
-        // Обновляем список
         await fetchBags();
         setShowModal(false);
-        
-        // Перенаправляем в корзину
         router.push('/cart');
       } else {
         alert(`❌ ${data.message}`);
@@ -104,7 +99,7 @@ export default function OffersPage() {
 
   const addToCart = async (bagId: number) => {
     try {
-      const response = await fetch('http://localhost:8000/api/cart/add', {
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -113,7 +108,6 @@ export default function OffersPage() {
       
       const data = await response.json();
       if (data.success) {
-        // Обновляем счетчик в UI
         window.dispatchEvent(new Event('cartUpdated'));
       }
     } catch (error) {
@@ -135,11 +129,39 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 pt-12 pb-6">
-        <h1 className="text-2xl font-bold">🎁 Сюрприз-пакеты</h1>
+      {/* Header с кнопками языка */}
+      <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">
+            {lang === 'kz' ? '🎁 Сюрприз-пакеттер' : '🎁 Сюрприз-пакеты'}
+          </h1>
+          
+          {/* Кнопки языка */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setLang('kz')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                lang === 'kz' 
+                  ? 'bg-white text-emerald-600' 
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              Қаз
+            </button>
+            <button
+              onClick={() => setLang('ru')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                lang === 'ru' 
+                  ? 'bg-white text-emerald-600' 
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              Рус
+            </button>
+          </div>
+        </div>
         <p className="text-emerald-100 text-sm mt-1">
-          Выберите свой сюрприз-пакет
+          {lang === 'kz' ? 'Өзіңізге сюрприз-пакетті таңдаңыз' : 'Выберите свой сюрприз-пакет'}
         </p>
       </div>
 
@@ -148,12 +170,14 @@ export default function OffersPage() {
         {bags.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🎁</div>
-            <p className="text-gray-500">Все пакеты временно забронированы</p>
+            <p className="text-gray-500">
+              {lang === 'kz' ? 'Барлық пакеттер уақытша броньдалған' : 'Все пакеты временно забронированы'}
+            </p>
             <button 
               onClick={fetchBags}
               className="mt-4 text-emerald-600 underline"
             >
-              Обновить
+              {lang === 'kz' ? 'Жаңарту' : 'Обновить'}
             </button>
           </div>
         ) : (
@@ -174,7 +198,7 @@ export default function OffersPage() {
                   )}
                   {bookedBags.has(bag.id) && (
                     <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                      ⏱️ Забронирован
+                      ⏱️ {lang === 'kz' ? 'Броньдалған' : 'Забронирован'}
                     </div>
                   )}
                 </div>
@@ -205,7 +229,10 @@ export default function OffersPage() {
                           : 'bg-emerald-600 text-white hover:bg-emerald-700'
                       }`}
                     >
-                      {bookedBags.has(bag.id) ? 'Забронирован' : 'Выбрать'}
+                      {bookedBags.has(bag.id) 
+                        ? (lang === 'kz' ? 'Броньдалған' : 'Забронирован')
+                        : (lang === 'kz' ? 'Таңдау' : 'Выбрать')
+                      }
                     </button>
                   </div>
                 </div>
@@ -221,14 +248,16 @@ export default function OffersPage() {
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="text-center mb-4">
               <div className="text-6xl mb-3">⏱️</div>
-              <h2 className="text-2xl font-bold text-gray-800">Подтверждение</h2>
+              <h2 className="text-2xl font-bold text-gray-800">
+                {lang === 'kz' ? 'Растау' : 'Подтверждение'}
+              </h2>
             </div>
             
             <div className="bg-gray-50 rounded-xl p-4 mb-4">
               <h3 className="font-bold text-gray-800">{selectedBag.name}</h3>
               <p className="text-gray-600 text-sm mt-1">{selectedBag.description}</p>
               <div className="flex justify-between items-center mt-2">
-                <span className="text-gray-500">Стоимость:</span>
+                <span className="text-gray-500">{lang === 'kz' ? 'Құны' : 'Стоимость'}:</span>
                 <span className="text-xl font-bold text-emerald-600">
                   {formatPrice(selectedBag.discounted_price)}
                 </span>
@@ -237,7 +266,9 @@ export default function OffersPage() {
             
             <div className="bg-yellow-50 rounded-xl p-4 mb-4 border border-yellow-200">
               <p className="text-sm text-yellow-700">
-                ⏰ После подтверждения у вас будет <strong>15 минут</strong> на оплату!
+                ⏰ {lang === 'kz' 
+                  ? 'Растағаннан кейін төлемге <strong>15 минут</strong> уақытыңыз болады!'
+                  : 'После подтверждения у вас будет <strong>15 минут</strong> на оплату!'}
               </p>
             </div>
             
@@ -246,13 +277,13 @@ export default function OffersPage() {
                 onClick={() => setShowModal(false)}
                 className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50"
               >
-                Отмена
+                {lang === 'kz' ? 'Бас тарту' : 'Отмена'}
               </button>
               <button
                 onClick={confirmBooking}
                 className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg"
               >
-                Забронировать
+                {lang === 'kz' ? 'Броньдау' : 'Забронировать'}
               </button>
             </div>
           </div>

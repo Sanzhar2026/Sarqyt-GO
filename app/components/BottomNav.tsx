@@ -4,7 +4,6 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from './Logo';
-import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '../../app/layout';
 
 interface NavItem {
@@ -52,7 +51,7 @@ const navItems: NavItem[] = [
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { lang, setLang } = useLanguage();
+  const { lang } = useLanguage();
 
   const getLabel = (item: NavItem) => {
     return lang === 'kz' ? item.labelKz : item.labelRu;
@@ -95,30 +94,6 @@ export default function BottomNav() {
             </Link>
           );
         })}
-      </div>
-      
-      {/* Language Switcher - уменьшенный */}
-      <div className="flex justify-center gap-2 py-1.5 border-t border-gray-100">
-        <button
-          onClick={() => setLang('kz')}
-          className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition ${
-            lang === 'kz' 
-              ? 'bg-emerald-600 text-white' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Қаз
-        </button>
-        <button
-          onClick={() => setLang('ru')}
-          className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition ${
-            lang === 'ru' 
-              ? 'bg-emerald-600 text-white' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Рус
-        </button>
       </div>
     </div>
   );
