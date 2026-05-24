@@ -141,6 +141,9 @@ export default function CourierDashboard() {
     try {
       const res = await fetch(`${API_URL}/api/orders/${orderId}`, { credentials: 'include' });
       const data = await res.json();
+      console.log('📦 Заказ получен:', data);
+      console.log('🏪 Ресторан координаты:', data.supplier?.lat, data.supplier?.lon);
+      console.log('🏠 Клиент координаты:', data.customer_lat, data.customer_lon);
       setCurrentOrder(data);
     } catch (error) {
       console.error('Error fetching order:', error);
@@ -194,7 +197,6 @@ export default function CourierDashboard() {
         const data = JSON.parse(event.data);
         console.log('📨 WebSocket message:', data);
         
-        // ✅ Новый заказ для курьера
         if (data.type === 'new_order_for_courier') {
           showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
           
@@ -497,7 +499,6 @@ export default function CourierDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
           <div>
@@ -519,7 +520,6 @@ export default function CourierDashboard() {
         </div>
       </div>
 
-      {/* Карта с курьерами */}
       <div className="relative h-64 m-4 rounded-2xl overflow-hidden shadow-lg">
         <CourierMap
           orderId={currentOrder?.id}
@@ -559,7 +559,6 @@ export default function CourierDashboard() {
         </button>
       </div>
 
-      {/* Ползунок переключения режима */}
       <div className="px-4 mb-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -622,7 +621,7 @@ export default function CourierDashboard() {
         </div>
       </div>
 
-      {/* ✅ МАРШРУТ ДОСТАВКИ - когда заказ в пути */}
+      {/* МАРШРУТ ДОСТАВКИ */}
       {currentOrder && currentOrder.status === 'out_for_delivery' && (
         <div className="px-4 mb-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
