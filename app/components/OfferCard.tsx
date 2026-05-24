@@ -33,6 +33,7 @@ export default function OfferCard({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
 
+  // ✅ API_URL определен внутри компонента
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
   // Проверяем авторизацию
@@ -44,7 +45,7 @@ export default function OfferCard({
     return false;
   };
 
-  // Добавление в корзину с уменьшением количества
+  // Добавление в корзину
   const addToCart = async () => {
     if (!isAuthenticated()) {
       setShowAuthModal(true);
@@ -70,28 +71,43 @@ export default function OfferCard({
       console.log('📦 Ответ сервера:', data);
 
       if (response.ok) {
-        // Показываем уведомление
-        if (data.available_quantity === 0) {
-          showNotification('✅ Товар забронирован! Перейдите в корзину для оплаты.', 'success');
+        // ✅ Добавляем в localStorage
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const existingItem = cart.find((item: any) => item.id === id);
+        
+        if (existingItem) {
+          existingItem.quantity += 1;
         } else {
-          showNotification(`✅ Товар добавлен в корзину! Осталось ${data.available_quantity} шт.`, 'success');
+          cart.push({
+            id: id,
+            name: name,
+            businessName: businessName,
+            price: price,
+            originalPrice: originalPrice,
+            discount: discount,
+            imageUrl: imageUrl,
+            quantity: 1
+          });
         }
         
-        // ✅ ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ГЛАВНУЮ СТРАНИЦУ
-        if (onOrderSuccess) {
-          onOrderSuccess();
-        }
+        localStorage.setItem('cart', JSON.stringify(cart));
         
-        // Дополнительно отправляем событие для обновления
-        window.dispatchEvent(new CustomEvent('refreshOffers'));
+        // Показываем уведомление
+        showNotification('✅ Товар добавлен в корзину!', 'success');
         
         // Обновляем счетчик в navbar
         window.dispatchEvent(new Event('cartUpdated'));
         
-        // Небольшая задержка перед переходом в корзину
+        // Обновляем главную страницу
+        if (onOrderSuccess) {
+          onOrderSuccess();
+        }
+        window.dispatchEvent(new CustomEvent('refreshOffers'));
+        
+        // ✅ Переход на страницу offers (список предложений)
         setTimeout(() => {
-          router.push('/cart');
-        }, 1500);
+          router.push('/offers');
+        }, 1000);
         
       } else {
         showNotification(data.detail || 'Ошибка при добавлении в корзину', 'error');

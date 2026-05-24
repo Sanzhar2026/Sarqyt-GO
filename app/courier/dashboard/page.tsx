@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
 const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: false });
+const DeliveryMapWithRoute = dynamic(() => import('../../components/DeliveryMapWithRoute'), { ssr: false });
 
 export default function CourierDashboard() {
   const router = useRouter();
@@ -158,6 +159,28 @@ export default function CourierDashboard() {
     }
   };
 
+  const takeOrder = async (orderId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/courier/take-order/${orderId}`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert('✅ Заказ взят в работу!');
+        fetchStatus();
+        fetchCurrentOrder(orderId);
+        setShowOrdersList(false);
+      } else {
+        alert(data.message || 'Ошибка');
+      }
+    } catch (error) {
+      console.error('Error taking order:', error);
+      alert('Ошибка при взятии заказа');
+    }
+  };
+
   const connectWebSocket = () => {
     const ws = new WebSocket(`${API_URL.replace('https', 'wss')}/ws/courier-tracking`);
     wsRef.current = ws;
@@ -170,6 +193,26 @@ export default function CourierDashboard() {
       try {
         const data = JSON.parse(event.data);
         console.log('📨 WebSocket message:', data);
+        
+        // ✅ Новый заказ для курьера
+        if (data.type === 'new_order_for_courier') {
+          showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
+          
+          setAvailableOrders(prev => [{
+            order_id: data.data.order_id,
+            order_number: data.data.order_number,
+            supplier_name: data.data.supplier_name,
+            distance_km: 0,
+            estimated_time_minutes: 0,
+            amount: data.data.amount,
+            bag_name: data.data.bag_name,
+            customer_address: data.data.customer_address,
+            supplier_lat: data.data.supplier_lat,
+            supplier_lon: data.data.supplier_lon,
+            customer_lat: data.data.customer_lat,
+            customer_lon: data.data.customer_lon
+          }, ...prev]);
+        }
         
         if (data.type === 'proposed_order') {
           setProposedOrder({
@@ -226,73 +269,54 @@ export default function CourierDashboard() {
     }, 3000);
   };
 
-  // Функция центрирования карты на текущем положении
   const centerToMyLocation = () => {
-  console.log('📍 Нажата кнопка геолокации');
-  setLocating(true);
-  
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        console.log(`📍 Текущие координаты: ${latitude}, ${longitude}`);
-        
-        setUserLocation({ lat: latitude, lon: longitude });
-        
-        // Отправляем событие для карты
-        window.dispatchEvent(new CustomEvent('centerMap', { 
-          detail: { 
-            lat: latitude, 
-            lon: longitude,
-            zoom: 17  // Максимальное увеличение
-          } 
-        }));
-        
-        setLocating(false);
-        
-        // Дополнительно: показываем уведомление
-        showToast('📍 Ваше местоположение определено', 'success');
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-        let errorMessage = 'Не удалось определить местоположение. ';
-        switch(error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage += 'Разрешите доступ к геолокации в настройках браузера.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage += 'Информация о местоположении недоступна.';
-            break;
-          case error.TIMEOUT:
-            errorMessage += 'Время ожидания истекло. Попробуйте еще раз.';
-            break;
-        }
-        alert(errorMessage);
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  } else {
-    alert('Геолокация не поддерживается вашим браузером');
-    setLocating(false);
-  }
-};
-const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-  const toast = document.createElement('div');
-  toast.className = `fixed bottom-24 left-4 right-4 z-[2000] p-4 rounded-xl text-white text-center transition-all duration-300 ${
-    type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
-  }`;
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 2000);
-};
-  // Переключение режима онлайн/офлайн
+    console.log('📍 Нажата кнопка геолокации');
+    setLocating(true);
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          console.log(`📍 Текущие координаты: ${latitude}, ${longitude}`);
+          
+          setUserLocation({ lat: latitude, lon: longitude });
+          
+          window.dispatchEvent(new CustomEvent('centerMap', { 
+            detail: { lat: latitude, lon: longitude, zoom: 16 }
+          }));
+          
+          setLocating(false);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          let errorMessage = 'Не удалось определить местоположение. ';
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += 'Разрешите доступ к геолокации.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += 'Информация о местоположении недоступна.';
+              break;
+            case error.TIMEOUT:
+              errorMessage += 'Время ожидания истекло.';
+              break;
+          }
+          alert(errorMessage);
+          setLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      alert('Геолокация не поддерживается');
+      setLocating(false);
+    }
+  };
+
   const toggleOnlineMode = async () => {
     if (switching) return;
     setSwitching(true);
     
     if (!isOnline) {
-      // Выход на линию
       if (!navigator.geolocation) {
         alert('Разрешите доступ к геолокации');
         setSwitching(false);
@@ -333,7 +357,6 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         }
       );
     } else {
-      // Уход с линии
       try {
         const res = await fetch(`${API_URL}/api/courier/go-offline`, {
           method: 'POST',
@@ -425,26 +448,6 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     }
   };
 
-  const selectOrder = async (orderId: number) => {
-    try {
-      const res = await fetch(`${API_URL}/api/courier/accept-order/${orderId}`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      
-      const data = await res.json();
-      if (data.success) {
-        setShowOrdersList(false);
-        fetchStatus();
-        fetchCurrentOrder(orderId);
-      } else {
-        alert(data.message);
-      }
-    } catch (error) {
-      console.error('Error selecting order:', error);
-    }
-  };
-
   const getStatusText = (status: string) => {
     switch (status) {
       case 'almost_done': return '🔔 Почти закончил';
@@ -453,6 +456,16 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
       case 'nearby': return '📍 Рядом с клиентом';
       default: return '✅ На линии';
     }
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-24 left-4 right-4 z-50 p-4 rounded-xl text-white text-center ${
+      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+    } animate-slide-up`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
   };
 
   if (loading) {
@@ -506,20 +519,18 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         </div>
       </div>
 
-      {/* Карта с кнопками */}
-      <div className="relative h-80 m-4 rounded-2xl overflow-hidden shadow-lg">
+      {/* Карта с курьерами */}
+      <div className="relative h-64 m-4 rounded-2xl overflow-hidden shadow-lg">
         <CourierMap
           orderId={currentOrder?.id}
           restaurantLocation={currentOrder?.supplier ? { lat: currentOrder.supplier.lat, lon: currentOrder.supplier.lon } : undefined}
           customerLocation={currentOrder?.customer_lat ? { lat: currentOrder.customer_lat, lon: currentOrder.customer_lon } : undefined}
         />
         
-        {/* Кнопка геолокации */}
         <button
           onClick={centerToMyLocation}
           disabled={locating}
           className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95 disabled:opacity-50"
-          style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
           title="Мое местоположение"
         >
           {locating ? (
@@ -534,13 +545,11 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
           )}
         </button>
         
-        {/* Кнопка показать всех курьеров */}
         <button
           onClick={() => {
             window.dispatchEvent(new CustomEvent('fitBoundsToCouriers'));
           }}
           className="absolute bottom-4 left-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95"
-          style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
           title="Показать всех курьеров"
         >
           <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -568,7 +577,6 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
               </div>
             </div>
             
-            {/* Toggle Switch */}
             <button
               onClick={toggleOnlineMode}
               disabled={switching}
@@ -614,8 +622,29 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
         </div>
       </div>
 
-      {/* Текущий заказ */}
-      {currentOrder && (
+      {/* ✅ МАРШРУТ ДОСТАВКИ - когда заказ в пути */}
+      {currentOrder && currentOrder.status === 'out_for_delivery' && (
+        <div className="px-4 mb-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <h2 className="font-bold text-lg mb-4">🗺️ Маршрут доставки</h2>
+            <DeliveryMapWithRoute
+              orderId={currentOrder.id}
+              startLat={userLocation?.lat || currentOrder.supplier?.lat || 0}
+              startLon={userLocation?.lon || currentOrder.supplier?.lon || 0}
+              endLat={currentOrder.customer_lat || 0}
+              endLon={currentOrder.customer_lon || 0}
+              supplierName={currentOrder.supplier?.business_name || 'Ресторан'}
+              customerAddress={currentOrder.customer_address || 'Адрес клиента'}
+              onProgressUpdate={(progress) => {
+                console.log(`🚚 Прогресс доставки: ${progress}%`);
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Текущий заказ (до начала доставки) */}
+      {currentOrder && currentOrder.status !== 'out_for_delivery' && (
         <div className="px-4 mb-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h2 className="font-bold text-lg mb-4">📦 Текущий заказ #{currentOrder.order_number}</h2>
@@ -627,7 +656,7 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Клиент:</span>
-                <span className="font-medium">{currentOrder.customer_address}</span>
+                <span className="font-medium">{currentOrder.customer_address || 'Адрес не указан'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Сумма:</span>
@@ -667,12 +696,12 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="font-semibold">{order.supplier_name}</p>
-                      <p className="text-xs text-gray-500">{order.distance_km} км • ~{order.estimated_time_minutes} мин</p>
+                      <p className="text-xs text-gray-500">{order.amount} ₸</p>
                     </div>
                     <span className="font-bold text-emerald-600">{order.amount} ₸</span>
                   </div>
                   <button
-                    onClick={() => selectOrder(order.order_id)}
+                    onClick={() => takeOrder(order.order_id)}
                     className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm"
                   >
                     Взять заказ
@@ -684,7 +713,7 @@ const showToast = (message: string, type: 'success' | 'error' = 'success') => {
           
           {showOrdersList && availableOrders.length === 0 && (
             <div className="mt-3 bg-white rounded-xl p-6 text-center">
-              <p className="text-gray-500">Нет доступных заказов поблизости</p>
+              <p className="text-gray-500">Нет доступных заказов</p>
             </div>
           )}
         </div>
