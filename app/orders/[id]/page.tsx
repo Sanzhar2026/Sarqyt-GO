@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 
 const DeliveryMap = dynamic(() => import('../../components/DeliveryMap'), {
   ssr: false,
@@ -38,6 +39,12 @@ interface Order {
   delivery_deadline?: string;
   delivery_started_at?: string;
   auto_refund_processed?: boolean;
+  assigned_courier?: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    courier_type: string;
+  };
 }
 
 export default function OrderDetailPage() {
@@ -50,8 +57,11 @@ export default function OrderDetailPage() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundReason, setRefundReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lon: number; city: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
+
+  const API_URL = 'https://toogood-2ncf.onrender.com';
 
   // Получаем геолокацию
   useEffect(() => {
@@ -82,28 +92,58 @@ export default function OrderDetailPage() {
   }, []);
 
   // Загрузка заказа
+  const fetchOrder = async () => {
+    const orderId = params?.id;
+    
+    if (!orderId) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Order not found');
+      const data = await response.json();
+      setOrder(data);
+    } catch (err) {
+      console.error(err);
+      setError('Заказ не найден');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchOrder = async () => {
-      const resolvedParams = await params;
-      const orderId = resolvedParams?.id;
+    fetchOrder();
+  }, [params?.id]);
+
+  // WebSocket для получения уведомлений о прибытии курьера
+  useEffect(() => {
+    const orderId = params?.id;
+    if (!orderId) return;
+
+    const ws = new WebSocket('wss://toogood-2ncf.onrender.com/ws');
+    
+    ws.onopen = () => {
+      console.log('🔌 WebSocket connected for order');
+      ws.send(JSON.stringify({ type: 'subscribe', channel: `order_${orderId}` }));
+    };
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('📨 Получено уведомление:', data);
       
-      if (!orderId) return;
-      
-      try {
-        const response = await fetch(`https://toogood-2ncf.onrender.com/api/orders/${orderId}`);
-        if (!response.ok) throw new Error('Order not found');
-        const data = await response.json();
-        setOrder(data);
-      } catch (err) {
-        console.error(err);
-        setError('Заказ не найден');
-      } finally {
-        setLoading(false);
+      if (data.type === 'courier_arrived') {
+        showToast(`${data.data.message}! ${data.data.courier_name} ожидает вас.`, 'info');
+        fetchOrder();
       }
     };
     
-    fetchOrder();
-  }, [params]);
+    ws.onclose = () => {
+      console.log('🔌 WebSocket disconnected');
+    };
+    
+    return () => ws.close();
+  }, [params?.id]);
 
   // Таймер обратного отсчета для доставки
   useEffect(() => {
@@ -130,47 +170,33 @@ export default function OrderDetailPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const fetchOrder = async () => {
-    const resolvedParams = await params;
-    const orderId = resolvedParams?.id;
-    if (!orderId) return;
+  // КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ ЗАКАЗА
+  const confirmDelivery = async () => {
+    if (!order) return;
     
+    setConfirming(true);
     try {
-      const response = await fetch(`https://toogood-2ncf.onrender.com/api/orders/${orderId}`);
-      const data = await response.json();
-      setOrder(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ ЗАКАЗА
-  const handleReceive = async () => {
-    if (!confirm('Подтверждаете получение заказа? После подтверждения возврат будет невозможен.')) return;
-    
-    setSubmitting(true);
-    try {
-      const response = await fetch(`https://toogood-2ncf.onrender.com/api/order/${order?.id}/receive`, {
+      const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
       });
       
-      if (response.ok) {
-        alert('✅ Заказ получен! Спасибо за покупку.');
-        await fetchOrder();
+      const data = await response.json();
+      if (data.success) {
+        showToast('✅ Спасибо! Заказ получен.', 'success');
+        fetchOrder();
       } else {
-        const error = await response.json();
-        alert(`❌ ${error.detail || 'Ошибка'}`);
+        alert(data.message || 'Ошибка');
       }
-    } catch (err) {
-      alert('❌ Ошибка при подтверждении получения');
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Ошибка при подтверждении');
     } finally {
-      setSubmitting(false);
+      setConfirming(false);
     }
   };
 
-  // ❌ КЛИЕНТ ЗАПРАШИВАЕТ ВОЗВРАТ
+  // КЛИЕНТ ЗАПРАШИВАЕТ ВОЗВРАТ
   const handleRequestRefund = async () => {
     if (!refundReason.trim()) {
       alert('Укажите причину возврата');
@@ -179,7 +205,7 @@ export default function OrderDetailPage() {
     
     setSubmitting(true);
     try {
-      const response = await fetch(`https://toogood-2ncf.onrender.com/api/order/${order?.id}/reject`, {
+      const response = await fetch(`${API_URL}/api/order/${order?.id}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -190,7 +216,7 @@ export default function OrderDetailPage() {
         alert('✅ Запрос на возврат отправлен. Администратор рассмотрит его в ближайшее время.');
         setShowRefundModal(false);
         setRefundReason('');
-        await fetchOrder();
+        fetchOrder();
       } else {
         const error = await response.json();
         alert(`❌ ${error.detail || 'Ошибка'}`);
@@ -209,7 +235,8 @@ export default function OrderDetailPage() {
       preparing: 'bg-purple-500',
       ready_for_pickup: 'bg-orange-500',
       out_for_delivery: 'bg-indigo-500',
-      delivered: 'bg-green-500',
+      nearby: 'bg-green-500',
+      delivered: 'bg-green-600',
       cancelled: 'bg-red-500'
     };
     return colors[status] || 'bg-gray-500';
@@ -222,21 +249,32 @@ export default function OrderDetailPage() {
       preparing: { kz: 'Дайындалуда', ru: 'Готовится' },
       ready_for_pickup: { kz: 'Дайын', ru: 'Готов к выдаче' },
       out_for_delivery: { kz: 'Жеткізілуде', ru: 'Доставляется' },
+      nearby: { kz: 'Жақын жерде', ru: 'Курьер рядом' },
       delivered: { kz: 'Жеткізілді', ru: 'Доставлен' },
       cancelled: { kz: 'Бас тартылды', ru: 'Отменен' }
     };
     return statusMap[status]?.[lang] || status;
   };
 
-  // Расчет прогресс-бара
   const getProgressWidth = () => {
     if (order?.status === 'delivered') return '100%';
-    if (order?.status === 'out_for_delivery') return '90%';
+    if (order?.status === 'nearby') return '90%';
+    if (order?.status === 'out_for_delivery') return '80%';
     if (order?.status === 'ready_for_pickup') return '75%';
     if (order?.status === 'preparing') return '60%';
     if (order?.status === 'confirmed') return '40%';
     if (order?.status === 'pending') return '20%';
     return '0%';
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-24 left-4 right-4 z-50 p-4 rounded-xl text-white text-center ${
+      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+    } animate-slide-up`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
   };
 
   if (loading) {
@@ -264,14 +302,6 @@ export default function OrderDetailPage() {
       </div>
     );
   }
-
-  const defaultLat = location?.lat || 50.283;
-  const defaultLon = location?.lon || 57.167;
-  
-  const supplierLat = order.supplier_lat || defaultLat;
-  const supplierLon = order.supplier_lon || defaultLon;
-  const customerLat = order.customer_lat || (defaultLat + 0.01);
-  const customerLon = order.customer_lon || (defaultLon + 0.01);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -312,96 +342,105 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* ============ КНОПКИ ДЛЯ КЛИЕНТА ============ */}
-        
-        {/* ✅ Зеленый блок: заказ в доставке */}
-        {order.status === 'out_for_delivery' && order.payment_status !== 'refunded' && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 shadow-sm">
-            <div className="text-center mb-4">
-              <span className="text-5xl">🚚</span>
-              <h2 className="font-bold text-xl text-green-700 mt-2">Ваш заказ в пути!</h2>
-              <p className="text-green-600 text-sm">Курьер уже выехал к вам</p>
-            </div>
-            
-            <div className="text-center mb-6">
-              <p className="text-3xl font-mono font-bold text-green-600">
+        {/* КНОПКА ДЛЯ КЛИЕНТА - ПОДТВЕРЖДЕНИЕ ПОЛУЧЕНИЯ */}
+        {order.status === 'nearby' && (
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
+            <div className="text-5xl mb-3">🚚</div>
+            <h2 className="font-bold text-xl text-green-700 mb-2">Курьер рядом!</h2>
+            {order.assigned_courier && (
+              <p className="text-green-600 text-sm mb-2">
+                {order.assigned_courier.first_name} {order.assigned_courier.last_name} ожидает вас
+              </p>
+            )}
+            <p className="text-green-600 text-sm mb-4">
+              Курьер уже у вашей двери. Подтвердите получение заказа.
+            </p>
+            <button
+              onClick={confirmDelivery}
+              disabled={confirming}
+              className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold text-lg"
+            >
+              {confirming ? 'Подтверждение...' : '✅ ПОЛУЧИЛ ЗАКАЗ'}
+            </button>
+          </div>
+        )}
+
+        {/* Заказ в пути */}
+        {order.status === 'out_for_delivery' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
+            <div className="text-5xl mb-3">🚚</div>
+            <h2 className="font-bold text-xl text-blue-700 mb-2">Ваш заказ в пути!</h2>
+            <p className="text-blue-600 text-sm">Курьер уже выехал к вам</p>
+            <div className="mt-4">
+              <p className="text-3xl font-mono font-bold text-blue-600">
                 ⏱️ {formatTime(timeLeft)}
               </p>
               <p className="text-xs text-gray-500">Осталось времени на получение</p>
             </div>
-            
-            <button
-              onClick={handleReceive}
-              disabled={submitting}
-              className="w-full bg-green-600 text-white py-4 rounded-xl font-semibold text-lg mb-3 hover:bg-green-700 transition disabled:opacity-50"
-            >
-              ✅ ПОЛУЧИЛ ЗАКАЗ
-            </button>
-            
-            <button
-              onClick={() => setShowRefundModal(true)}
-              disabled={submitting}
-              className="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition disabled:opacity-50"
-            >
-              ❌ ОТКАЗАТЬСЯ ОТ ЗАКАЗА
-            </button>
           </div>
         )}
 
-        {/* ✅ Синий блок: заказ успешно доставлен */}
+        {/* Заказ доставлен */}
         {order.status === 'delivered' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <span className="text-5xl">✅</span>
-            <h2 className="font-bold text-xl text-blue-700 mt-2">Заказ успешно доставлен!</h2>
-            <p className="text-blue-600 text-sm mt-1">Спасибо, что выбрали нас</p>
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
+            <div className="text-5xl mb-3">✅</div>
+            <h2 className="font-bold text-xl text-green-700 mb-2">Заказ успешно доставлен!</h2>
+            <p className="text-green-600 text-sm mt-1">Спасибо, что выбрали нас</p>
           </div>
         )}
 
-        {/* 🟡 Желтый блок: запрос на возврат отправлен */}
+        {/* Запрос на возврат отправлен */}
         {order.refund_status === 'requested' && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <span className="text-5xl">⏳</span>
+            <div className="text-5xl mb-3">⏳</div>
             <h2 className="font-bold text-xl text-yellow-700 mt-2">Запрос на возврат отправлен</h2>
             <p className="text-yellow-600 text-sm mt-1">Администратор рассмотрит ваш запрос</p>
-            {order.refund_reason && (
-              <p className="text-xs text-gray-500 mt-3">Причина: {order.refund_reason}</p>
-            )}
           </div>
         )}
 
-        {/* 🔴 Красный блок: возврат выполнен */}
-        {(order.payment_status === 'refunded' || order.refund_status === 'completed') && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <span className="text-5xl">💰</span>
-            <h2 className="font-bold text-xl text-red-700 mt-2">Деньги возвращены</h2>
-            <p className="text-red-600 text-sm mt-1">
-              Сумма {order.refund_amount || order.amount_paid} ₸ возвращена на вашу карту
-            </p>
-            {order.refund_reason && (
-              <p className="text-xs text-gray-500 mt-3">Причина: {order.refund_reason}</p>
-            )}
-          </div>
-        )}
-
-        {/* Map Section */}
-        {(order.status === 'out_for_delivery' || order.status === 'delivered') && (
+        {/* Карта */}
+        {(order.status === 'out_for_delivery' || order.status === 'nearby' || order.status === 'delivered') && (
           <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
             <h2 className="font-bold text-lg mb-4">🗺️ Карта доставки</h2>
             <DeliveryMap
-              supplierLat={supplierLat}
-              supplierLon={supplierLon}
-              customerLat={customerLat}
-              customerLon={customerLon}
+              supplierLat={order.supplier_lat}
+              supplierLon={order.supplier_lon}
+              customerLat={order.customer_lat}
+              customerLon={order.customer_lon}
               supplierName={order.supplier_name}
               customerAddress={order.customer_address || 'Адрес доставки'}
-              userLat={location?.lat || defaultLat}
-              userLon={location?.lon || defaultLon}
+              userLat={location?.lat}
+              userLon={location?.lon}
               orderStatus={order.status}
             />
           </div>
         )}
 
-        {/* Order Details Card */}
+        {/* Информация о курьере */}
+        {order.assigned_courier && order.status !== 'delivered' && (
+          <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
+            <h2 className="font-bold text-lg mb-4">🚚 Курьер</h2>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-3xl">
+                {order.assigned_courier.courier_type === 'driver' ? '🚗' : '🚶'}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">
+                  {order.assigned_courier.first_name} {order.assigned_courier.last_name}
+                </p>
+                <p className="text-sm text-gray-500">{order.assigned_courier.phone}</p>
+              </div>
+              <button
+                onClick={() => window.location.href = `tel:${order.assigned_courier?.phone}`}
+                className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold"
+              >
+                📞 Позвонить
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Детали заказа */}
         <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
           <h2 className="font-bold text-lg mb-4">📋 Детали заказа</h2>
           <div className="space-y-3">
@@ -417,33 +456,21 @@ export default function OrderDetailPage() {
               <span className="text-gray-600">Сумма:</span>
               <span className="font-bold text-emerald-600">{order.amount_paid} ₸</span>
             </div>
-            {order.pickup_time && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Время получения:</span>
-                <span className="font-medium">{order.pickup_time}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Address Card */}
-        <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">📍 Адрес доставки</h2>
-          <p className="text-gray-700">{order.customer_address || 'Адрес не указан'}</p>
-          
-          {order.supplier_address && (
-            <div className="mt-4 pt-4 border-t">
-              <h3 className="font-medium text-gray-600 mb-2">📦 Адрес самовывоза:</h3>
-              <p className="text-gray-700">{order.supplier_address}</p>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Адрес доставки:</span>
+              <span className="font-medium text-sm text-right">{order.customer_address || 'Адрес не указан'}</span>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* User Location Info */}
-        {location?.city && !locationLoading && (
-          <div className="bg-blue-50 rounded-2xl p-4 text-sm text-blue-700">
-            <span>📍 Ваше местоположение: {location.city}</span>
-          </div>
+        {/* Кнопка возврата */}
+        {order.status === 'out_for_delivery' && order.payment_status !== 'refunded' && (
+          <button
+            onClick={() => setShowRefundModal(true)}
+            className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition"
+          >
+            ❌ Отказаться от заказа
+          </button>
         )}
       </div>
 
@@ -485,10 +512,6 @@ export default function OrderDetailPage() {
                 Отмена
               </button>
             </div>
-            
-            <p className="text-xs text-gray-400 text-center mt-4">
-              ⏰ После отправки запроса администратор рассмотрит его в течение 24 часов
-            </p>
           </div>
         </div>
       )}

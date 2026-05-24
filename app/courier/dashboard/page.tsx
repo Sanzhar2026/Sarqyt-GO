@@ -24,6 +24,7 @@ export default function CourierDashboard() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [switching, setSwitching] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [arriving, setArriving] = useState(false);
   
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -171,7 +172,7 @@ export default function CourierDashboard() {
       
       const data = await res.json();
       if (data.success) {
-        alert('✅ Заказ взят в работу!');
+        showNotification('✅ Заказ взят в работу!', 'success');
         fetchStatus();
         fetchCurrentOrder(orderId);
         setShowOrdersList(false);
@@ -181,6 +182,33 @@ export default function CourierDashboard() {
     } catch (error) {
       console.error('Error taking order:', error);
       alert('Ошибка при взятии заказа');
+    }
+  };
+
+  // ✅ КУРЬЕР ПРИБЫЛ К КЛИЕНТУ
+  const courierArrived = async () => {
+    if (!currentOrder) return;
+    
+    setArriving(true);
+    try {
+      const res = await fetch(`${API_URL}/api/courier/arrived/${currentOrder.id}`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        showNotification(`✅ Уведомление отправлено клиенту!`, 'success');
+        fetchStatus();
+        fetchCurrentOrder(currentOrder.id);
+      } else {
+        alert(data.message || 'Ошибка');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Ошибка при отправке уведомления');
+    } finally {
+      setArriving(false);
     }
   };
 
@@ -226,6 +254,10 @@ export default function CourierDashboard() {
         } else if (data.type === 'order_assigned') {
           fetchStatus();
           fetchCurrentOrder(data.order_id);
+        } else if (data.type === 'delivery_confirmed') {
+          showNotification('✅ Клиент подтвердил получение заказа!', 'success');
+          fetchStatus();
+          fetchCurrentOrder(data.data.order_id);
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -499,6 +531,7 @@ export default function CourierDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
           <div>
@@ -520,6 +553,7 @@ export default function CourierDashboard() {
         </div>
       </div>
 
+      {/* Карта с курьерами */}
       <div className="relative h-64 m-4 rounded-2xl overflow-hidden shadow-lg">
         <CourierMap
           orderId={currentOrder?.id}
@@ -559,6 +593,7 @@ export default function CourierDashboard() {
         </button>
       </div>
 
+      {/* Ползунок переключения режима */}
       <div className="px-4 mb-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -642,8 +677,8 @@ export default function CourierDashboard() {
         </div>
       )}
 
-      {/* Текущий заказ (до начала доставки) */}
-      {currentOrder && currentOrder.status !== 'out_for_delivery' && (
+      {/* Текущий заказ */}
+      {currentOrder && currentOrder.status !== 'delivered' && (
         <div className="px-4 mb-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h2 className="font-bold text-lg mb-4">📦 Текущий заказ #{currentOrder.order_number}</h2>
@@ -662,6 +697,35 @@ export default function CourierDashboard() {
                 <span className="font-bold text-emerald-600">{currentOrder.amount_paid} ₸</span>
               </div>
             </div>
+            
+            {/* ✅ КНОПКА "Я ПРИЕХАЛ / ПРИШЕЛ" */}
+            {currentOrder.status === 'out_for_delivery' && (
+              <button
+                onClick={courierArrived}
+                disabled={arriving}
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold mt-3 flex items-center justify-center gap-2"
+              >
+                {arriving ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Отправка...
+                  </>
+                ) : (
+                  <>
+                    {status?.courier_type === 'driver' ? '🚚 Я приехал' : '🚶 Я пришел'}
+                  </>
+                )}
+              </button>
+            )}
+            
+            {/* Ожидание подтверждения клиента */}
+            {currentOrder.status === 'nearby' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-3 text-center">
+                <div className="text-2xl mb-1">⏳</div>
+                <p className="font-semibold text-yellow-700">Ожидаем подтверждения от клиента</p>
+                <p className="text-xs text-yellow-600 mt-1">Клиент получил уведомление о вашем прибытии</p>
+              </div>
+            )}
             
             {orderStatus === 'almost_done' && (
               <button
