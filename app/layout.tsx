@@ -1,56 +1,58 @@
 // app/layout.tsx
-'use client';
-
-import { useState, useEffect, createContext, useContext } from 'react';
-import { usePathname } from 'next/navigation';
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
-import BottomNav from './components/BottomNav';
+import BottomNav from '../components/BottomNav';
+import { LanguageProvider } from './providers';
+import { Suspense } from 'react';
 
-type Language = 'kz' | 'ru';
+const inter = Inter({ subsets: ['latin', 'cyrillic'] });
 
-// ==================== КОНТЕКСТ ЯЗЫКА ====================
-interface LanguageContextType {
-  lang: Language;
-  setLang: (lang: Language) => void;
-}
+export const metadata: Metadata = {
+  title: 'Sarqyn GO - Доставка еды',
+  description: 'Спасайте еду от выброса вместе с Sarqyn GO',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Sarqyn GO',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: true,
+  },
+};
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+// Глобальная переменная для скрытия навбара
+let hideBottomNav = false;
+
+export const setGlobalHideBottomNav = (hide: boolean) => {
+  hideBottomNav = hide;
+};
 
 export const useLanguage = () => {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within LanguageProvider');
-  }
-  return context;
-};
-
-const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [lang, setLang] = useState<Language>('kz');
-
-  useEffect(() => {
-    const savedLang = localStorage.getItem('language') as Language;
-    if (savedLang && (savedLang === 'kz' || savedLang === 'ru')) {
-      setLang(savedLang);
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('language');
+    if (stored === 'kz' || stored === 'ru') {
+      return { lang: stored as 'kz' | 'ru', setLang: (lang: 'kz' | 'ru') => {
+        localStorage.setItem('language', lang);
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      } };
     }
-  }, []);
-
-  const handleSetLang = (newLang: Language) => {
-    setLang(newLang);
-    localStorage.setItem('language', newLang);
+  }
+  return { 
+    lang: 'ru' as 'kz' | 'ru', 
+    setLang: (lang: 'kz' | 'ru') => {
+      localStorage.setItem('language', lang);
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    } 
   };
-
-  return (
-    <LanguageContext.Provider value={{ lang: lang, setLang: handleSetLang }}>
-      {children}
-    </LanguageContext.Provider>
-  );
-};
-// =======================================================
-
-// Глобальное состояние для скрытия BottomNav
-let globalHideBottomNav = false;
-export const setGlobalHideBottomNav = (value: boolean) => {
-  globalHideBottomNav = value;
 };
 
 export default function RootLayout({
@@ -58,32 +60,28 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [hideBottomNav, setHideBottomNav] = useState(true);
-
-  useEffect(() => {
-    const checkHideStatus = () => {
-      setHideBottomNav(globalHideBottomNav);
-    };
-    const interval = setInterval(checkHideStatus, 50);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <LanguageProvider>
-      <html lang="kz" suppressHydrationWarning>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes" />
-          // app/layout.tsx - добавьте в head
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-          <title>Sarqyt GO</title>
-        </head>
-        <body className="bg-gray-50">
-          <div className="max-w-md mx-auto relative min-h-screen">
+    <html lang="ru">
+      <head>
+        {/* ✅ МЕТА-ТЕГ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+        <meta name="theme-color" content="#059669" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+      </head>
+      <body className={inter.className}>
+        <LanguageProvider>
+          <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
+            </div>
+          }>
             {children}
-            {!hideBottomNav && <BottomNav />}
-          </div>
-        </body>
-      </html>
-    </LanguageProvider>
+          </Suspense>
+          {!hideBottomNav && <BottomNav />}
+        </LanguageProvider>
+      </body>
+    </html>
   );
 }
