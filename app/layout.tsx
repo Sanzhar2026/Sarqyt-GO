@@ -2,8 +2,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import BottomNav from '../components/BottomNav';
-import { LanguageProvider } from './providers';
 import { Suspense } from 'react';
 
 const inter = Inter({ subsets: ['latin', 'cyrillic'] });
@@ -32,6 +30,7 @@ export const setGlobalHideBottomNav = (hide: boolean) => {
   hideBottomNav = hide;
 };
 
+// Функция для использования языка (будет работать на клиенте)
 export const useLanguage = () => {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('language');
@@ -55,6 +54,32 @@ export const useLanguage = () => {
   };
 };
 
+// Создаем клиентский компонент для BottomNav
+function ClientBottomNav() {
+  const [shouldShow, setShouldShow] = useState(false);
+  
+  useEffect(() => {
+    setShouldShow(!hideBottomNav);
+    
+    // Подписываемся на изменения hideBottomNav
+    const checkInterval = setInterval(() => {
+      setShouldShow(!hideBottomNav);
+    }, 100);
+    
+    return () => clearInterval(checkInterval);
+  }, []);
+  
+  if (!shouldShow) return null;
+  
+  // Динамический импорт BottomNav (только на клиенте)
+  const BottomNav = dynamic(() => import('./components/BottomNav'), { ssr: false });
+  return <BottomNav />;
+}
+
+// Импортируем необходимые хуки
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+
 export default function RootLayout({
   children,
 }: {
@@ -63,7 +88,6 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <head>
-        {/* ✅ МЕТА-ТЕГ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ */}
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
         <meta name="theme-color" content="#059669" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -79,9 +103,12 @@ export default function RootLayout({
           }>
             {children}
           </Suspense>
-          {!hideBottomNav && <BottomNav />}
+          <ClientBottomNav />
         </LanguageProvider>
       </body>
     </html>
   );
 }
+
+// LanguageProvider компонент (должен быть отдельно)
+import {LanguageProvider} from './providers';
