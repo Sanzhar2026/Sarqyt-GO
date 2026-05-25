@@ -25,11 +25,9 @@ export default function OffersPage() {
   const { lang, setLang } = useLanguage();
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBag, setSelectedBag] = useState<SurpriseBag | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [addingId, setAddingId] = useState<number | null>(null);
 
   const fetchBags = async () => {
-    setLoading(true);
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags', {
         credentials: 'include'
@@ -49,47 +47,43 @@ export default function OffersPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSelectBag = (bag: SurpriseBag) => {
-    // Проверяем, есть ли товар в наличии
+  const addToCart = async (bag: SurpriseBag) => {
     if (bag.available_quantity <= 0) {
       alert(lang === 'kz' ? 'Бұл сюрприз таусылған' : 'Этот сюрприз закончился');
       return;
     }
-    setSelectedBag(bag);
-    setShowModal(true);
-  };
 
-  const confirmBooking = async () => {
-    if (!selectedBag) return;
+    setAddingId(bag.id);
     
-    setLoading(true);
     try {
-      // Добавляем напрямую в корзину через API cart/add
+      console.log('🛒 Добавление в корзину:', bag.id, bag.name);
+      
       const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ bag_id: selectedBag.id, quantity: 1 })
+        body: JSON.stringify({ bag_id: bag.id, quantity: 1 })
       });
-      
+
       const data = await response.json();
-      
+      console.log('📦 Ответ сервера:', data);
+
       if (response.ok && data.success) {
         // Добавляем в localStorage
         const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const existingItem = cart.find((item: any) => item.id === selectedBag.id);
+        const existing = cart.find((item: any) => item.id === bag.id);
         
-        if (existingItem) {
-          existingItem.quantity += 1;
+        if (existing) {
+          existing.quantity += 1;
         } else {
           cart.push({
-            id: selectedBag.id,
-            name: selectedBag.name,
-            businessName: selectedBag.supplier_name,
-            price: selectedBag.discounted_price,
-            originalPrice: selectedBag.original_price,
-            discount: selectedBag.discount_percentage,
-            imageUrl: selectedBag.image_url,
+            id: bag.id,
+            name: bag.name,
+            businessName: bag.supplier_name,
+            price: bag.discounted_price,
+            originalPrice: bag.original_price,
+            discount: bag.discount_percentage,
+            imageUrl: bag.image_url,
             quantity: 1
           });
         }
@@ -97,22 +91,16 @@ export default function OffersPage() {
         localStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
         
-        alert(`✅ ${selectedBag.name} добавлен в корзину! У вас 15 минут на оплату.`);
-        
-        // Обновляем список
-        await fetchBags();
-        setShowModal(false);
-        
-        // Перенаправляем в корзину
+        alert(`✅ ${bag.name} добавлен в корзину!`);
         router.push('/cart');
       } else {
-        alert(data.detail || '❌ Товар временно недоступен');
+        alert(data.detail || data.message || '❌ Ошибка при добавлении');
       }
     } catch (error) {
-      console.error('Booking error:', error);
-      alert('Ошибка бронирования');
+      console.error('Error:', error);
+      alert('❌ Ошибка соединения с сервером');
     } finally {
-      setLoading(false);
+      setAddingId(null);
     }
   };
 
@@ -186,7 +174,7 @@ export default function OffersPage() {
               <div key={bag.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                 <div className="relative h-48">
                   <Image
-                    src={bag.image_url || '/placeholder.jpg'}
+                    src={bag.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}
                     alt={bag.name}
                     fill
                     className="object-cover"
@@ -223,18 +211,22 @@ export default function OffersPage() {
                     </div>
                     
                     <button
-                      onClick={() => handleSelectBag(bag)}
-                      disabled={bag.available_quantity <= 0}
+                      onClick={() => addToCart(bag)}
+                      disabled={bag.available_quantity <= 0 || addingId === bag.id}
                       className={`px-6 py-2 rounded-xl font-semibold transition ${
-                        bag.available_quantity <= 0
+                        bag.available_quantity <= 0 || addingId === bag.id
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           : 'bg-emerald-600 text-white hover:bg-emerald-700'
                       }`}
                     >
-                      {bag.available_quantity <= 0 
-                        ? (lang === 'kz' ? 'Таусылған' : 'Распродано')
-                        : (lang === 'kz' ? 'Таңдау' : 'Выбрать')
-                      }
+                      {addingId === bag.id ? (
+                        <span className="flex items-center gap-1">
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          {lang === 'kz' ? 'Қосылуда...' : 'Добавление...'}
+                        </span>
+                      ) : (
+                        lang === 'kz' ? '🛒 Себетке' : '🛒 В корзину'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -243,54 +235,6 @@ export default function OffersPage() {
           </div>
         )}
       </div>
-
-      {/* Booking Modal */}
-      {showModal && selectedBag && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <div className="text-center mb-4">
-              <div className="text-6xl mb-3">⏱️</div>
-              <h2 className="text-2xl font-bold text-gray-800">
-                {lang === 'kz' ? 'Растау' : 'Подтверждение'}
-              </h2>
-            </div>
-            
-            <div className="bg-gray-50 rounded-xl p-4 mb-4">
-              <h3 className="font-bold text-gray-800">{selectedBag.name}</h3>
-              <p className="text-gray-600 text-sm mt-1">{selectedBag.description}</p>
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-gray-500">{lang === 'kz' ? 'Құны' : 'Стоимость'}:</span>
-                <span className="text-xl font-bold text-emerald-600">
-                  {formatPrice(selectedBag.discounted_price)}
-                </span>
-              </div>
-            </div>
-            
-            <div className="bg-yellow-50 rounded-xl p-4 mb-4 border border-yellow-200">
-              <p className="text-sm text-yellow-700">
-                ⏰ {lang === 'kz' 
-                  ? 'Растағаннан кейін төлемге <strong>15 минут</strong> уақытыңыз болады!'
-                  : 'После подтверждения у вас будет <strong>15 минут</strong> на оплату!'}
-              </p>
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50"
-              >
-                {lang === 'kz' ? 'Бас тарту' : 'Отмена'}
-              </button>
-              <button
-                onClick={confirmBooking}
-                className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg"
-              >
-                {lang === 'kz' ? 'Броньдау' : 'Забронировать'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

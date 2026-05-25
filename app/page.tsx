@@ -1,11 +1,10 @@
-// app/page.tsx - исправленный хедер с кнопками языка
+// app/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getNearbyBags, type Supplier } from '../lib/api';
 import CategoryCard from './components/CategoryCard';
 import OfferCard from './components/OfferCard';
 import { useGeolocation } from './hooks/useGeolocation';
@@ -15,12 +14,25 @@ import { useLanguage } from './layout';
 
 type Tab = 'preferences' | 'discover';
 
+interface SurpriseBag {
+  id: number;
+  name: string;
+  description: string;
+  original_price: number;
+  discounted_price: number;
+  discount_percentage: number;
+  image_url: string;
+  available_quantity: number;
+  supplier_name: string;
+  supplier_id: number;
+}
+
 export default function HomePage() {
   const router = useRouter();
   const location = useGeolocation();
   const { lang, setLang } = useLanguage(); 
   const [activeTab, setActiveTab] = useState<Tab>('discover');
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(false);
   const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
@@ -34,65 +46,54 @@ export default function HomePage() {
   const initialLoadDoneRef = useRef(false);
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
+  // Функция обновления после заказа
+  const refreshAfterOrder = useCallback(async () => {
+    console.log('🔄 Обновление данных после заказа...');
+    await fetchBags();
+  }, []);
+
   // Функция загрузки данных
-  const loadNearbyBags = useCallback(async (showLoading = false, isInitial = false) => {
+  const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
     
     if (showLoading && !isInitial) {
       setIsRefreshing(true);
     }
     
-    if (!navigator.geolocation) {
-      if (showLoading && !isInitial) setIsRefreshing(false);
-      if (isInitial) setLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        try {
-          const data = await getNearbyBags(lat, lon, 10);
-          
-          console.log('📦 ДАННЫЕ ИЗ API:', data);
-          
-          const filteredSuppliers = data
-            .map(supplier => ({
-              ...supplier,
-              surprise_bags: supplier.surprise_bags.filter(bag => {
-                const hasQuantity = bag.available_quantity > 0;
-                if (!hasQuantity) {
-                  console.log(`❌ СКРЫВАЕМ ${bag.name}: осталось ${bag.available_quantity}`);
-                }
-                return hasQuantity;
-              })
-            }))
-            .filter(supplier => supplier.surprise_bags.length > 0);
-          
-          console.log('✅ ПОСЛЕ ФИЛЬТРАЦИИ:', filteredSuppliers.length, 'поставщиков');
-          
-          if (isMountedRef.current) {
-            setSuppliers(filteredSuppliers);
-            setLastUpdate(new Date());
-          }
-        } catch (err) {
-          console.error('Ошибка загрузки:', err);
-        } finally {
-          if (isMountedRef.current) {
-            if (showLoading && !isInitial) setIsRefreshing(false);
-            if (isInitial) setLoading(false);
-          }
-        }
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-        if (isMountedRef.current) {
-          if (showLoading && !isInitial) setIsRefreshing(false);
-          if (isInitial) setLoading(false);
-        }
+    try {
+      console.log('🔄 Загрузка сюрпризов...');
+      const response = await fetch(`${API_URL}/api/surprise-bags`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
-    );
-  }, []);
+      
+      const data = await response.json();
+      console.log('📦 ДАННЫЕ ИЗ API:', data);
+      
+      // Фильтруем только доступные сюрпризы (с количеством > 0)
+      const filteredBags = data.filter((bag: SurpriseBag) => bag.available_quantity > 0);
+      
+      console.log('✅ ПОСЛЕ ФИЛЬТРАЦИИ:', filteredBags.length, 'сюрпризов');
+      
+      if (isMountedRef.current) {
+        setBags(filteredBags);
+        setLastUpdate(new Date());
+      }
+    } catch (err) {
+      console.error('Ошибка загрузки:', err);
+      if (isMountedRef.current) {
+        setBags([]);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        if (showLoading && !isInitial) setIsRefreshing(false);
+        if (isInitial) setLoading(false);
+      }
+    }
+  }, [API_URL]);
 
   // WebSocket обработка
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function HomePage() {
     
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
       console.log('🆕 Новый сюрприз! Мгновенное обновление...');
-      loadNearbyBags(false, false);
+      fetchBags(false, false);
       
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Новый сюрприз! 🎁', {
@@ -114,37 +115,29 @@ export default function HomePage() {
     
     if (lastMessage.type === 'delete_bag') {
       console.log('🗑️ Сюрприз удален, обновляем список...');
-      loadNearbyBags(false, false);
+      fetchBags(false, false);
     }
     
     if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
-      const { bag_id, available_quantity, is_active } = lastMessage.data;
-      console.log(`📦 Сюрприз ${bag_id}: осталось ${available_quantity}, активен: ${is_active}`);
+      const { bag_id, available_quantity } = lastMessage.data;
+      console.log(`📦 Сюрприз ${bag_id}: осталось ${available_quantity}`);
       
-      setSuppliers(prevSuppliers => {
-        const newSuppliers = prevSuppliers
-          .map(supplier => ({
-            ...supplier,
-            surprise_bags: supplier.surprise_bags
-              .map(bag => 
-                bag.id === bag_id 
-                  ? { ...bag, available_quantity: available_quantity, is_active: is_active }
-                  : bag
-              )
-              .filter(bag => bag.available_quantity > 0)
-          }))
-          .filter(supplier => supplier.surprise_bags.length > 0);
-        
-        console.log('🔄 Локальное обновление:', newSuppliers.length, 'поставщиков');
-        return newSuppliers;
-      });
+      setBags(prevBags => 
+        prevBags
+          .map(bag => 
+            bag.id === bag_id 
+              ? { ...bag, available_quantity: available_quantity }
+              : bag
+          )
+          .filter(bag => bag.available_quantity > 0)
+      );
       
       setLastUpdate(new Date());
     }
-  }, [lastMessage, loadNearbyBags]);
+  }, [lastMessage, fetchBags]);
 
   const handleManualRefresh = () => {
-    loadNearbyBags(true, false);
+    fetchBags(true, false);
   };
 
   useEffect(() => {
@@ -220,9 +213,9 @@ export default function HomePage() {
     
     if (!initialLoadDoneRef.current) {
       initialLoadDoneRef.current = true;
-      loadNearbyBags(true, true);
+      fetchBags(true, true);
     }
-  }, [showSplash, loadNearbyBags]);
+  }, [showSplash, fetchBags]);
 
   // Очистка
   useEffect(() => {
@@ -235,7 +228,7 @@ export default function HomePage() {
   useEffect(() => {
     const handleRefreshOffers = () => {
       console.log('🔄 Принудительное обновление списка');
-      loadNearbyBags(false, false);
+      fetchBags(false, false);
     };
     
     window.addEventListener('refreshOffers', handleRefreshOffers);
@@ -243,7 +236,7 @@ export default function HomePage() {
     return () => {
       window.removeEventListener('refreshOffers', handleRefreshOffers);
     };
-  }, [loadNearbyBags]);
+  }, [fetchBags]);
 
   const handleLogout = async () => {
     await fetch(`${API_URL}/logout`, { method: 'GET', credentials: 'include' });
@@ -338,7 +331,7 @@ export default function HomePage() {
     );
   }
 
-  if (loading || location.loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
@@ -477,7 +470,7 @@ export default function HomePage() {
             </div>
             
             <div className="space-y-6">
-              {suppliers.length === 0 ? (
+              {bags.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-3xl">
                   <div className="text-6xl mb-4">😢</div>
                   <p className="text-gray-500">{t[lang].noOffers}</p>
@@ -489,21 +482,21 @@ export default function HomePage() {
                   </button>
                 </div>
               ) : (
-                suppliers.flatMap((supplier, supplierIdx) =>
-                  supplier.surprise_bags.map((bag, bagIdx) => (
-                    <OfferCard
-                      key={`${bag.id}-${lastUpdate.getTime()}-${supplierIdx}-${bagIdx}`}
-                      id={bag.id}
-                      name={bag.name}
-                      businessName={supplier.business_name}
-                      distance={`${supplier.distance_km} км`}
-                      price={bag.discounted_price}
-                      originalPrice={bag.original_price}
-                      discount={bag.discount_percentage}
-                      imageUrl={bag.image_url}
-                    />
-                  ))
-                )
+                bags.map((bag, bagIdx) => (
+                  <OfferCard
+                    key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
+                    id={bag.id}
+                    name={bag.name}
+                    businessName={bag.supplier_name}
+                    distance={`${(Math.random() * 5 + 1).toFixed(1)} км`}
+                    price={bag.discounted_price}
+                    originalPrice={bag.original_price}
+                    discount={bag.discount_percentage}
+                    imageUrl={bag.image_url}
+                    description={bag.description}
+                    onOrderSuccess={refreshAfterOrder}
+                  />
+                ))
               )}
             </div>
           </>
