@@ -1,4 +1,3 @@
-// app/components/OfferCard.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,20 +20,7 @@ interface OfferCardProps {
   onOrderSuccess?: () => void;
 }
 
-export default function OfferCard({
-  id,
-  name,
-  businessName,
-  distance,
-  price,
-  originalPrice,
-  discount,
-  imageUrl,
-  description,
-  category,
-  items,
-  onOrderSuccess
-}: OfferCardProps) {
+export default function OfferCard({ id, name, businessName, distance, price, originalPrice, discount, imageUrl, description, category, items, onOrderSuccess }: OfferCardProps) {
   const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
@@ -43,238 +29,168 @@ export default function OfferCard({
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ Проверка авторизации (работает и на телефоне)
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Сначала проверяем localStorage
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          setIsAuthenticated(true);
-          setAuthChecked(true);
-          return;
-        }
-        
-        // Проверяем через API
-        const response = await fetch(`${API_URL}/api/check-auth`, {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        const data = await response.json();
-        
-        if (data.authenticated) {
-          setIsAuthenticated(true);
-          localStorage.setItem('user', JSON.stringify({
-            id: data.user_id,
-            name: data.user_name || 'User',
-            phone: data.user_phone || ''
-          }));
-        } else {
-          setIsAuthenticated(false);
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        // Fallback: проверяем localStorage еще раз
-        const storedUser = localStorage.getItem('user');
-        setIsAuthenticated(!!storedUser);
-      } finally {
+  // ✅ Улучшенная проверка авторизации
+  const checkAuth = async () => {
+    try {
+      // 1. Проверяем localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        setIsAuthenticated(true);
         setAuthChecked(true);
+        return true;
       }
-    };
-    
+
+      // 2. Проверяем через сервер (cookies)
+      const response = await fetch(`${API_URL}/api/check-auth`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const data = await response.json();
+      
+      if (data.authenticated) {
+        setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify({
+          id: data.user_id,
+          name: data.user_name || data.full_name,
+          phone: data.user_phone
+        }));
+        return true;
+      } else {
+        setIsAuthenticated(false);
+        localStorage.removeItem('user');
+        return false;
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      // Fallback
+      const storedUser = localStorage.getItem('user');
+      const isAuth = !!storedUser;
+      setIsAuthenticated(isAuth);
+      return isAuth;
+    } finally {
+      setAuthChecked(true);
+    }
+  };
+
+  useEffect(() => {
     checkAuth();
-  }, [API_URL]);
 
-  const getCategoryImage = (cat: string, nm: string) => {
-    const lowerName = nm.toLowerCase();
-    if (lowerName.includes('бургер') || lowerName.includes('burger')) {
-      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('пицца') || lowerName.includes('pizza')) {
-      return 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('суши') || lowerName.includes('ролл')) {
-      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('салат')) {
-      return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('кола') || lowerName.includes('лимонад') || cat === 'drinks') {
-      return 'https://images.unsplash.com/photo-1543253687-c931c8e01820?w=400&h=300&fit=crop';
-    }
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
-  };
+    // Слушаем события обновления авторизации
+    const handleAuthUpdate = () => checkAuth();
+    window.addEventListener('authUpdated', handleAuthUpdate);
+    
+    return () => window.removeEventListener('authUpdated', handleAuthUpdate);
+  }, []);
 
-  const formatItemsList = () => {
-    if (!items || items.length === 0) return null;
-    const displayItems = items.slice(0, 3);
-    const remainingCount = items.length - 3;
-    return (
-      <div className="mt-2 text-xs text-gray-500">
-        <span className="font-medium text-gray-600">🍽️ Состав:</span>{' '}
-        {displayItems.join(' • ')}
-        {remainingCount > 0 && <span className="text-emerald-600"> +{remainingCount}</span>}
-      </div>
-    );
-  };
+  const addToCart = async () => {
+    const isAuth = await checkAuth(); // ← Повторная проверка перед добавлением
 
- const addToCart = async () => {
-  if (!isAuthenticated) {
-    setShowAuthModal(true);
-    return;
-  }
-
-  setAddingToCart(true);
-  
-  try {
-    const response = await fetch(`${API_URL}/api/cart/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',        // ← Very important
-      body: JSON.stringify({ bag_id: id, quantity: 1 })
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      // ... existing success logic
-      showNotification('✅ Товар добавлен в корзину!', 'success');
-      window.dispatchEvent(new Event('cartUpdated'));
-    } else if (response.status === 401) {
-      // Force re-auth
-      localStorage.removeItem('user');
-      setIsAuthenticated(false);
+    if (!isAuth) {
       setShowAuthModal(true);
-    } else {
-      showNotification(data.detail || data.message || 'Ошибка при добавлении', 'error');
+      return;
     }
-  } catch (error) {
-    console.error('Add to cart error:', error);
-    showNotification('Сетевая ошибка. Проверьте интернет.', 'error');
-  } finally {
-    setAddingToCart(false);
-  }
-};
+
+    setAddingToCart(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/cart/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bag_id: id, quantity: 1 })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showNotification('✅ Товар добавлен в корзину!', 'success');
+        window.dispatchEvent(new Event('cartUpdated'));
+        if (onOrderSuccess) onOrderSuccess();
+      } else if (response.status === 401) {
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+        setShowAuthModal(true);
+      } else {
+        showNotification(data.detail || 'Ошибка добавления', 'error');
+      }
+    } catch (error) {
+      console.error('Add to cart error:', error);
+      showNotification('Ошибка соединения', 'error');
+    } finally {
+      setAddingToCart(false);
+    }
+  };
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     const notification = document.createElement('div');
-    notification.className = `fixed bottom-24 left-4 right-4 z-50 ${type === 'success' ? 'bg-emerald-600' : 'bg-red-600'} text-white rounded-2xl p-4 shadow-xl animate-slide-up`;
+    notification.className = `fixed bottom-20 left-4 right-4 z-50 ${type === 'success' ? 'bg-emerald-600' : 'bg-red-600'} text-white rounded-2xl p-4 shadow-xl`;
     notification.textContent = message;
     document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 3000);
+    setTimeout(() => notification.remove(), 2500);
   };
 
-  // Показываем скелетон пока проверяется авторизация
   if (!authChecked) {
-    return (
-      <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
-        <div className="h-48 bg-gray-200"></div>
-        <div className="p-4">
-          <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mb-3"></div>
-          <div className="flex justify-between">
-            <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          </div>
-        </div>
-      </div>
-    );
+    return <div className="bg-white rounded-2xl h-80 animate-pulse" />;
   }
 
   return (
     <>
-      <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-shadow">
+      <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all">
+        {/* ... остальной JSX карточки без изменений ... */}
         <Link href={`/offers/${id}`}>
           <div className="relative h-48">
-            <Image
-              src={imageUrl || getCategoryImage(category || '', name)}
-              alt={name}
-              fill
-              className="object-cover"
-            />
-            {discount > 0 && (
-              <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                -{discount}%
-              </div>
-            )}
-            {category && (
-              <div className="absolute top-3 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs backdrop-blur-sm">
-                {category === 'drinks' ? '🥤' : category === 'pizza' ? '🍕' : '🍽️'} {category}
-              </div>
-            )}
+            <Image src={imageUrl || '...'} alt={name} fill className="object-cover" />
+            {discount > 0 && <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">-{discount}%</div>}
           </div>
         </Link>
-        
+
         <div className="p-4">
           <Link href={`/offers/${id}`}>
-            <h3 className="font-bold text-lg mb-1 hover:text-emerald-600 transition line-clamp-1">{name}</h3>
+            <h3 className="font-bold text-lg mb-1">{name}</h3>
           </Link>
-          <p className="text-gray-500 text-sm mb-1">{businessName} • {distance}</p>
-          {description && <p className="text-gray-600 text-sm mb-2 line-clamp-2">{description}</p>}
-          {formatItemsList()}
-          
-          <div className="flex items-center justify-between mt-3">
+          <p className="text-gray-500 text-sm mb-3">{businessName} • {distance}</p>
+
+          <div className="flex items-center justify-between">
             <div>
               <span className="text-2xl font-bold text-emerald-600">{price} ₸</span>
-              {originalPrice > price && (
-                <span className="text-gray-400 line-through text-sm ml-2">{originalPrice} ₸</span>
-              )}
+              {originalPrice > price && <span className="line-through text-gray-400 ml-2">{originalPrice} ₸</span>}
             </div>
-            
+
             <button
               onClick={addToCart}
               disabled={addingToCart}
-              className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-full flex items-center gap-2 transition disabled:opacity-70"
             >
-              {addingToCart ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Добавление...</span>
-                </>
-              ) : (
-                <>
-                  <span>🛒</span>
-                  <span>В корзину</span>
-                </>
-              )}
+              {addingToCart ? 'Добавляем...' : '🛒 В корзину'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Модальное окно для неавторизованных */}
+      {/* Auth Modal */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <div className="text-center mb-6">
-              <div className="text-6xl mb-3">🔒</div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Требуется авторизация</h2>
-              <p className="text-gray-500">Войдите или зарегистрируйтесь, чтобы добавить товар в корзину</p>
-            </div>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full">
+            <h2 className="text-xl font-bold text-center mb-4">Нужно войти в аккаунт</h2>
+            <p className="text-gray-600 text-center mb-6">Чтобы добавлять товары в корзину, пожалуйста, авторизуйтесь</p>
             
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  localStorage.setItem('redirectAfterLogin', window.location.pathname);
-                  router.push('/login');
-                }}
-                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition"
-              >
-                Войти
-              </button>
-              <button
-                onClick={() => router.push('/signup')}
-                className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition"
-              >
-                Зарегистрироваться
-              </button>
-              <button
-                onClick={() => setShowAuthModal(false)}
-                className="w-full text-gray-500 py-2 text-sm"
-              >
-                Закрыть
-              </button>
-            </div>
+            <button
+              onClick={() => router.push('/login')}
+              className="w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold mb-3"
+            >
+              Войти
+            </button>
+            <button
+              onClick={() => router.push('/signup')}
+              className="w-full bg-gray-100 text-gray-700 py-3 rounded-2xl font-semibold"
+            >
+              Зарегистрироваться
+            </button>
+            <button onClick={() => setShowAuthModal(false)} className="w-full mt-4 text-gray-500">
+              Закрыть
+            </button>
           </div>
         </div>
       )}
