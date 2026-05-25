@@ -118,60 +118,43 @@ export default function OfferCard({
     );
   };
 
-  const addToCart = async () => {
-    if (!isAuthenticated) {
+ const addToCart = async () => {
+  if (!isAuthenticated) {
+    setShowAuthModal(true);
+    return;
+  }
+
+  setAddingToCart(true);
+  
+  try {
+    const response = await fetch(`${API_URL}/api/cart/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',        // ← Very important
+      body: JSON.stringify({ bag_id: id, quantity: 1 })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // ... existing success logic
+      showNotification('✅ Товар добавлен в корзину!', 'success');
+      window.dispatchEvent(new Event('cartUpdated'));
+    } else if (response.status === 401) {
+      // Force re-auth
+      localStorage.removeItem('user');
+      setIsAuthenticated(false);
       setShowAuthModal(true);
-      return;
+    } else {
+      showNotification(data.detail || data.message || 'Ошибка при добавлении', 'error');
     }
-
-    setAddingToCart(true);
-    
-    try {
-      const response = await fetch(`${API_URL}/api/cart/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ bag_id: id, quantity: 1 })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const existingItem = cart.find((item: any) => item.id === id);
-        
-        if (existingItem) {
-          existingItem.quantity += 1;
-        } else {
-          cart.push({
-            id, name, businessName, price, originalPrice, discount,
-            imageUrl: imageUrl || getCategoryImage(category || '', name),
-            quantity: 1, description, items
-          });
-        }
-        
-        localStorage.setItem('cart', JSON.stringify(cart));
-        
-        showNotification('✅ Товар добавлен в корзину!', 'success');
-        window.dispatchEvent(new Event('cartUpdated'));
-        if (onOrderSuccess) onOrderSuccess();
-        window.dispatchEvent(new CustomEvent('refreshOffers'));
-        
-        setTimeout(() => router.push('/offers'), 1000);
-      } else if (response.status === 401) {
-        setIsAuthenticated(false);
-        localStorage.removeItem('user');
-        setShowAuthModal(true);
-      } else {
-        showNotification(data.detail || 'Ошибка при добавлении', 'error');
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      showNotification('Ошибка при добавлении в корзину', 'error');
-    } finally {
-      setAddingToCart(false);
-    }
-  };
+  } catch (error) {
+    console.error('Add to cart error:', error);
+    showNotification('Сетевая ошибка. Проверьте интернет.', 'error');
+  } finally {
+    setAddingToCart(false);
+  }
+};
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     const notification = document.createElement('div');
