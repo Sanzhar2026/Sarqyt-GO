@@ -1,14 +1,15 @@
-// app/layout.tsx (оставьте как есть)
+// app/layout.tsx
 'use client';
 
 import { useState, useEffect, createContext, useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import './globals.css';
 import BottomNav from './components/BottomNav';
+import { AuthProvider, useAuth } from './providers/AuthProvider';
 
 type Language = 'kz' | 'ru';
 
-// ==================== КОНТЕКСТ ЯЗЫКА ====================
+// Language Context (как был)
 interface LanguageContextType {
   lang: Language;
   setLang: (lang: Language) => void;
@@ -18,20 +19,16 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within LanguageProvider');
-  }
+  if (!context) throw new Error('useLanguage must be used within LanguageProvider');
   return context;
 };
 
 const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [lang, setLang] = useState<Language>('kz');
+  const [lang, setLang] = useState<Language>('ru');
 
   useEffect(() => {
     const savedLang = localStorage.getItem('language') as Language;
-    if (savedLang && (savedLang === 'kz' || savedLang === 'ru')) {
-      setLang(savedLang);
-    }
+    if (savedLang === 'kz' || savedLang === 'ru') setLang(savedLang);
   }, []);
 
   const handleSetLang = (newLang: Language) => {
@@ -40,48 +37,45 @@ const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <LanguageContext.Provider value={{ lang: lang, setLang: handleSetLang }}>
+    <LanguageContext.Provider value={{ lang, setLang: handleSetLang }}>
       {children}
     </LanguageContext.Provider>
   );
 };
-// =======================================================
 
-// Глобальное состояние для скрытия BottomNav
+// Global state for BottomNav
 let globalHideBottomNav = false;
 export const setGlobalHideBottomNav = (value: boolean) => {
   globalHideBottomNav = value;
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [hideBottomNav, setHideBottomNav] = useState(true);
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const [hideBottomNav, setHideBottomNav] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const checkHideStatus = () => {
-      setHideBottomNav(globalHideBottomNav);
-    };
-    const interval = setInterval(checkHideStatus, 50);
+    setMounted(true);
+    const interval = setInterval(() => setHideBottomNav(globalHideBottomNav), 50);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <LanguageProvider>
-      <html lang="kz" suppressHydrationWarning>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes" />
-          <title>Sarqyn Food</title>
-        </head>
-        <body className="bg-gray-50">
-          <div className="max-w-md mx-auto relative min-h-screen">
-            {children}
-            {!hideBottomNav && <BottomNav />}
-          </div>
-        </body>
-      </html>
-    </LanguageProvider>
+    <html lang="ru" suppressHydrationWarning>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+        <meta name="theme-color" content="#059669" />
+        <title>Sarqyn GO</title>
+      </head>
+      <body className="bg-gray-50">
+        <LanguageProvider>
+          <AuthProvider>
+            <div className="max-w-md mx-auto relative min-h-screen">
+              {children}
+              {mounted && !hideBottomNav && <BottomNav />}
+            </div>
+          </AuthProvider>
+        </LanguageProvider>
+      </body>
+    </html>
   );
 }

@@ -43,7 +43,7 @@ export default function OfferCard({
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ Проверка авторизации (работает и на телефоне)
+  // Проверка авторизации
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -56,25 +56,34 @@ export default function OfferCard({
         }
         
         // Проверяем через API
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
         const response = await fetch(`${API_URL}/api/check-auth`, {
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal
         });
-        const data = await response.json();
         
-        if (data.authenticated) {
-          setIsAuthenticated(true);
-          localStorage.setItem('user', JSON.stringify({
-            id: data.user_id,
-            name: data.user_name || 'User',
-            phone: data.user_phone || ''
-          }));
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.authenticated) {
+            setIsAuthenticated(true);
+            localStorage.setItem('user', JSON.stringify({
+              id: data.user_id,
+              name: data.user_name || 'User',
+              phone: data.user_phone || ''
+            }));
+          } else {
+            setIsAuthenticated(false);
+          }
         } else {
           setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        // Fallback: проверяем localStorage еще раз
         const storedUser = localStorage.getItem('user');
         setIsAuthenticated(!!storedUser);
       } finally {
@@ -85,30 +94,54 @@ export default function OfferCard({
     checkAuth();
   }, [API_URL]);
 
-  const getCategoryImage = (cat: string, nm: string) => {
-    const lowerName = nm.toLowerCase();
-    if (lowerName.includes('бургер') || lowerName.includes('burger')) {
+  // Выбор изображения по категории
+  const getCategoryImage = () => {
+    const lowerName = name.toLowerCase();
+    
+    // Бургеры
+    if (lowerName.includes('бургер') || lowerName.includes('burger') || lowerName.includes('гамбургер')) {
       return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
     }
+    // Пицца
     if (lowerName.includes('пицца') || lowerName.includes('pizza')) {
       return 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop';
     }
-    if (lowerName.includes('суши') || lowerName.includes('ролл')) {
+    // Суши
+    if (lowerName.includes('суши') || lowerName.includes('ролл') || lowerName.includes('sushi')) {
       return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
     }
-    if (lowerName.includes('салат')) {
+    // Салаты
+    if (lowerName.includes('салат') || category === 'salads') {
       return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop';
     }
-    if (lowerName.includes('кола') || lowerName.includes('лимонад') || cat === 'drinks') {
+    // Напитки
+    if (lowerName.includes('кола') || lowerName.includes('лимонад') || lowerName.includes('сок') || category === 'drinks') {
       return 'https://images.unsplash.com/photo-1543253687-c931c8e01820?w=400&h=300&fit=crop';
     }
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+    // Десерты
+    if (lowerName.includes('торт') || lowerName.includes('чизкейк') || lowerName.includes('тирамису') || category === 'desserts') {
+      return 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400&h=300&fit=crop';
+    }
+    // Казахская кухня
+    if (lowerName.includes('бешбармак') || lowerName.includes('плов') || lowerName.includes('манты') || category === 'kazakh') {
+      return 'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=400&h=300&fit=crop';
+    }
+    // Азиатская кухня
+    if (lowerName.includes('вок') || lowerName.includes('удон') || lowerName.includes('рамен') || category === 'asian') {
+      return 'https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400&h=300&fit=crop';
+    }
+    
+    // Изображение по умолчанию
+    return imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
   };
 
+  // Форматирование списка блюд
   const formatItemsList = () => {
     if (!items || items.length === 0) return null;
+    
     const displayItems = items.slice(0, 3);
     const remainingCount = items.length - 3;
+    
     return (
       <div className="mt-2 text-xs text-gray-500">
         <span className="font-medium text-gray-600">🍽️ Состав:</span>{' '}
@@ -118,6 +151,19 @@ export default function OfferCard({
     );
   };
 
+  // Получение эмодзи категории
+  const getCategoryEmoji = () => {
+    const lowerCategory = category?.toLowerCase() || '';
+    if (lowerCategory === 'drinks') return '🥤';
+    if (lowerCategory === 'pizza') return '🍕';
+    if (lowerCategory === 'salads') return '🥗';
+    if (lowerCategory === 'desserts') return '🍰';
+    if (lowerCategory === 'kazakh') return '🍖';
+    if (lowerCategory === 'asian') return '🍜';
+    return '🍽️';
+  };
+
+  // Добавление в корзину
   const addToCart = async () => {
     if (!isAuthenticated) {
       setShowAuthModal(true);
@@ -137,6 +183,7 @@ export default function OfferCard({
       const data = await response.json();
 
       if (response.ok) {
+        // Добавляем в localStorage
         const cart = JSON.parse(localStorage.getItem('cart') || '[]');
         const existingItem = cart.find((item: any) => item.id === id);
         
@@ -144,9 +191,16 @@ export default function OfferCard({
           existingItem.quantity += 1;
         } else {
           cart.push({
-            id, name, businessName, price, originalPrice, discount,
-            imageUrl: imageUrl || getCategoryImage(category || '', name),
-            quantity: 1, description, items
+            id,
+            name,
+            businessName,
+            price,
+            originalPrice,
+            discount,
+            imageUrl: getCategoryImage(),
+            quantity: 1,
+            description,
+            items
           });
         }
         
@@ -167,7 +221,7 @@ export default function OfferCard({
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
-      showNotification('Ошибка при добавлении в корзину', 'error');
+      showNotification('Ошибка соединения. Проверьте интернет.', 'error');
     } finally {
       setAddingToCart(false);
     }
@@ -181,7 +235,7 @@ export default function OfferCard({
     setTimeout(() => notification.remove(), 3000);
   };
 
-  // Показываем скелетон пока проверяется авторизация
+  // Скелетон загрузки
   if (!authChecked) {
     return (
       <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
@@ -204,19 +258,20 @@ export default function OfferCard({
         <Link href={`/offers/${id}`}>
           <div className="relative h-48">
             <Image
-              src={imageUrl || getCategoryImage(category || '', name)}
+              src={getCategoryImage()}
               alt={name}
               fill
               className="object-cover"
+              sizes="(max-width: 768px) 100vw, 400px"
             />
             {discount > 0 && (
-              <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+              <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold z-10">
                 -{discount}%
               </div>
             )}
             {category && (
-              <div className="absolute top-3 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs backdrop-blur-sm">
-                {category === 'drinks' ? '🥤' : category === 'pizza' ? '🍕' : '🍽️'} {category}
+              <div className="absolute top-3 right-3 bg-black/60 text-white px-2 py-1 rounded-full text-xs backdrop-blur-sm z-10">
+                {getCategoryEmoji()} {category}
               </div>
             )}
           </div>
@@ -226,15 +281,22 @@ export default function OfferCard({
           <Link href={`/offers/${id}`}>
             <h3 className="font-bold text-lg mb-1 hover:text-emerald-600 transition line-clamp-1">{name}</h3>
           </Link>
-          <p className="text-gray-500 text-sm mb-1">{businessName} • {distance}</p>
-          {description && <p className="text-gray-600 text-sm mb-2 line-clamp-2">{description}</p>}
+          
+          <p className="text-gray-500 text-sm mb-1">
+            {businessName} • {distance}
+          </p>
+          
+          {description && (
+            <p className="text-gray-600 text-sm mb-2 line-clamp-2">{description}</p>
+          )}
+          
           {formatItemsList()}
           
           <div className="flex items-center justify-between mt-3">
             <div>
-              <span className="text-2xl font-bold text-emerald-600">{price} ₸</span>
+              <span className="text-2xl font-bold text-emerald-600">{price.toLocaleString()} ₸</span>
               {originalPrice > price && (
-                <span className="text-gray-400 line-through text-sm ml-2">{originalPrice} ₸</span>
+                <span className="text-gray-400 line-through text-sm ml-2">{originalPrice.toLocaleString()} ₸</span>
               )}
             </div>
             
