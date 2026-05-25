@@ -95,6 +95,7 @@ export default function OfferCard({
     return imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
   };
 
+  // ✅ ДОБАВЛЕНИЕ В КОРЗИНУ С БРОНИРОВАНИЕМ
   const addToCart = async () => {
     if (!isAuthenticated) {
       alert('Пожалуйста, войдите в аккаунт');
@@ -105,44 +106,52 @@ export default function OfferCard({
     setAddingToCart(true);
     
     try {
-      const token = localStorage.getItem('authToken');
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      
       const response = await fetch(`${API_URL}/api/cart/add`, {
         method: 'POST',
-        headers,
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ bag_id: id, quantity: 1 })
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // ✅ Сохраняем информацию о бронировании
         const cart = JSON.parse(localStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === id);
         
         if (existing) {
           existing.quantity += 1;
+          existing.reservation_id = data.reservation_id;
+          existing.expires_at = data.expires_at;
         } else {
           cart.push({
             id, name, businessName, price, originalPrice, discount,
             imageUrl: getCategoryImage(),
-            quantity: 1, description
+            quantity: 1,
+            description,
+            reservation_id: data.reservation_id,
+            expires_at: data.expires_at
           });
         }
         
         localStorage.setItem('cart', JSON.stringify(cart));
-        alert('✅ Товар добавлен в корзину!');
+        
+        // ✅ Показываем сообщение с таймером
+        alert(`✅ ${name} забронирован на 15 минут! Перейдите в корзину для оплаты.`);
+        
         window.dispatchEvent(new Event('cartUpdated'));
         if (onOrderSuccess) onOrderSuccess();
+        
+        // Обновляем главную страницу (товар должен исчезнуть)
+        window.dispatchEvent(new CustomEvent('refreshOffers'));
+        
       } else {
-        alert('Ошибка при добавлении');
+        alert(data.detail || '❌ Товар временно недоступен');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Ошибка соединения');
+      alert('❌ Ошибка соединения');
     } finally {
       setAddingToCart(false);
     }
@@ -178,7 +187,7 @@ export default function OfferCard({
           <h3 className="font-bold text-lg mb-1 hover:text-emerald-600">{name}</h3>
         </Link>
         <p className="text-gray-500 text-sm mb-2">{businessName} • {distance}</p>
-        {description && <p className="text-gray-600 text-sm mb-3">{description}</p>}
+        {description && <p className="text-gray-600 text-sm mb-3 line-clamp-2">{description}</p>}
         
         <div className="flex items-center justify-between mt-2">
           <div>
@@ -191,9 +200,19 @@ export default function OfferCard({
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50"
+            className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50 transition flex items-center gap-2"
           >
-            {addingToCart ? '...' : '🛒 В корзину'}
+            {addingToCart ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Бронирование...</span>
+              </>
+            ) : (
+              <>
+                <span>🛒</span>
+                <span>В корзину</span>
+              </>
+            )}
           </button>
         </div>
       </div>

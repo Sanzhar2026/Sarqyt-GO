@@ -128,13 +128,7 @@ export default function CartPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadCart();
-    checkReservation();
-    window.addEventListener('cartUpdated', loadCart);
-    return () => window.removeEventListener('cartUpdated', loadCart);
-  }, []);
-
+  // ✅ Функция проверки резервации
   const checkReservation = async () => {
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/reservation', {
@@ -149,6 +143,15 @@ export default function CartPage() {
     }
   };
 
+  // ✅ Загрузка корзины и проверка резервации
+  useEffect(() => {
+    loadCart();
+    checkReservation();
+    window.addEventListener('cartUpdated', loadCart);
+    return () => window.removeEventListener('cartUpdated', loadCart);
+  }, []);
+
+  // Таймер обратного отсчета
   useEffect(() => {
     if (!reservation?.expires_at) return;
 
@@ -235,7 +238,7 @@ export default function CartPage() {
     setShowPaymentModal(true);
   };
 
-  // ✅ СОЗДАНИЕ ЗАКАЗА ПЕРЕД ОПЛАТОЙ
+  // СОЗДАНИЕ ЗАКАЗА ПЕРЕД ОПЛАТОЙ
   const createOrders = async () => {
     const createdOrders = [];
     
@@ -268,18 +271,15 @@ export default function CartPage() {
     setProcessingStep('processing');
     
     try {
-      // ✅ 1. Сначала создаем заказы
       const orders = await createOrders();
       console.log('✅ Заказы созданы:', orders);
       
-      // ✅ 2. Сохраняем данные перед переходом в Kaspi
       localStorage.setItem('pending_order', JSON.stringify({
         orders: orders,
         total: getTotalPrice(),
         timestamp: Date.now()
       }));
       
-      // ✅ 3. Переходим в Kaspi QR
       window.location.href = KASPI_QR_URL;
       
     } catch (error) {
@@ -304,11 +304,9 @@ export default function CartPage() {
     setProcessingStep('processing');
     
     try {
-      // Создаем заказы
       const orders = await createOrders();
       console.log('✅ Заказы созданы:', orders);
       
-      // Подтверждаем резервацию
       if (reservation) {
         await fetch('https://toogood-2ncf.onrender.com/api/payment/confirm-reservation', {
           method: 'POST',

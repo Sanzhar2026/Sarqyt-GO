@@ -27,7 +27,6 @@ export default function OffersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedBag, setSelectedBag] = useState<SurpriseBag | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [bookedBags, setBookedBags] = useState<Set<number>>(new Set());
 
   const fetchBags = async () => {
     setLoading(true);
@@ -37,20 +36,6 @@ export default function OffersPage() {
       });
       const data = await response.json();
       setBags(data);
-      
-      const booked = new Set<number>();
-      for (const bag of data) {
-        try {
-          const checkRes = await fetch(`https://toogood-2ncf.onrender.com/api/bookings/check/${bag.id}`, {
-            credentials: 'include'
-          });
-          const checkData = await checkRes.json();
-          if (checkData.is_booked) {
-            booked.add(bag.id);
-          }
-        } catch (e) {}
-      }
-      setBookedBags(booked);
     } catch (error) {
       console.error('Error fetching bags:', error);
     } finally {
@@ -65,82 +50,69 @@ export default function OffersPage() {
   }, []);
 
   const handleSelectBag = (bag: SurpriseBag) => {
+    // Проверяем, есть ли товар в наличии
+    if (bag.available_quantity <= 0) {
+      alert(lang === 'kz' ? 'Бұл сюрприз таусылған' : 'Этот сюрприз закончился');
+      return;
+    }
     setSelectedBag(bag);
     setShowModal(true);
   };
 
-  // app/offers/page.tsx - исправленная функция
-
-const confirmBooking = async () => {
-  if (!selectedBag) return;
-  
-  try {
-    const response = await fetch('https://toogood-2ncf.onrender.com/api/bookings/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ bag_id: selectedBag.id })
-    });
+  const confirmBooking = async () => {
+    if (!selectedBag) return;
     
-    const data = await response.json();
-    
-    if (data.success) {
-      // ✅ Добавляем в корзину (localStorage)
-      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingItem = cart.find((item: any) => item.id === selectedBag.id);
-      
-      if (existingItem) {
-        existingItem.quantity += 1;
-      } else {
-        cart.push({
-          id: selectedBag.id,
-          name: selectedBag.name,
-          businessName: selectedBag.supplier_name,
-          price: selectedBag.discounted_price,
-          originalPrice: selectedBag.original_price,
-          discount: selectedBag.discount_percentage,
-          imageUrl: selectedBag.image_url,
-          quantity: 1
-        });
-      }
-      
-      localStorage.setItem('cart', JSON.stringify(cart));
-      
-      // Обновляем счетчик в navbar
-      window.dispatchEvent(new Event('cartUpdated'));
-      
-      alert(`✅ ${selectedBag.name} добавлен в корзину! У вас 15 минут на оплату.`);
-      
-      // Обновляем список бронирований
-      await fetchBags();
-      setShowModal(false);
-      
-      // ✅ Перенаправляем в корзину
-      router.push('/cart');
-    } else {
-      alert(`❌ ${data.message}`);
-    }
-  } catch (error) {
-    console.error('Booking error:', error);
-    alert('Ошибка бронирования');
-  }
-};
-
-  const addToCart = async (bagId: number) => {
+    setLoading(true);
     try {
+      // Добавляем напрямую в корзину через API cart/add
       const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ bag_id: bagId, quantity: 1 })
+        body: JSON.stringify({ bag_id: selectedBag.id, quantity: 1 })
       });
       
       const data = await response.json();
-      if (data.success) {
+      
+      if (response.ok && data.success) {
+        // Добавляем в localStorage
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const existingItem = cart.find((item: any) => item.id === selectedBag.id);
+        
+        if (existingItem) {
+          existingItem.quantity += 1;
+        } else {
+          cart.push({
+            id: selectedBag.id,
+            name: selectedBag.name,
+            businessName: selectedBag.supplier_name,
+            price: selectedBag.discounted_price,
+            originalPrice: selectedBag.original_price,
+            discount: selectedBag.discount_percentage,
+            imageUrl: selectedBag.image_url,
+            quantity: 1
+          });
+        }
+        
+        localStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
+        
+        alert(`✅ ${selectedBag.name} добавлен в корзину! У вас 15 минут на оплату.`);
+        
+        // Обновляем список
+        await fetchBags();
+        setShowModal(false);
+        
+        // Перенаправляем в корзину
+        router.push('/cart');
+      } else {
+        alert(data.detail || '❌ Товар временно недоступен');
       }
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      console.error('Booking error:', error);
+      alert('Ошибка бронирования');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -165,7 +137,6 @@ const confirmBooking = async () => {
             {lang === 'kz' ? '🎁 Сюрприз-пакеттер' : '🎁 Сюрприз-пакеты'}
           </h1>
           
-          {/* Кнопки языка */}
           <div className="flex gap-2">
             <button
               onClick={() => setLang('kz')}
@@ -225,9 +196,11 @@ const confirmBooking = async () => {
                       -{bag.discount_percentage}%
                     </div>
                   )}
-                  {bookedBags.has(bag.id) && (
-                    <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold">
-                      ⏱️ {lang === 'kz' ? 'Броньдалған' : 'Забронирован'}
+                  {bag.available_quantity <= 0 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="text-white font-bold text-sm px-3 py-1 bg-red-600 rounded-full">
+                        {lang === 'kz' ? 'Таусылған' : 'Распродано'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -235,7 +208,7 @@ const confirmBooking = async () => {
                 <div className="p-4">
                   <h3 className="font-bold text-gray-800 text-lg">{bag.name}</h3>
                   <p className="text-gray-500 text-sm">{bag.supplier_name}</p>
-                  <p className="text-gray-600 text-sm mt-2">{bag.description}</p>
+                  <p className="text-gray-600 text-sm mt-2 line-clamp-2">{bag.description}</p>
                   
                   <div className="flex items-center justify-between mt-3">
                     <div>
@@ -251,15 +224,15 @@ const confirmBooking = async () => {
                     
                     <button
                       onClick={() => handleSelectBag(bag)}
-                      disabled={bookedBags.has(bag.id)}
+                      disabled={bag.available_quantity <= 0}
                       className={`px-6 py-2 rounded-xl font-semibold transition ${
-                        bookedBags.has(bag.id)
+                        bag.available_quantity <= 0
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           : 'bg-emerald-600 text-white hover:bg-emerald-700'
                       }`}
                     >
-                      {bookedBags.has(bag.id) 
-                        ? (lang === 'kz' ? 'Броньдалған' : 'Забронирован')
+                      {bag.available_quantity <= 0 
+                        ? (lang === 'kz' ? 'Таусылған' : 'Распродано')
                         : (lang === 'kz' ? 'Таңдау' : 'Выбрать')
                       }
                     </button>
