@@ -1,4 +1,4 @@
-// app/courier/login/page.tsx
+// app/courier/login/page.tsx - исправленный
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,24 +14,37 @@ export default function CourierLogin() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
+  const API_URL = 'https://toogood-2ncf.onrender.com';
+
   useEffect(() => {
     const checkAlreadyLoggedIn = async () => {
       try {
-        const response = await fetch('https://toogood-2ncf.onrender.com/api/courier/status', {
+        // Проверяем localStorage сначала
+        const token = localStorage.getItem('courierToken');
+        const courierData = localStorage.getItem('courier');
+        
+        if (token && courierData) {
+          console.log('✅ Найдены данные в localStorage');
+          window.location.replace('/courier/dashboard');
+          return;
+        }
+        
+        // Проверяем через API
+        const response = await fetch(`${API_URL}/api/courier/status`, {
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': token ? `Bearer ${token}` : ''
+          }
         });
         
         console.log('🔍 Проверка статуса курьера:', response.status);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('📦 Данные курьера:', data);
-          
-          // ✅ ВАЖНО: проверяем success И is_verified
           if (data.success && data.is_verified === true) {
-            console.log('✅ Курьер авторизован, редирект в дашборд');
-            // Используем window.location.replace чтобы избежать истории
+            // Сохраняем данные в localStorage
+            localStorage.setItem('courier', JSON.stringify(data));
             window.location.replace('/courier/dashboard');
             return;
           }
@@ -44,7 +57,7 @@ export default function CourierLogin() {
     };
     
     checkAlreadyLoggedIn();
-  }, []);
+  }, [API_URL]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +68,7 @@ export default function CourierLogin() {
     try {
       console.log('🔐 Попытка входа курьера:', phone);
       
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/courier/login', {
+      const response = await fetch(`${API_URL}/api/courier/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password }),
@@ -66,13 +79,18 @@ export default function CourierLogin() {
       console.log('📥 Ответ сервера:', response.status, data);
 
       if (response.ok && data.success) {
+        // ✅ Сохраняем токен и данные в localStorage
+        if (data.token) {
+          localStorage.setItem('courierToken', data.token);
+        }
+        
         localStorage.setItem('courier', JSON.stringify({
           ...data.courier,
-          is_verified: true
+          is_verified: true,
+          token: data.token
         }));
         
-        console.log('✅ Успешный вход');
-        // Используем replace чтобы нельзя было вернуться на страницу логина
+        console.log('✅ Успешный вход, данные сохранены');
         window.location.replace('/courier/dashboard');
       } else if (response.status === 403) {
         setPendingVerification(true);

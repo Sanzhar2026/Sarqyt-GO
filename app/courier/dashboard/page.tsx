@@ -30,7 +30,48 @@ export default function CourierDashboard() {
   const wsRef = useRef<WebSocket | null>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
+// app/courier/dashboard/page.tsx - в начале компонента добавьте:
 
+useEffect(() => {
+  const checkAuth = async () => {
+    // Проверяем localStorage
+    const token = localStorage.getItem('courierToken');
+    const courier = localStorage.getItem('courier');
+    
+    if (!token || !courier) {
+      window.location.replace('/courier/login');
+      return;
+    }
+    
+    // Проверяем через API
+    try {
+      const response = await fetch(`${API_URL}/api/courier/status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        localStorage.removeItem('courierToken');
+        localStorage.removeItem('courier');
+        window.location.replace('/courier/login');
+      } else {
+        const data = await response.json();
+        if (data.success && data.is_verified) {
+          setLoading(false);
+        } else {
+          window.location.replace('/courier/login');
+        }
+      }
+    } catch (error) {
+      console.error('Auth error:', error);
+      window.location.replace('/courier/login');
+    }
+  };
+  
+  checkAuth();
+}, []);
   // Получаем текущее местоположение курьера
   useEffect(() => {
     if (navigator.geolocation) {
