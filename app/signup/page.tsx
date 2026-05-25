@@ -1,3 +1,4 @@
+// app/signup/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -104,27 +105,6 @@ export default function SignupPage() {
     }
   };
 
-const handleSuccess = (data: any) => {
-  const userData = {
-    id: data.user_id || data.user?.id,
-    name: data.user?.full_name || data.user?.name,
-    full_name: data.user?.full_name,
-    phone: data.user?.phone
-  };
-
-  // Сохраняем в localStorage — это работает на iPhone надёжно
-  localStorage.setItem('user', JSON.stringify(userData));
-  localStorage.setItem('isLoggedIn', 'true');
-
-  // Также пробуем сохранить token
-  if (data.token) {
-    localStorage.setItem('authToken', data.token);
-  }
-
-  window.dispatchEvent(new Event('authUpdated'));
-  window.location.href = '/';   // Полная перезагрузка
-};
-
   const handleSignup = async () => {
     if (password !== confirmPassword) {
       setError(t[lang].passwordMismatch);
@@ -162,7 +142,22 @@ const handleSuccess = (data: any) => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        handleSuccess(data, fullName);   // ← Используем функцию успеха
+        // Сохраняем в localStorage
+        localStorage.setItem('user', JSON.stringify({
+          id: data.user_id,
+          name: fullName,
+          full_name: fullName,
+          phone: formattedPhone
+        }));
+        
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        }
+        
+        localStorage.setItem('isLoggedIn', 'true');
+        
+        window.dispatchEvent(new Event('authUpdated'));
+        window.location.href = '/';
       } else {
         setError(data.detail || t[lang].invalidCode);
       }

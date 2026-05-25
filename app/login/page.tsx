@@ -50,29 +50,6 @@ export default function LoginPage() {
     setError('');
   };
 
-  // app/login/page.tsx - исправленный handleSubmit
-
-const handleSuccess = (data: any) => {
-  const userData = {
-    id: data.user_id || data.user?.id,
-    name: data.user?.full_name || data.user?.name,
-    full_name: data.user?.full_name,
-    phone: data.user?.phone
-  };
-
-  // Сохраняем в localStorage — это работает на iPhone надёжно
-  localStorage.setItem('user', JSON.stringify(userData));
-  localStorage.setItem('isLoggedIn', 'true');
-
-  // Также пробуем сохранить token
-  if (data.token) {
-    localStorage.setItem('authToken', data.token);
-  }
-
-  window.dispatchEvent(new Event('authUpdated'));
-  window.location.href = '/';   // Полная перезагрузка
-};
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -89,7 +66,24 @@ const handleSuccess = (data: any) => {
       const data = await response.json();
       
       if (response.ok && data.success) {
-        handleSuccess(data);   // ← Используем функцию успеха
+        // Сохраняем в localStorage
+        localStorage.setItem('user', JSON.stringify({
+          id: data.user.id,
+          name: data.user.full_name,
+          full_name: data.user.full_name,
+          phone: data.user.phone
+        }));
+        
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+        }
+        
+        localStorage.setItem('isLoggedIn', 'true');
+        
+        const redirectTo = localStorage.getItem('redirectAfterLogin') || '/';
+        localStorage.removeItem('redirectAfterLogin');
+        
+        window.location.href = redirectTo;
       } else {
         setError(data.error || t[lang].invalidCredentials);
       }
@@ -100,8 +94,6 @@ const handleSuccess = (data: any) => {
       setLoading(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-white">
