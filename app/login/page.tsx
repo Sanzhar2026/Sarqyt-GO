@@ -53,21 +53,25 @@ export default function LoginPage() {
   // app/login/page.tsx - исправленный handleSubmit
 
 const handleSuccess = (data: any) => {
-    localStorage.setItem('user', JSON.stringify({
-      id: data.user?.id || data.user_id,
-      name: data.user?.full_name,
-      full_name: data.user?.full_name,
-      phone: data.user?.phone
-    }));
-    localStorage.setItem('isLoggedIn', 'true');
-
-    window.dispatchEvent(new Event('authUpdated'));
-    
-    const redirectTo = localStorage.getItem('redirectAfterLogin') || '/';
-    localStorage.removeItem('redirectAfterLogin');
-    
-    window.location.href = redirectTo;
+  const userData = {
+    id: data.user_id || data.user?.id,
+    name: data.user?.full_name || data.user?.name,
+    full_name: data.user?.full_name,
+    phone: data.user?.phone
   };
+
+  // Сохраняем в localStorage — это работает на iPhone надёжно
+  localStorage.setItem('user', JSON.stringify(userData));
+  localStorage.setItem('isLoggedIn', 'true');
+
+  // Также пробуем сохранить token
+  if (data.token) {
+    localStorage.setItem('authToken', data.token);
+  }
+
+  window.dispatchEvent(new Event('authUpdated'));
+  window.location.href = '/';   // Полная перезагрузка
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

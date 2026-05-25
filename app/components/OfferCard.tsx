@@ -30,50 +30,30 @@ export default function OfferCard({ id, name, businessName, distance, price, ori
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
   // ✅ Улучшенная проверка авторизации
-  const checkAuth = async () => {
-    try {
-      // 1. Проверяем localStorage
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setIsAuthenticated(true);
-        setAuthChecked(true);
-        return true;
-      }
+ const checkAuth = async () => {
+  // Сначала localStorage (самое надёжное)
+  const storedUser = localStorage.getItem('user');
+  if (storedUser) {
+    setIsAuthenticated(true);
+    return true;
+  }
 
-      // 2. Проверяем через сервер (cookies)
-      const response = await fetch(`${API_URL}/api/check-auth`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const data = await response.json();
-      
-      if (data.authenticated) {
-        setIsAuthenticated(true);
-        localStorage.setItem('user', JSON.stringify({
-          id: data.user_id,
-          name: data.user_name || data.full_name,
-          phone: data.user_phone
-        }));
-        return true;
-      } else {
-        setIsAuthenticated(false);
-        localStorage.removeItem('user');
-        return false;
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      // Fallback
-      const storedUser = localStorage.getItem('user');
-      const isAuth = !!storedUser;
-      setIsAuthenticated(isAuth);
-      return isAuth;
-    } finally {
-      setAuthChecked(true);
+  // Запасной вариант — проверка через сервер
+  try {
+    const res = await fetch(`${API_URL}/api/auth/me`, {
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (data.authenticated) {
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setIsAuthenticated(true);
+      return true;
     }
-  };
+  } catch (e) {}
 
+  setIsAuthenticated(false);
+  return false;
+};
   useEffect(() => {
     checkAuth();
 

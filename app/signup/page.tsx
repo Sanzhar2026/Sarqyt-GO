@@ -104,20 +104,26 @@ export default function SignupPage() {
     }
   };
 
-const handleSuccess = (data: any, fullName: string) => {
-    localStorage.setItem('user', JSON.stringify({
-      id: data.user_id,
-      name: fullName,
-      full_name: fullName,
-      phone: data.user?.phone || phone
-    }));
-    localStorage.setItem('isLoggedIn', 'true');
-
-    window.dispatchEvent(new Event('authUpdated'));
-    
-    // Переход с полной перезагрузкой страницы (лучше работает на мобильных)
-    window.location.href = '/';
+const handleSuccess = (data: any) => {
+  const userData = {
+    id: data.user_id || data.user?.id,
+    name: data.user?.full_name || data.user?.name,
+    full_name: data.user?.full_name,
+    phone: data.user?.phone
   };
+
+  // Сохраняем в localStorage — это работает на iPhone надёжно
+  localStorage.setItem('user', JSON.stringify(userData));
+  localStorage.setItem('isLoggedIn', 'true');
+
+  // Также пробуем сохранить token
+  if (data.token) {
+    localStorage.setItem('authToken', data.token);
+  }
+
+  window.dispatchEvent(new Event('authUpdated'));
+  window.location.href = '/';   // Полная перезагрузка
+};
 
   const handleSignup = async () => {
     if (password !== confirmPassword) {
