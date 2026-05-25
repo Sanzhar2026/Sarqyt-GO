@@ -83,46 +83,43 @@ export default function OfferCard({ id, name, businessName, distance, price, ori
     
     return () => window.removeEventListener('authUpdated', handleAuthUpdate);
   }, []);
+const addToCart = async () => {
+  setAddingToCart(true);
 
-  const addToCart = async () => {
-    const isAuth = await checkAuth(); // ← Повторная проверка перед добавлением
-
-    if (!isAuth) {
+  try {
+    // Сначала проверяем localStorage
+    const storedUser = localStorage.getItem('user');
+    
+    if (!storedUser) {
       setShowAuthModal(true);
       return;
     }
 
-    setAddingToCart(true);
+    const response = await fetch(`${API_URL}/api/cart/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ bag_id: id, quantity: 1 })
+    });
 
-    try {
-      const response = await fetch(`${API_URL}/api/cart/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ bag_id: id, quantity: 1 })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        showNotification('✅ Товар добавлен в корзину!', 'success');
-        window.dispatchEvent(new Event('cartUpdated'));
-        if (onOrderSuccess) onOrderSuccess();
-      } else if (response.status === 401) {
-        localStorage.removeItem('user');
-        setIsAuthenticated(false);
-        setShowAuthModal(true);
-      } else {
-        showNotification(data.detail || 'Ошибка добавления', 'error');
-      }
-    } catch (error) {
-      console.error('Add to cart error:', error);
-      showNotification('Ошибка соединения', 'error');
-    } finally {
-      setAddingToCart(false);
+    if (response.ok) {
+      showNotification('✅ Товар добавлен в корзину!', 'success');
+      window.dispatchEvent(new Event('cartUpdated'));
+    } 
+    else if (response.status === 401) {
+      localStorage.removeItem('user');
+      setShowAuthModal(true);
+    } 
+    else {
+      showNotification('Ошибка добавления в корзину', 'error');
     }
-  };
-
+  } catch (error) {
+    console.error(error);
+    showNotification('Ошибка соединения с сервером', 'error');
+  } finally {
+    setAddingToCart(false);
+  }
+};
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     const notification = document.createElement('div');
     notification.className = `fixed bottom-20 left-4 right-4 z-50 ${type === 'success' ? 'bg-emerald-600' : 'bg-red-600'} text-white rounded-2xl p-4 shadow-xl`;

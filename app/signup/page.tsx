@@ -104,92 +104,69 @@ export default function SignupPage() {
     }
   };
 
-  const handleSignup = async () => {
-  if (!isDemoMode && !verificationCode) {
-    setError(t[lang].code + ' ' + (lang === 'kz' ? 'қажет' : 'обязателен'));
-    return;
-  }
-  if (password !== confirmPassword) {
-    setError(t[lang].passwordMismatch);
-    return;
-  }
-  if (password.length < 4) {
-    setError(lang === 'kz' ? 'Құпия сөз кемінде 4 символ' : 'Пароль не менее 4 символов');
-    return;
-  }
-  if (!firstName.trim()) {
-    setError(t[lang].firstName + ' ' + (lang === 'kz' ? 'қажет' : 'обязательно'));
-    return;
-  }
-  if (!lastName.trim()) {
-    setError(t[lang].lastName + ' ' + (lang === 'kz' ? 'қажет' : 'обязательно'));
-    return;
-  }
+const handleSuccess = (data: any, fullName: string) => {
+    localStorage.setItem('user', JSON.stringify({
+      id: data.user_id,
+      name: fullName,
+      full_name: fullName,
+      phone: data.user?.phone || phone
+    }));
+    localStorage.setItem('isLoggedIn', 'true');
 
-  setLoading(true);
-  setError('');
-  try {
-    const formattedPhone = formatPhoneNumber(phone);
-    const codeToSend = isDemoMode ? '123456' : verificationCode;
-    const fullName = `${firstName.trim()} ${lastName.trim()}`;
-
-    const response = await fetch(`${API_URL}/api/verify-and-register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phone: formattedPhone,
-        full_name: fullName,
-        password: password,
-        verification_code: codeToSend,
-      }),
-    });
-
-    const data = await response.json();
+    window.dispatchEvent(new Event('authUpdated'));
     
-    if (response.ok && data.success) {
-      // ✅ ВСТАВЬТЕ ЭТОТ КОД ЗДЕСЬ ✅
+    // Переход с полной перезагрузкой страницы (лучше работает на мобильных)
+    window.location.href = '/';
+  };
+
+  const handleSignup = async () => {
+    if (password !== confirmPassword) {
+      setError(t[lang].passwordMismatch);
+      return;
+    }
+    if (password.length < 4) {
+      setError(lang === 'kz' ? 'Құпия сөз кемінде 4 символ' : 'Пароль не менее 4 символов');
+      return;
+    }
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('Имя и фамилия обязательны');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const formattedPhone = formatPhoneNumber(phone);
+      const codeToSend = isDemoMode ? '123456' : verificationCode;
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
-      
-      // Сохраняем полное имя в localStorage
-      localStorage.setItem('user', JSON.stringify({
-        id: data.user_id,
-        name: fullName,
-        full_name: fullName,
-        phone: formattedPhone
-      }));
-      localStorage.setItem('isLoggedIn', 'true');
-      
-      // Автоматический вход
-      const loginResponse = await fetch(`${API_URL}/api/login`, {
+
+      const response = await fetch(`${API_URL}/api/verify-and-register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: formattedPhone, password: password }),
         credentials: 'include',
+        body: JSON.stringify({
+          phone: formattedPhone,
+          full_name: fullName,
+          password: password,
+          verification_code: codeToSend,
+        }),
       });
-      
-      if (loginResponse.ok) {
-        const loginData = await loginResponse.json();
-        // Обновляем localStorage данными из логина (на всякий случай)
-        localStorage.setItem('user', JSON.stringify({
-          id: loginData.user.id,
-          name: loginData.user.full_name || fullName,
-          full_name: loginData.user.full_name || fullName,
-          phone: loginData.user.phone
-        }));
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        handleSuccess(data, fullName);   // ← Используем функцию успеха
+      } else {
+        setError(data.detail || t[lang].invalidCode);
       }
-      
-      // Переходим на главную
-      window.location.href = '/';
-    } else {
-      setError(data.detail || t[lang].invalidCode);
+    } catch (err) {
+      console.error('Signup error:', err);
+      setError('Ошибка подключения к серверу');
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('Signup error:', err);
-    setError('Ошибка подключения к серверу');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-white">

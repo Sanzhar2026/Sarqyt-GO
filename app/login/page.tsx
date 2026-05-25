@@ -52,53 +52,50 @@ export default function LoginPage() {
 
   // app/login/page.tsx - исправленный handleSubmit
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError('');
+const handleSuccess = (data: any) => {
+    localStorage.setItem('user', JSON.stringify({
+      id: data.user?.id || data.user_id,
+      name: data.user?.full_name,
+      full_name: data.user?.full_name,
+      phone: data.user?.phone
+    }));
+    localStorage.setItem('isLoggedIn', 'true');
 
-  try {
-    const response = await fetch(`${API_URL}/api/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password }),
-      credentials: 'include',  // ← Важно для cookies
-    });
-
-    const data = await response.json();
+    window.dispatchEvent(new Event('authUpdated'));
     
-    if (response.ok && data.success) {
-      console.log('✅ Login response:', data);
-      
-      // Сохраняем в localStorage
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('user', JSON.stringify({
-        id: data.user.id,
-        name: data.user.full_name,
-        full_name: data.user.full_name,
-        phone: data.user.phone
-      }));
-      
-      // ✅ ПРОВЕРЯЕМ, УСТАНОВИЛАСЬ ЛИ COOKIE
-      console.log('🍪 Cookies после логина:', document.cookie);
-      
-      // Перенаправляем в корзину или на главную
-      const redirectTo = localStorage.getItem('redirectAfterLogin') || '/';
-      localStorage.removeItem('redirectAfterLogin');
-      
-      // Используем window.location.href для полной перезагрузки
-      window.location.href = redirectTo;
-    } else {
-      setError(data.error || t[lang].invalidCredentials);
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    setError(t[lang].invalidCredentials);
-  } finally {
-    setLoading(false);
-  }
-};
+    const redirectTo = localStorage.getItem('redirectAfterLogin') || '/';
+    localStorage.removeItem('redirectAfterLogin');
+    
+    window.location.href = redirectTo;
+  };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${API_URL}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password }),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        handleSuccess(data);   // ← Используем функцию успеха
+      } else {
+        setError(data.error || t[lang].invalidCredentials);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(t[lang].invalidCredentials);
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
 
