@@ -16,10 +16,10 @@ export default function CourierLogin() {
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
+  // Проверка уже залогинен ли курьер
   useEffect(() => {
     const checkAlreadyLoggedIn = async () => {
       try {
-        // ✅ ИСПОЛЬЗУЕМ sessionStorage (не localStorage)
         const token = sessionStorage.getItem('courierToken');
         const courierData = sessionStorage.getItem('courier');
         
@@ -29,25 +29,22 @@ export default function CourierLogin() {
           return;
         }
         
-        // Проверяем через API с токеном из sessionStorage
-        const response = await fetch(`${API_URL}/api/courier/status`, {
-          credentials: 'include',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
-          }
-        });
-        
-        console.log('🔍 Проверка статуса курьера:', response.status);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.is_verified === true) {
-            // Сохраняем данные в sessionStorage
-            sessionStorage.setItem('courier', JSON.stringify(data));
-            sessionStorage.setItem('courierToken', data.token || 'true');
-            window.location.replace('/courier/dashboard');
-            return;
+        // Проверяем через API (если есть токен)
+        if (token) {
+          const response = await fetch(`${API_URL}/api/courier/status`, {
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.is_verified === true) {
+              sessionStorage.setItem('courier', JSON.stringify(data));
+              window.location.replace('/courier/dashboard');
+              return;
+            }
           }
         }
       } catch (error) {
@@ -73,14 +70,13 @@ export default function CourierLogin() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password }),
-        credentials: 'include',
       });
 
       const data = await response.json();
       console.log('📥 Ответ сервера:', response.status, data);
 
       if (response.ok && data.success) {
-        // ✅ СОХРАНЯЕМ ТОЛЬКО В sessionStorage
+        // ✅ Сохраняем токен в sessionStorage
         if (data.token) {
           sessionStorage.setItem('courierToken', data.token);
         }
@@ -91,8 +87,8 @@ export default function CourierLogin() {
         }));
         sessionStorage.setItem('isCourierLoggedIn', 'true');
         
-        console.log('✅ Успешный вход, данные сохранены в sessionStorage');
-        window.location.replace('/courier/dashboard');
+        console.log('✅ Успешный вход, данные сохранены');
+        window.location.href = '/courier/dashboard';
       } else if (response.status === 403) {
         setPendingVerification(true);
         setError(data.detail || 'Ваша учетная запись ожидает подтверждения администратора');

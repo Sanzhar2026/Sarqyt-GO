@@ -30,48 +30,95 @@ export default function CourierDashboard() {
   const wsRef = useRef<WebSocket | null>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
-// app/courier/dashboard/page.tsx - в начале компонента добавьте:
 
-useEffect(() => {
-  const checkAuth = async () => {
-    // Проверяем localStorage
-    const token = localStorage.getItem('courierToken');
-    const courier = localStorage.getItem('courier');
-    
-    if (!token || !courier) {
-      window.location.replace('/courier/login');
-      return;
-    }
-    
-    // Проверяем через API
-    try {
-      const response = await fetch(`${API_URL}/api/courier/status`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        credentials: 'include'
-      });
+  // ✅ ПРОВЕРКА АВТОРИЗАЦИИ ЧЕРЕЗ JWT ТОКЕН
+  useEffect(() => {
+    const checkAuth = async () => {
+      // Проверяем sessionStorage
+      const token = sessionStorage.getItem('courierToken');
+      const courierData = sessionStorage.getItem('courier');
       
-      if (!response.ok) {
-        localStorage.removeItem('courierToken');
-        localStorage.removeItem('courier');
-        window.location.replace('/courier/login');
-      } else {
-        const data = await response.json();
-        if (data.success && data.is_verified) {
-          setLoading(false);
-        } else {
-          window.location.replace('/courier/login');
-        }
+      console.log('🔍 Проверка авторизации курьера:', { hasToken: !!token, hasData: !!courierData });
+      
+      if (!token || !courierData) {
+        console.log('❌ Нет данных, редирект на логин');
+        router.push('/courier/login');
+        return;
       }
-    } catch (error) {
-      console.error('Auth error:', error);
-      window.location.replace('/courier/login');
-    }
-  };
-  
-  checkAuth();
-}, []);
+      
+      // Проверяем через API с Bearer токеном
+      try {
+        const response = await fetch(`${API_URL}/api/courier/status`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        console.log('📡 Статус ответа:', response.status);
+        
+        if (response.status === 401) {
+          sessionStorage.removeItem('courierToken');
+          sessionStorage.removeItem('courier');
+          sessionStorage.removeItem('isCourierLoggedIn');
+          router.push('/courier/login');
+          return;
+        }
+        
+        if (response.status === 403) {
+          setPendingVerification(true);
+          setLoading(false);
+          return;
+        }
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Данные курьера:', data);
+          
+          if (data.success) {
+            if (!data.is_verified) {
+              setPendingVerification(true);
+              setLoading(false);
+              return;
+            }
+            
+            setStatus(data);
+            setIsOnline(data.is_online);
+            setOrderStatus(data.current_order_status);
+            
+            // Обновляем данные в sessionStorage
+            sessionStorage.setItem('courier', JSON.stringify(data));
+            
+            if (data.is_online && !locationIntervalRef.current) {
+              startLocationTracking();
+              connectWebSocket();
+            }
+            
+            if (data.current_order_id) {
+              fetchCurrentOrder(data.current_order_id);
+            }
+            
+            setLoading(false);
+          } else {
+            router.push('/courier/login');
+          }
+        } else {
+          router.push('/courier/login');
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        router.push('/courier/login');
+      }
+    };
+    
+    checkAuth();
+    
+    return () => {
+      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, []);
+
   // Получаем текущее местоположение курьера
   useEffect(() => {
     if (navigator.geolocation) {
@@ -89,76 +136,16 @@ useEffect(() => {
     }
   }, []);
 
-  // Проверка авторизации курьера
-  useEffect(() => {
-    checkCourierAuth();
-    
-    return () => {
-      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-      if (wsRef.current) wsRef.current.close();
-    };
-  }, []);
-
-  const checkCourierAuth = async () => {
-    setLoading(true);
-    
-    try {
-      const response = await fetch(`${API_URL}/api/courier/status`, {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      console.log('🔍 Проверка авторизации курьера:', response.status);
-      
-      if (response.status === 401) {
-        window.location.replace('/courier/login');
-        return;
-      }
-      
-      if (response.status === 403) {
-        setPendingVerification(true);
-        setLoading(false);
-        return;
-      }
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          if (!data.is_verified) {
-            setPendingVerification(true);
-            setLoading(false);
-            return;
-          }
-          
-          setStatus(data);
-          setIsOnline(data.is_online);
-          setOrderStatus(data.current_order_status);
-          
-          if (data.is_online && !locationIntervalRef.current) {
-            startLocationTracking();
-            connectWebSocket();
-          }
-          
-          if (data.current_order_id) {
-            fetchCurrentOrder(data.current_order_id);
-          }
-          
-          setLoading(false);
-        } else {
-          window.location.replace('/courier/login');
-        }
-      } else {
-        window.location.replace('/courier/login');
-      }
-    } catch (error) {
-      console.error('Auth error:', error);
-      window.location.replace('/courier/login');
-    }
-  };
-
   const fetchStatus = async () => {
+    const token = sessionStorage.getItem('courierToken');
+    if (!token) return;
+    
     try {
-      const res = await fetch(`${API_URL}/api/courier/status`, { credentials: 'include' });
+      const res = await fetch(`${API_URL}/api/courier/status`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         setIsOnline(data.is_online);
@@ -180,8 +167,13 @@ useEffect(() => {
   };
 
   const fetchCurrentOrder = async (orderId: number) => {
+    const token = sessionStorage.getItem('courierToken');
     try {
-      const res = await fetch(`${API_URL}/api/orders/${orderId}`, { credentials: 'include' });
+      const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       console.log('📦 Заказ получен:', data);
       console.log('🏪 Ресторан координаты:', data.supplier?.lat, data.supplier?.lon);
@@ -193,8 +185,13 @@ useEffect(() => {
   };
 
   const fetchAvailableOrders = async () => {
+    const token = sessionStorage.getItem('courierToken');
     try {
-      const res = await fetch(`${API_URL}/api/courier/available-orders`, { credentials: 'include' });
+      const res = await fetch(`${API_URL}/api/courier/available-orders`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await res.json();
       if (data.success) {
         setAvailableOrders(data.orders || []);
@@ -205,10 +202,14 @@ useEffect(() => {
   };
 
   const takeOrder = async (orderId: number) => {
+    const token = sessionStorage.getItem('courierToken');
     try {
       const res = await fetch(`${API_URL}/api/courier/take-order/${orderId}`, {
         method: 'POST',
-        credentials: 'include'
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
       });
       
       const data = await res.json();
@@ -226,15 +227,17 @@ useEffect(() => {
     }
   };
 
-  // ✅ КУРЬЕР ПРИБЫЛ К КЛИЕНТУ
   const courierArrived = async () => {
     if (!currentOrder) return;
     
     setArriving(true);
+    const token = sessionStorage.getItem('courierToken');
     try {
       const res = await fetch(`${API_URL}/api/courier/arrived/${currentOrder.id}`, {
         method: 'POST',
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       
       const data = await res.json();
@@ -326,11 +329,14 @@ useEffect(() => {
             const lon = position.coords.longitude;
             setUserLocation({ lat, lon });
             
+            const token = sessionStorage.getItem('courierToken');
             try {
               await fetch(`${API_URL}/api/courier/update-location`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ lat, lon })
               });
             } catch (error) {
@@ -391,6 +397,8 @@ useEffect(() => {
     if (switching) return;
     setSwitching(true);
     
+    const token = sessionStorage.getItem('courierToken');
+    
     if (!isOnline) {
       if (!navigator.geolocation) {
         alert('Разрешите доступ к геолокации');
@@ -403,8 +411,10 @@ useEffect(() => {
           try {
             const res = await fetch(`${API_URL}/api/courier/go-online`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
               body: JSON.stringify({
                 lat: position.coords.latitude,
                 lon: position.coords.longitude
@@ -435,7 +445,9 @@ useEffect(() => {
       try {
         const res = await fetch(`${API_URL}/api/courier/go-offline`, {
           method: 'POST',
-          credentials: 'include'
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
         
         const data = await res.json();
@@ -462,11 +474,14 @@ useEffect(() => {
   const acceptProposal = async () => {
     if (!proposedOrder) return;
     
+    const token = sessionStorage.getItem('courierToken');
     try {
       const res = await fetch(`${API_URL}/api/courier/respond-to-proposal`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ response: 'accept' })
       });
       
@@ -486,11 +501,14 @@ useEffect(() => {
   const declineProposal = async () => {
     if (!proposedOrder) return;
     
+    const token = sessionStorage.getItem('courierToken');
     try {
       const res = await fetch(`${API_URL}/api/courier/respond-to-proposal`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ response: 'decline' })
       });
       
@@ -505,10 +523,13 @@ useEffect(() => {
   const completeDelivery = async () => {
     if (!currentOrder) return;
     
+    const token = sessionStorage.getItem('courierToken');
     try {
       const res = await fetch(`${API_URL}/api/courier/complete-order/${currentOrder.id}`, {
         method: 'POST',
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       
       const data = await res.json();
@@ -739,7 +760,7 @@ useEffect(() => {
               </div>
             </div>
             
-            {/* ✅ КНОПКА "Я ПРИЕХАЛ / ПРИШЕЛ" */}
+            {/* КНОПКА "Я ПРИЕХАЛ / ПРИШЕЛ" */}
             {currentOrder.status === 'out_for_delivery' && (
               <button
                 onClick={courierArrived}
