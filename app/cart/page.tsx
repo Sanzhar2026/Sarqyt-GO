@@ -100,7 +100,13 @@ export default function CartPage() {
       enterAddress: 'Введите ваш адрес'
     }
   };
-
+// Добавить защиту
+useEffect(() => {
+  const token = sessionStorage.getItem('authToken');
+  if (!token) {
+    router.push('/login');
+  }
+}, []);
   // Получаем геолокацию при загрузке
   useEffect(() => {
     if (navigator.geolocation) {

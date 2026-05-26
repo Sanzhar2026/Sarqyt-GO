@@ -66,8 +66,8 @@ export default function LoginPage() {
       const data = await response.json();
       
       if (response.ok && data.success) {
-        // Сохраняем в localStorage
-        localStorage.setItem('user', JSON.stringify({
+        // Сохраняем в sessionStorage
+        sessionStorage.setItem('user', JSON.stringify({
           id: data.user.id,
           name: data.user.full_name,
           full_name: data.user.full_name,
@@ -75,13 +75,13 @@ export default function LoginPage() {
         }));
         
         if (data.token) {
-          localStorage.setItem('authToken', data.token);
+          sessionStorage.setItem('authToken', data.token);
         }
         
-        localStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('isLoggedIn', 'true');
         
-        const redirectTo = localStorage.getItem('redirectAfterLogin') || '/';
-        localStorage.removeItem('redirectAfterLogin');
+        const redirectTo = sessionStorage.getItem('redirectAfterLogin') || '/';
+        sessionStorage.removeItem('redirectAfterLogin');
         
         window.location.href = redirectTo;
       } else {

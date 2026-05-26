@@ -171,7 +171,7 @@ export default function HomePage() {
 
   // Загрузка данных пользователя
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
@@ -197,7 +197,7 @@ export default function HomePage() {
               phone: data.user_phone
             };
             setUser(userData);
-            localStorage.setItem('user', JSON.stringify(userData));
+            sessionStorage.setItem('user', JSON.stringify(userData));
           }
         }
       } catch (err) {
@@ -240,8 +240,8 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     await fetch(`${API_URL}/logout`, { method: 'GET', credentials: 'include' });
-    localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('isLoggedIn');
     setUser(null);
     window.location.href = '/';
   };

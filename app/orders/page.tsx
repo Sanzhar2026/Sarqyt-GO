@@ -6,13 +6,21 @@ import { getUserOrders, type Order } from '../../lib/api'
 import { translations, type Language } from '../../lib/i18n'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import OrderStatusBadge from '../components/OrderStatusBadge'
+import { useRouter } from 'next/dist/client/components/navigation'
 
 export default function OrdersPage() {
   const [lang, setLang] = useState<Language>('ru')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const router = useRouter();
   const t = translations[lang]
-
+// Добавить защиту
+useEffect(() => {
+  const token = sessionStorage.getItem('authToken');
+  if (!token) {
+    router.push('/login');
+  }
+}, []);
   useEffect(() => {
     // Временно используем user_id = 1 (потом заменим на авторизацию)
     getUserOrders()

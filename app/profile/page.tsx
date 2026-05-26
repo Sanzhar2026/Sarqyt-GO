@@ -34,10 +34,16 @@ export default function ProfilePage() {
       courierPanel: 'Панель курьера'
     }
   };
-
+// Добавить защиту
+useEffect(() => {
+  const token = sessionStorage.getItem('authToken');
+  if (!token) {
+    router.push('/login');
+  }
+}, []);
   useEffect(() => {
     const loadUserData = async () => {
-      const storedUser = localStorage.getItem('user');
+      const storedUser = sessionStorage.getItem('user');
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
@@ -64,7 +70,7 @@ export default function ProfilePage() {
           if (data.authenticated) {
             const userData = { id: data.user_id, full_name: data.user_name, phone: data.user_phone || '' };
             setUser(userData);
-            localStorage.setItem('user', JSON.stringify({ id: userData.id, name: userData.full_name, phone: userData.phone }));
+            sessionStorage.setItem('user', JSON.stringify({ id: userData.id, name: userData.full_name, phone: userData.phone }));
           }
         }
       } catch (err) {
@@ -76,8 +82,8 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await fetch(`https://toogood-2ncf.onrender.com/logout`, { method: 'GET', credentials: 'include' });
-    localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('isLoggedIn');
     setUser(null);
     window.location.href = '/';
   };

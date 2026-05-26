@@ -142,8 +142,8 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Сохраняем в localStorage
-        localStorage.setItem('user', JSON.stringify({
+        // Сохраняем в sessionStorage
+        sessionStorage.setItem('user', JSON.stringify({
           id: data.user_id,
           name: fullName,
           full_name: fullName,
@@ -151,10 +151,10 @@ export default function SignupPage() {
         }));
         
         if (data.token) {
-          localStorage.setItem('authToken', data.token);
+          sessionStorage.setItem('authToken', data.token);
         }
         
-        localStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('isLoggedIn', 'true');
         
         window.dispatchEvent(new Event('authUpdated'));
         window.location.href = '/';

@@ -40,7 +40,13 @@ export default function OffersPage() {
       setLoading(false);
     }
   };
-
+// Добавить защиту
+useEffect(() => {
+  const token = sessionStorage.getItem('authToken');
+  if (!token) {
+    router.push('/login');
+  }
+}, []);
   useEffect(() => {
     fetchBags();
     const interval = setInterval(fetchBags, 30000);

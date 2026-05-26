@@ -41,8 +41,8 @@ export default function OfferCard({
   // Проверка авторизации
   useEffect(() => {
     const checkAuth = () => {
-      const storedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('authToken');
+      const storedUser = sessionStorage.getItem('user');
+      const token = sessionStorage.getItem('authToken');
       
       if (storedUser && token) {
         setIsAuthenticated(true);
@@ -52,7 +52,7 @@ export default function OfferCard({
       
       const checkViaApi = async () => {
         try {
-          const token = localStorage.getItem('authToken');
+          const token = sessionStorage.getItem('authToken');
           const headers: HeadersInit = { 'Content-Type': 'application/json' };
           
           if (token) {
@@ -68,8 +68,8 @@ export default function OfferCard({
           
           if (data.authenticated) {
             setIsAuthenticated(true);
-            localStorage.setItem('user', JSON.stringify(data.user));
-            if (data.token) localStorage.setItem('authToken', data.token);
+            sessionStorage.setItem('user', JSON.stringify(data.user));
+            if (data.token) sessionStorage.setItem('authToken', data.token);
           } else {
             setIsAuthenticated(false);
           }
@@ -117,7 +117,7 @@ export default function OfferCard({
 
       if (response.ok && data.success) {
         // ✅ Сохраняем информацию о бронировании
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === id);
         
         if (existing) {
@@ -135,7 +135,7 @@ export default function OfferCard({
           });
         }
         
-        localStorage.setItem('cart', JSON.stringify(cart));
+        sessionStorage.setItem('cart', JSON.stringify(cart));
         
         // ✅ Показываем сообщение с таймером
         alert(`✅ ${name} забронирован на 15 минут! Перейдите в корзину для оплаты.`);
