@@ -86,7 +86,9 @@ export default function CourierLogin() {
           is_verified: true
         }));
         sessionStorage.setItem('isCourierLoggedIn', 'true');
-        
+        // Выполните в консоли браузера
+console.log('courierToken:', sessionStorage.getItem('courierToken'));
+console.log('courier:', sessionStorage.getItem('courier'));
         console.log('✅ Успешный вход, данные сохранены');
         window.location.href = '/courier/dashboard';
       } else if (response.status === 403) {
