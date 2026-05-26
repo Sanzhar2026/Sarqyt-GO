@@ -16,6 +16,8 @@ interface CartItem {
   discount: number;
   imageUrl: string;
   quantity: number;
+  reservation_id?: number;
+  expires_at?: string;
 }
 
 interface Reservation {
@@ -100,13 +102,15 @@ export default function CartPage() {
       enterAddress: 'Введите ваш адрес'
     }
   };
-// Добавить защиту
-useEffect(() => {
-  const token = sessionStorage.getItem('authToken');
-  if (!token) {
-    router.push('/login');
-  }
-}, []);
+
+  // Защита страницы
+  useEffect(() => {
+    const token = sessionStorage.getItem('authToken');
+    if (!token) {
+      router.push('/login');
+    }
+  }, [router]);
+
   // Получаем геолокацию при загрузке
   useEffect(() => {
     if (navigator.geolocation) {
@@ -134,7 +138,7 @@ useEffect(() => {
     }
   }, []);
 
-  // ✅ Функция проверки резервации
+  // Функция проверки резервации
   const checkReservation = async () => {
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/reservation', {
@@ -149,13 +153,25 @@ useEffect(() => {
     }
   };
 
-  // ✅ Загрузка корзины и проверка резервации
+  // Загрузка корзины и проверка резервации
   useEffect(() => {
     loadCart();
     checkReservation();
     window.addEventListener('cartUpdated', loadCart);
     return () => window.removeEventListener('cartUpdated', loadCart);
   }, []);
+
+  // Синхронизация резервации из товаров корзины
+  useEffect(() => {
+    const reservationFromCart = cartItems.find((item: any) => item.reservation_id && item.expires_at);
+    if (reservationFromCart && !reservation) {
+      setReservation({
+        id: reservationFromCart.reservation_id,
+        expires_at: reservationFromCart.expires_at,
+        bag_id: reservationFromCart.id
+      });
+    }
+  }, [cartItems, reservation]);
 
   // Таймер обратного отсчета
   useEffect(() => {
@@ -171,7 +187,7 @@ useEffect(() => {
     if (expires.getTime() <= now.getTime()) {
       setTimeLeft(0);
       alert(`⏰ ${t[lang].bookingExpired}`);
-      localStorage.removeItem('cart');
+      sessionStorage.removeItem('cart');
       setCartItems([]);
       setReservation(null);
       router.push('/');
@@ -186,7 +202,7 @@ useEffect(() => {
         setTimeLeft(0);
         clearInterval(interval);
         alert(`⏰ ${t[lang].bookingExpired}`);
-        localStorage.removeItem('cart');
+        sessionStorage.removeItem('cart');
         setCartItems([]);
         setReservation(null);
         router.push('/');
@@ -202,8 +218,19 @@ useEffect(() => {
   }, [reservation, router, showTimerWarning, lang, t]);
 
   const loadCart = () => {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    // ✅ sessionStorage вместо localStorage
+    const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
     setCartItems(cart);
+    
+    // Проверяем, есть ли активная резервация в товарах
+    const activeReservation = cart.find((item: any) => item.reservation_id && item.expires_at);
+    if (activeReservation) {
+      setReservation({
+        id: activeReservation.reservation_id,
+        expires_at: activeReservation.expires_at,
+        bag_id: activeReservation.id
+      });
+    }
   };
 
   const updateQuantity = (id: number, newQuantity: number) => {
@@ -215,14 +242,14 @@ useEffect(() => {
       item.id === id ? { ...item, quantity: newQuantity } : item
     );
     setCartItems(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    sessionStorage.setItem('cart', JSON.stringify(updatedCart));
     window.dispatchEvent(new Event('cartUpdated'));
   };
 
   const removeItem = (id: number) => {
     const updatedCart = cartItems.filter(item => item.id !== id);
     setCartItems(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    sessionStorage.setItem('cart', JSON.stringify(updatedCart));
     window.dispatchEvent(new Event('cartUpdated'));
   };
 
@@ -244,7 +271,7 @@ useEffect(() => {
     setShowPaymentModal(true);
   };
 
-  // СОЗДАНИЕ ЗАКАЗА ПЕРЕД ОПЛАТОЙ
+  // Создание заказа перед оплатой
   const createOrders = async () => {
     const createdOrders = [];
     
@@ -280,7 +307,7 @@ useEffect(() => {
       const orders = await createOrders();
       console.log('✅ Заказы созданы:', orders);
       
-      localStorage.setItem('pending_order', JSON.stringify({
+      sessionStorage.setItem('pending_order', JSON.stringify({
         orders: orders,
         total: getTotalPrice(),
         timestamp: Date.now()
@@ -324,7 +351,7 @@ useEffect(() => {
       
       setTimeout(() => {
         setProcessingStep('success');
-        localStorage.removeItem('cart');
+        sessionStorage.removeItem('cart');
         setCartItems([]);
         
         setTimeout(() => {

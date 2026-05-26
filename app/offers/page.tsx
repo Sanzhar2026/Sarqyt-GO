@@ -40,13 +40,15 @@ export default function OffersPage() {
       setLoading(false);
     }
   };
-// Добавить защиту
-useEffect(() => {
-  const token = sessionStorage.getItem('authToken');
-  if (!token) {
-    router.push('/login');
-  }
-}, []);
+
+  // Проверка авторизации
+  useEffect(() => {
+    const token = sessionStorage.getItem('authToken');
+    if (!token) {
+      router.push('/login');
+    }
+  }, [router]);
+
   useEffect(() => {
     fetchBags();
     const interval = setInterval(fetchBags, 30000);
@@ -75,12 +77,15 @@ useEffect(() => {
       console.log('📦 Ответ сервера:', data);
 
       if (response.ok && data.success) {
-        // Добавляем в localStorage
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        // ✅ ИСПОЛЬЗУЕМ sessionStorage вместо localStorage
+        const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === bag.id);
         
         if (existing) {
           existing.quantity += 1;
+          // Сохраняем информацию о резервации
+          existing.reservation_id = data.reservation_id;
+          existing.expires_at = data.expires_at;
         } else {
           cart.push({
             id: bag.id,
@@ -90,14 +95,16 @@ useEffect(() => {
             originalPrice: bag.original_price,
             discount: bag.discount_percentage,
             imageUrl: bag.image_url,
-            quantity: 1
+            quantity: 1,
+            reservation_id: data.reservation_id,
+            expires_at: data.expires_at
           });
         }
         
-        localStorage.setItem('cart', JSON.stringify(cart));
+        sessionStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
         
-        alert(`✅ ${bag.name} добавлен в корзину!`);
+        alert(`✅ ${bag.name} добавлен в корзину! У вас 15 минут на оплату.`);
         router.push('/cart');
       } else {
         alert(data.detail || data.message || '❌ Ошибка при добавлении');
@@ -124,7 +131,7 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header с кнопками языка */}
+      {/* Header */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">

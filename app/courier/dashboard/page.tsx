@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx
+// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -26,10 +26,53 @@ export default function CourierDashboard() {
   const [locating, setLocating] = useState(false);
   const [arriving, setArriving] = useState(false);
   
+  // ✅ НОВОЕ: состояние для прогресса
+  const [currentProgress, setCurrentProgress] = useState(0);
+  
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
+
+  // ✅ НОВОЕ: функция расчета расстояния (формула гаверсинуса)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Радиус Земли в км
+    const dlat = (lat2 - lat1) * Math.PI / 180;
+    const dlon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dlat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dlon/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // ✅ НОВОЕ: функция обновления прогресса доставки
+  const updateProgress = (currentLat: number, currentLon: number) => {
+    if (!currentOrder || !currentOrder.customer_lat || !currentOrder.customer_lon) return;
+    
+    // Расстояние от текущего положения до клиента
+    const distanceToCustomer = calculateDistance(
+      currentLat, currentLon,
+      currentOrder.customer_lat, currentOrder.customer_lon
+    );
+    
+    // Если есть координаты ресторана, вычисляем прогресс
+    if (currentOrder.supplier?.lat && currentOrder.supplier?.lon) {
+      const totalDistance = calculateDistance(
+        currentOrder.supplier.lat, currentOrder.supplier.lon,
+        currentOrder.customer_lat, currentOrder.customer_lon
+      );
+      
+      if (totalDistance > 0) {
+        let progress = Math.floor((1 - distanceToCustomer / totalDistance) * 100);
+        progress = Math.max(0, Math.min(100, progress));
+        setCurrentProgress(progress);
+        
+        // Если прогресс >= 50%, обновляем список доступных заказов
+        if (progress >= 50 && isOnline) {
+          fetchAvailableOrders();
+        }
+      }
+    }
+  };
 
   // ✅ ПРОВЕРКА АВТОРИЗАЦИИ ЧЕРЕЗ JWT ТОКЕН
   useEffect(() => {
@@ -328,6 +371,11 @@ export default function CourierDashboard() {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
             setUserLocation({ lat, lon });
+            
+            // ✅ ОБНОВЛЯЕМ ПРОГРЕСС при каждом обновлении позиции
+            if (currentOrder) {
+              updateProgress(lat, lon);
+            }
             
             const token = sessionStorage.getItem('courierToken');
             try {
@@ -739,7 +787,7 @@ export default function CourierDashboard() {
         </div>
       )}
 
-      {/* Текущий заказ */}
+      {/* Текущий заказ - С ИНДИКАТОРОМ ПРОГРЕССА */}
       {currentOrder && currentOrder.status !== 'delivered' && (
         <div className="px-4 mb-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
@@ -758,6 +806,27 @@ export default function CourierDashboard() {
                 <span className="text-gray-500">Сумма:</span>
                 <span className="font-bold text-emerald-600">{currentOrder.amount_paid} ₸</span>
               </div>
+            </div>
+            
+            {/* ✅ ИНДИКАТОР ПРОГРЕССА */}
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Прогресс доставки</span>
+                <span>{orderStatus === 'almost_done' ? '🔔 Почти закончил' : `${currentProgress}%`}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${currentProgress}%` }}
+                />
+              </div>
+              {currentProgress >= 50 && availableOrders.length > 0 && (
+                <div className="mt-3 p-2 bg-blue-50 rounded-lg text-center">
+                  <p className="text-xs text-blue-600">
+                    💡 Вы выполнили {currentProgress}% заказа! Есть новые предложения выше.
+                  </p>
+                </div>
+              )}
             </div>
             
             {/* КНОПКА "Я ПРИЕХАЛ / ПРИШЕЛ" */}
