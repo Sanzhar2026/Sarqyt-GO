@@ -245,30 +245,44 @@ export default function CourierDashboard() {
   };
 
   const takeOrder = async (orderId: number) => {
-    const token = sessionStorage.getItem('courierToken');
-    try {
-      const res = await fetch(`${API_URL}/api/courier/take-order/${orderId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      const data = await res.json();
-      if (data.success) {
-        showNotification('✅ Заказ взят в работу!', 'success');
-        fetchStatus();
-        fetchCurrentOrder(orderId);
-        setShowOrdersList(false);
-      } else {
-        alert(data.message || 'Ошибка');
+  const token = sessionStorage.getItem('courierToken');
+  
+  console.log(`📦 Попытка взять заказ ${orderId}`);
+  console.log(`🔑 Токен: ${token ? token.substring(0, 20) + '...' : 'ОТСУТСТВУЕТ'}`);
+  
+  if (!token) {
+    alert('Ошибка авторизации. Пожалуйста, войдите заново.');
+    router.push('/courier/login');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_URL}/api/courier/take-order/${orderId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       }
-    } catch (error) {
-      console.error('Error taking order:', error);
-      alert('Ошибка при взятии заказа');
+    });
+    
+    const data = await response.json();
+    console.log('📥 Ответ:', data);
+    
+    if (response.ok && data.success) {
+      showNotification('✅ Заказ взят в работу!', 'success');
+      // Обновляем статус курьера
+      await fetchStatus();
+      await fetchCurrentOrder(orderId);
+      setShowOrdersList(false);
+      await fetchAvailableOrders();
+    } else {
+      alert(data.message || 'Ошибка при взятии заказа');
     }
-  };
+  } catch (error) {
+    console.error('Error taking order:', error);
+    alert('Ошибка при взятии заказа');
+  }
+};
 
   const courierArrived = async () => {
     if (!currentOrder) return;
