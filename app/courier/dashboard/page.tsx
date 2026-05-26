@@ -884,7 +884,7 @@ export default function CourierDashboard() {
           </button>
           
           {showOrdersList && availableOrders.length > 0 && (
-            <div className="mt-3 space-y-3">
+            <div className="mt-3 space-y-3 pb-20">
               {availableOrders.map((order) => (
                 <div key={order.order_id} className="bg-white rounded-xl p-4 shadow-sm">
                   <div className="flex justify-between items-start mb-2">
