@@ -1,4 +1,4 @@
-// app/courier/login/page.tsx - исправленный
+// app/courier/login/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,17 +19,17 @@ export default function CourierLogin() {
   useEffect(() => {
     const checkAlreadyLoggedIn = async () => {
       try {
-        // Проверяем localStorage сначала
-        const token = localStorage.getItem('courierToken');
-        const courierData = localStorage.getItem('courier');
+        // ✅ ИСПОЛЬЗУЕМ sessionStorage (не localStorage)
+        const token = sessionStorage.getItem('courierToken');
+        const courierData = sessionStorage.getItem('courier');
         
         if (token && courierData) {
-          console.log('✅ Найдены данные в localStorage');
+          console.log('✅ Найдены данные в sessionStorage');
           window.location.replace('/courier/dashboard');
           return;
         }
         
-        // Проверяем через API
+        // Проверяем через API с токеном из sessionStorage
         const response = await fetch(`${API_URL}/api/courier/status`, {
           credentials: 'include',
           headers: { 
@@ -43,8 +43,9 @@ export default function CourierLogin() {
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.is_verified === true) {
-            // Сохраняем данные в localStorage
-            localStorage.setItem('courier', JSON.stringify(data));
+            // Сохраняем данные в sessionStorage
+            sessionStorage.setItem('courier', JSON.stringify(data));
+            sessionStorage.setItem('courierToken', data.token || 'true');
             window.location.replace('/courier/dashboard');
             return;
           }
@@ -79,18 +80,18 @@ export default function CourierLogin() {
       console.log('📥 Ответ сервера:', response.status, data);
 
       if (response.ok && data.success) {
-        // ✅ Сохраняем токен и данные в localStorage
+        // ✅ СОХРАНЯЕМ ТОЛЬКО В sessionStorage
         if (data.token) {
-          localStorage.setItem('courierToken', data.token);
+          sessionStorage.setItem('courierToken', data.token);
         }
         
-        localStorage.setItem('courier', JSON.stringify({
+        sessionStorage.setItem('courier', JSON.stringify({
           ...data.courier,
-          is_verified: true,
-          token: data.token
+          is_verified: true
         }));
+        sessionStorage.setItem('isCourierLoggedIn', 'true');
         
-        console.log('✅ Успешный вход, данные сохранены');
+        console.log('✅ Успешный вход, данные сохранены в sessionStorage');
         window.location.replace('/courier/dashboard');
       } else if (response.status === 403) {
         setPendingVerification(true);
