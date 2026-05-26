@@ -300,8 +300,13 @@ export default function CourierDashboard() {
   };
 
   const connectWebSocket = () => {
-    const ws = new WebSocket(`${API_URL.replace('https', 'wss')}/ws/courier-tracking`);
-    wsRef.current = ws;
+    const token = sessionStorage.getItem('courierToken');
+  if (!token) {
+    console.log('❌ Нет токена для WebSocket');
+    return;
+  }
+     const ws = new WebSocket(`${API_URL.replace('https', 'wss')}/ws/courier-tracking?token=${token}`);
+  wsRef.current = ws;
     
     ws.onopen = () => {
       console.log('✅ WebSocket connected');
