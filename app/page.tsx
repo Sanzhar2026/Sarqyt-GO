@@ -1,4 +1,3 @@
-// app/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -73,7 +72,6 @@ export default function HomePage() {
       const data = await response.json();
       console.log('📦 ДАННЫЕ ИЗ API:', data);
       
-      // Фильтруем только доступные сюрпризы (с количеством > 0)
       const filteredBags = data.filter((bag: SurpriseBag) => bag.available_quantity > 0);
       
       console.log('✅ ПОСЛЕ ФИЛЬТРАЦИИ:', filteredBags.length, 'сюрпризов');
@@ -94,6 +92,86 @@ export default function HomePage() {
       }
     }
   }, [API_URL]);
+
+  // ✅ Функция показа уведомления
+  const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
+      type === 'success' ? 'bg-emerald-600' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
+    }`;
+    toast.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '🚚'}</span>
+        <div class="flex-1">
+          <div class="font-bold">${title}</div>
+          <div class="text-sm opacity-90">${body}</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('animate-fade-out');
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/logo.png' });
+    }
+  };
+
+  // ✅ НОВОЕ: уведомление о прибытии курьера с кнопкой "Перейти к заказу"
+  const showCourierArrivedNotification = (data: any) => {
+    const { order_id, order_number, courier_name, courier_phone } = data;
+    
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-20 left-4 right-4 z-50 bg-white rounded-2xl shadow-xl border-l-4 border-green-500 overflow-hidden animate-slide-down';
+    toast.innerHTML = `
+      <div class="p-4">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">🚚</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-gray-800">Курьер прибыл!</h3>
+            <p class="text-sm text-gray-500">${courier_name} • ${courier_phone}</p>
+          </div>
+        </div>
+        <p class="text-sm text-gray-600 mb-3">Заказ #${order_number} ожидает подтверждения</p>
+        <div class="flex gap-2">
+          <button id="go-to-order-btn" class="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-sm font-semibold">
+            📦 Перейти к заказу
+          </button>
+          <button id="close-notification-btn" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-sm">
+            ✕
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    toast.querySelector('#go-to-order-btn')?.addEventListener('click', () => {
+      toast.remove();
+      router.push(`/orders/${order_id}`);
+    });
+    
+    toast.querySelector('#close-notification-btn')?.addEventListener('click', () => {
+      toast.remove();
+    });
+    
+    setTimeout(() => {
+      if (document.body.contains(toast)) {
+        toast.classList.add('animate-fade-out');
+        setTimeout(() => toast.remove(), 300);
+      }
+    }, 15000);
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('🚚 Курьер прибыл!', {
+        body: `${courier_name} ожидает вас. Нажмите чтобы подтвердить заказ #${order_number}`,
+        icon: '/logo.png'
+      });
+    }
+  };
 
   // WebSocket обработка
   useEffect(() => {
@@ -134,6 +212,23 @@ export default function HomePage() {
       
       setLastUpdate(new Date());
     }
+    
+    // ✅ ОБРАБОТКА ПРИБЫТИЯ КУРЬЕРА
+    if (lastMessage.type === 'courier_arrived') {
+      console.log('🚚 КУРЬЕР ПРИБЫЛ!', lastMessage.data);
+      showCourierArrivedNotification(lastMessage.data);
+    }
+    
+    // ✅ Обработка назначения курьера
+    if (lastMessage.type === 'order_assigned') {
+      const { order_id, courier_name, courier_phone, estimated_time } = lastMessage.data;
+      showNotification(
+        'Курьер назначен!',
+        `${courier_name} (${courier_phone}) везет ваш заказ. Ожидайте ${estimated_time || 30} минут.`,
+        'info'
+      );
+    }
+    
   }, [lastMessage, fetchBags]);
 
   const handleManualRefresh = () => {
@@ -341,14 +436,12 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Status indicator */}
       <div className={`fixed top-0 right-0 z-50 m-2 px-2 py-1 rounded-full text-xs ${
         isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
       }`}>
         {isConnected ? '🟢 ' + t[lang].connected : '🔴 ' + t[lang].disconnected}
       </div>
 
-      {/* Header с логотипом и кнопками языка */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <div>
@@ -368,7 +461,6 @@ export default function HomePage() {
           </div>
           
           <div className="flex gap-2">
-            {/* Кнопки языка - внутри хедера */}
             <div className="flex gap-1 mr-2">
               <button
                 onClick={() => setLang('kz')}
