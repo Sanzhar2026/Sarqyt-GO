@@ -910,7 +910,7 @@ const startLocationTracking = () => {
             {orderStatus === 'almost_done' && (
               <button
                 onClick={completeDelivery}
-                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold"
+                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold mt-4"
               >
                 ✅ Завершить доставку
               </button>
