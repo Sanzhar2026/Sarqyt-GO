@@ -1,4 +1,3 @@
-// app/courier/login/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -18,6 +17,8 @@ export default function CourierLogin() {
 
   // Проверка уже залогинен ли курьер
   useEffect(() => {
+    let isMounted = true;
+    
     const checkAlreadyLoggedIn = async () => {
       try {
         const token = sessionStorage.getItem('courierToken');
@@ -25,11 +26,12 @@ export default function CourierLogin() {
         
         if (token && courierData) {
           console.log('✅ Найдены данные в sessionStorage');
-          window.location.replace('/courier/dashboard');
+          if (isMounted) {
+            router.replace('/courier/dashboard');
+          }
           return;
         }
         
-        // Проверяем через API (если есть токен)
         if (token) {
           const response = await fetch(`${API_URL}/api/courier/status`, {
             headers: { 
@@ -42,7 +44,9 @@ export default function CourierLogin() {
             const data = await response.json();
             if (data.success && data.is_verified === true) {
               sessionStorage.setItem('courier', JSON.stringify(data));
-              window.location.replace('/courier/dashboard');
+              if (isMounted) {
+                router.replace('/courier/dashboard');
+              }
               return;
             }
           }
@@ -50,12 +54,18 @@ export default function CourierLogin() {
       } catch (error) {
         console.error('Ошибка проверки авторизации:', error);
       } finally {
-        setCheckingAuth(false);
+        if (isMounted) {
+          setCheckingAuth(false);
+        }
       }
     };
     
     checkAlreadyLoggedIn();
-  }, [API_URL]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [router, API_URL]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +86,7 @@ export default function CourierLogin() {
       console.log('📥 Ответ сервера:', response.status, data);
 
       if (response.ok && data.success) {
-        // ✅ Сохраняем токен в sessionStorage
+        // Сохраняем данные
         if (data.token) {
           sessionStorage.setItem('courierToken', data.token);
         }
@@ -86,11 +96,12 @@ export default function CourierLogin() {
           is_verified: true
         }));
         sessionStorage.setItem('isCourierLoggedIn', 'true');
-        // Выполните в консоли браузера
-console.log('courierToken:', sessionStorage.getItem('courierToken'));
-console.log('courier:', sessionStorage.getItem('courier'));
+        
         console.log('✅ Успешный вход, данные сохранены');
-        window.location.href = '/courier/dashboard';
+        
+        // ✅ ИСПРАВЛЕНО: используем router.replace вместо window.location
+        router.replace('/courier/dashboard');
+        
       } else if (response.status === 403) {
         setPendingVerification(true);
         setError(data.detail || 'Ваша учетная запись ожидает подтверждения администратора');
@@ -105,6 +116,7 @@ console.log('courier:', sessionStorage.getItem('courier'));
     }
   };
 
+  // Если проверяем авторизацию - показываем загрузку
   if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
