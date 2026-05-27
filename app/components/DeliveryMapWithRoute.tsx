@@ -308,19 +308,13 @@ export default function DeliveryMapWithRoute({
           </div>
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={startAnimation}
-            disabled={isAnimating || waypoints.length === 0}
-            className="flex-1 bg-emerald-600 text-white py-2 rounded-lg font-semibold hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            🚚 Начать доставку
-          </button>
-          <button
-            onClick={resetAnimation}
-            className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-semibold hover:bg-gray-300"
-          >
-            🔄 Сброс
-          </button>
+      <button
+  onClick={startAnimation}
+  disabled={isAnimating || waypoints.length === 0}
+  className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50"
+>
+  {isAnimating ? '🚚 Доставка началась...' : '🚚 Начать доставку'}
+</button>
         </div>
       </div>
     </div>

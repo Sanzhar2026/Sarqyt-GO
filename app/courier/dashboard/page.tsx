@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ
+// app/courier/dashboard/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -26,7 +26,6 @@ export default function CourierDashboard() {
   const [locating, setLocating] = useState(false);
   const [arriving, setArriving] = useState(false);
   
-  // ✅ НОВОЕ: состояние для прогресса
   const [currentProgress, setCurrentProgress] = useState(0);
   
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -34,9 +33,8 @@ export default function CourierDashboard() {
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ НОВОЕ: функция расчета расстояния (формула гаверсинуса)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Радиус Земли в км
+    const R = 6371;
     const dlat = (lat2 - lat1) * Math.PI / 180;
     const dlon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dlat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dlon/2)**2;
@@ -44,17 +42,14 @@ export default function CourierDashboard() {
     return R * c;
   };
 
-  // ✅ НОВОЕ: функция обновления прогресса доставки
   const updateProgress = (currentLat: number, currentLon: number) => {
     if (!currentOrder || !currentOrder.customer_lat || !currentOrder.customer_lon) return;
     
-    // Расстояние от текущего положения до клиента
     const distanceToCustomer = calculateDistance(
       currentLat, currentLon,
       currentOrder.customer_lat, currentOrder.customer_lon
     );
     
-    // Если есть координаты ресторана, вычисляем прогресс
     if (currentOrder.supplier?.lat && currentOrder.supplier?.lon) {
       const totalDistance = calculateDistance(
         currentOrder.supplier.lat, currentOrder.supplier.lon,
@@ -66,7 +61,6 @@ export default function CourierDashboard() {
         progress = Math.max(0, Math.min(100, progress));
         setCurrentProgress(progress);
         
-        // Если прогресс >= 50%, обновляем список доступных заказов
         if (progress >= 50 && isOnline) {
           fetchAvailableOrders();
         }
@@ -74,10 +68,8 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ПРОВЕРКА АВТОРИЗАЦИИ ЧЕРЕЗ JWT ТОКЕН
   useEffect(() => {
     const checkAuth = async () => {
-      // Проверяем sessionStorage
       const token = sessionStorage.getItem('courierToken');
       const courierData = sessionStorage.getItem('courier');
       
@@ -89,7 +81,6 @@ export default function CourierDashboard() {
         return;
       }
       
-      // Проверяем через API с Bearer токеном
       try {
         const response = await fetch(`${API_URL}/api/courier/status`, {
           headers: {
@@ -129,7 +120,6 @@ export default function CourierDashboard() {
             setIsOnline(data.is_online);
             setOrderStatus(data.current_order_status);
             
-            // Обновляем данные в sessionStorage
             sessionStorage.setItem('courier', JSON.stringify(data));
             
             if (data.is_online && !locationIntervalRef.current) {
@@ -162,7 +152,18 @@ export default function CourierDashboard() {
     };
   }, []);
 
-  // Получаем текущее местоположение курьера
+  // ✅ HEARTBEAT ДЛЯ WEBSOCKET (КАЖДЫЕ 30 СЕКУНД)
+  useEffect(() => {
+    const heartbeat = setInterval(() => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "ping" }));
+        console.log('💓 Heartbeat sent');
+      }
+    }, 30000);
+    
+    return () => clearInterval(heartbeat);
+  }, []);
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -219,8 +220,6 @@ export default function CourierDashboard() {
       });
       const data = await res.json();
       console.log('📦 Заказ получен:', data);
-      console.log('🏪 Ресторан координаты:', data.supplier?.lat, data.supplier?.lon);
-      console.log('🏠 Клиент координаты:', data.customer_lat, data.customer_lon);
       setCurrentOrder(data);
     } catch (error) {
       console.error('Error fetching order:', error);
@@ -245,44 +244,42 @@ export default function CourierDashboard() {
   };
 
   const takeOrder = async (orderId: number) => {
-  const token = sessionStorage.getItem('courierToken');
-  
-  console.log(`📦 Попытка взять заказ ${orderId}`);
-  console.log(`🔑 Токен: ${token ? token.substring(0, 20) + '...' : 'ОТСУТСТВУЕТ'}`);
-  
-  if (!token) {
-    alert('Ошибка авторизации. Пожалуйста, войдите заново.');
-    router.push('/courier/login');
-    return;
-  }
-  
-  try {
-    const response = await fetch(`${API_URL}/api/courier/take-order/${orderId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const token = sessionStorage.getItem('courierToken');
     
-    const data = await response.json();
-    console.log('📥 Ответ:', data);
+    console.log(`📦 Попытка взять заказ ${orderId}`);
     
-    if (response.ok && data.success) {
-      showNotification('✅ Заказ взят в работу!', 'success');
-      // Обновляем статус курьера
-      await fetchStatus();
-      await fetchCurrentOrder(orderId);
-      setShowOrdersList(false);
-      await fetchAvailableOrders();
-    } else {
-      alert(data.message || 'Ошибка при взятии заказа');
+    if (!token) {
+      alert('Ошибка авторизации. Пожалуйста, войдите заново.');
+      router.push('/courier/login');
+      return;
     }
-  } catch (error) {
-    console.error('Error taking order:', error);
-    alert('Ошибка при взятии заказа');
-  }
-};
+    
+    try {
+      const response = await fetch(`${API_URL}/api/courier/take-order/${orderId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      console.log('📥 Ответ:', data);
+      
+      if (response.ok && data.success) {
+        showNotification('✅ Заказ взят в работу!', 'success');
+        await fetchStatus();
+        await fetchCurrentOrder(orderId);
+        setShowOrdersList(false);
+        await fetchAvailableOrders();
+      } else {
+        alert(data.message || 'Ошибка при взятии заказа');
+      }
+    } catch (error) {
+      console.error('Error taking order:', error);
+      alert('Ошибка при взятии заказа');
+    }
+  };
 
   const courierArrived = async () => {
     if (!currentOrder) return;
@@ -313,140 +310,134 @@ export default function CourierDashboard() {
     }
   };
 
-const connectWebSocket = () => {
-  const token = sessionStorage.getItem('courierToken');
-  if (!token) {
-    console.log('❌ Нет токена для WebSocket');
-    return;
-  }
-  
-  // ✅ Уже правильно передаете токен
-  const ws = new WebSocket(`${API_URL.replace('https', 'wss')}/ws/courier-tracking?token=${token}`);
-  wsRef.current = ws;
-  
-  ws.onopen = () => {
-    console.log('✅ WebSocket connected');
-    
-    // ✅ ДОБАВЬТЕ: отправляем ping для поддержания соединения
-    ws.send(JSON.stringify({ type: "ping" }));
-    
-    // ✅ ДОБАВЬТЕ: отправляем текущую позицию при подключении
-    if (userLocation) {
-      ws.send(JSON.stringify({
-        type: "update_location",
-        lat: userLocation.lat,
-        lon: userLocation.lon
-      }));
+  const connectWebSocket = () => {
+    const token = sessionStorage.getItem('courierToken');
+    if (!token) {
+      console.log('❌ Нет токена для WebSocket');
+      return;
     }
-  };
-  
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      console.log('📨 WebSocket message:', data);
+    
+    const ws = new WebSocket(`${API_URL.replace('https', 'wss')}/ws/courier-tracking?token=${token}`);
+    wsRef.current = ws;
+    
+    ws.onopen = () => {
+      console.log('✅ WebSocket connected');
+      ws.send(JSON.stringify({ type: "ping" }));
       
-      // ✅ ДОБАВЬТЕ: обработка приветствия
-      if (data.type === 'connected') {
-        console.log('✅ WebSocket подтвержден для курьера:', data.courier_id);
+      if (userLocation) {
+        ws.send(JSON.stringify({
+          type: "update_location",
+          lat: userLocation.lat,
+          lon: userLocation.lon
+        }));
       }
-      
-      if (data.type === 'new_order_for_courier') {
-        showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📨 WebSocket message:', data);
         
-        setAvailableOrders(prev => [{
-          order_id: data.data.order_id,
-          order_number: data.data.order_number,
-          supplier_name: data.data.supplier_name,
-          distance_km: 0,
-          estimated_time_minutes: 0,
-          amount: data.data.amount,
-          bag_name: data.data.bag_name,
-          customer_address: data.data.customer_address,
-          supplier_lat: data.data.supplier_lat,
-          supplier_lon: data.data.supplier_lon,
-          customer_lat: data.data.customer_lat,
-          customer_lon: data.data.customer_lon
-        }, ...prev]);
+        if (data.type === 'connected') {
+          console.log('✅ WebSocket подтвержден для курьера:', data.courier_id);
+        }
+        
+        if (data.type === 'new_order_for_courier') {
+          showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
+          
+          setAvailableOrders(prev => [{
+            order_id: data.data.order_id,
+            order_number: data.data.order_number,
+            supplier_name: data.data.supplier_name,
+            distance_km: 0,
+            estimated_time_minutes: 0,
+            amount: data.data.amount,
+            bag_name: data.data.bag_name,
+            customer_address: data.data.customer_address,
+            supplier_lat: data.data.supplier_lat,
+            supplier_lon: data.data.supplier_lon,
+            customer_lat: data.data.customer_lat,
+            customer_lon: data.data.customer_lon
+          }, ...prev]);
+        }
+        
+        if (data.type === 'proposed_order') {
+          setProposedOrder({
+            order_id: data.order_id,
+            distance_km: data.distance_km,
+            expires_in: data.expires_in_seconds
+          });
+          setShowProposalModal(true);
+        } else if (data.type === 'order_assigned') {
+          fetchStatus();
+          fetchCurrentOrder(data.order_id);
+        } else if (data.type === 'delivery_confirmed') {
+          showNotification('✅ Клиент подтвердил получение заказа!', 'success');
+          fetchStatus();
+          fetchCurrentOrder(data.data.order_id);
+        }
+        
+        if (data.type === 'pong') {
+          console.log('💓 Heartbeat received');
+        }
+        
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
       }
-      
-      if (data.type === 'proposed_order') {
-        setProposedOrder({
-          order_id: data.order_id,
-          distance_km: data.distance_km,
-          expires_in: data.expires_in_seconds
-        });
-        setShowProposalModal(true);
-      } else if (data.type === 'order_assigned') {
-        fetchStatus();
-        fetchCurrentOrder(data.order_id);
-      } else if (data.type === 'delivery_confirmed') {
-        showNotification('✅ Клиент подтвердил получение заказа!', 'success');
-        fetchStatus();
-        fetchCurrentOrder(data.data.order_id);
-      }
-      
-      // ✅ ДОБАВЬТЕ: обработка pong ответа
-      if (data.type === 'pong') {
-        console.log('💓 Heartbeat received');
-      }
-      
-    } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
-    }
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected, reconnecting...');
+      setTimeout(connectWebSocket, 3000);
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
   };
-  
-  ws.onclose = () => {
-    console.log('WebSocket disconnected, reconnecting...');
-    setTimeout(connectWebSocket, 3000);
-  };
-  
-  ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
-  };
-};
 
-const startLocationTracking = () => {
-  if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+  // ✅ ИСПРАВЛЕНО: ИНТЕРВАЛ 5 СЕКУНД (ВМЕСТО 3)
+  const startLocationTracking = () => {
+    if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+    
+    locationIntervalRef.current = setInterval(() => {
+      if (navigator.geolocation && isOnline) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            setUserLocation({ lat, lon });
+            
+            const token = sessionStorage.getItem('courierToken');
+            try {
+              await fetch(`${API_URL}/api/courier/update-location`, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ lat, lon })
+              });
+            } catch (error) {
+              console.error('Error updating location:', error);
+            }
+            
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({
+                type: "update_location",
+                lat: lat,
+                lon: lon
+              }));
+              console.log('📍 Позиция отправлена через WebSocket:', lat, lon);
+            }
+          },
+          (error) => console.error('Geolocation error:', error),
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+      }
+    }, 5000); // ← 5 СЕКУНД ВМЕСТО 3
+  };
   
-  locationIntervalRef.current = setInterval(() => {
-    if (navigator.geolocation && isOnline) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          setUserLocation({ lat, lon });
-          
-          // Отправляем через REST API
-          const token = sessionStorage.getItem('courierToken');
-          try {
-            await fetch(`${API_URL}/api/courier/update-location`, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ lat, lon })
-            });
-          } catch (error) {
-            console.error('Error updating location:', error);
-          }
-          
-          // ✅ НОВОЕ: отправляем через WebSocket для реального времени
-          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({
-              type: "update_location",
-              lat: lat,
-              lon: lon
-            }));
-            console.log('📍 Позиция отправлена через WebSocket:', lat, lon);
-          }
-        },
-        (error) => console.error('Geolocation error:', error),
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-      );
-    }
-  }, 3000);
-};
   const centerToMyLocation = () => {
     console.log('📍 Нажата кнопка геолокации');
     setLocating(true);
@@ -857,7 +848,6 @@ const startLocationTracking = () => {
               </div>
             </div>
             
-            {/* ✅ ИНДИКАТОР ПРОГРЕССА */}
             <div className="mt-3">
               <div className="flex justify-between text-xs text-gray-500 mb-1">
                 <span>Прогресс доставки</span>
@@ -921,7 +911,7 @@ const startLocationTracking = () => {
 
       {/* Доступные заказы */}
       {isOnline && !currentOrder && (
-        <div className="px-4 mb-6">
+        <div className="px-4 mb-6 pb-32">
           <button
             onClick={() => {
               fetchAvailableOrders();
@@ -933,7 +923,7 @@ const startLocationTracking = () => {
           </button>
           
           {showOrdersList && availableOrders.length > 0 && (
-            <div className="mt-3 space-y-3 pb-20">
+            <div className="mt-3 space-y-3">
               {availableOrders.map((order) => (
                 <div key={order.order_id} className="bg-white rounded-xl p-4 shadow-sm">
                   <div className="flex justify-between items-start mb-2">

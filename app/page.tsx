@@ -1,15 +1,20 @@
+// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import CategoryCard from './components/CategoryCard';
 import OfferCard from './components/OfferCard';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useWebSocket } from './hooks/useWebSocket';
 import { setGlobalHideBottomNav } from './layout';
 import { useLanguage } from './layout';
+
+// ✅ ДИНАМИЧЕСКИЙ ИМПОРТ КАРТЫ (без SSR)
+const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: false });
 
 type Tab = 'preferences' | 'discover';
 
@@ -45,13 +50,11 @@ export default function HomePage() {
   const initialLoadDoneRef = useRef(false);
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Функция обновления после заказа
   const refreshAfterOrder = useCallback(async () => {
     console.log('🔄 Обновление данных после заказа...');
     await fetchBags();
   }, []);
 
-  // Функция загрузки данных
   const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
     
@@ -70,11 +73,7 @@ export default function HomePage() {
       }
       
       const data = await response.json();
-      console.log('📦 ДАННЫЕ ИЗ API:', data);
-      
       const filteredBags = data.filter((bag: SurpriseBag) => bag.available_quantity > 0);
-      
-      console.log('✅ ПОСЛЕ ФИЛЬТРАЦИИ:', filteredBags.length, 'сюрпризов');
       
       if (isMountedRef.current) {
         setBags(filteredBags);
@@ -93,7 +92,6 @@ export default function HomePage() {
     }
   }, [API_URL]);
 
-  // ✅ Функция показа уведомления
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
     const toast = document.createElement('div');
     toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
@@ -120,7 +118,6 @@ export default function HomePage() {
     }
   };
 
-  // ✅ НОВОЕ: уведомление о прибытии курьера с кнопкой "Перейти к заказу"
   const showCourierArrivedNotification = (data: any) => {
     const { order_id, order_number, courier_name, courier_phone } = data;
     
@@ -173,16 +170,13 @@ export default function HomePage() {
     }
   };
 
-  // WebSocket обработка
   useEffect(() => {
     if (!lastMessage) return;
     
     console.log('📡 WebSocket событие:', lastMessage);
     
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
-      console.log('🆕 Новый сюрприз! Мгновенное обновление...');
       fetchBags(false, false);
-      
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Новый сюрприз! 🎁', {
           body: 'Появился новый сюрприз рядом с вами!',
@@ -192,36 +186,26 @@ export default function HomePage() {
     }
     
     if (lastMessage.type === 'delete_bag') {
-      console.log('🗑️ Сюрприз удален, обновляем список...');
       fetchBags(false, false);
     }
     
     if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
       const { bag_id, available_quantity } = lastMessage.data;
-      console.log(`📦 Сюрприз ${bag_id}: осталось ${available_quantity}`);
-      
       setBags(prevBags => 
         prevBags
-          .map(bag => 
-            bag.id === bag_id 
-              ? { ...bag, available_quantity: available_quantity }
-              : bag
-          )
+          .map(bag => bag.id === bag_id ? { ...bag, available_quantity } : bag)
           .filter(bag => bag.available_quantity > 0)
       );
-      
       setLastUpdate(new Date());
     }
     
-    // ✅ ОБРАБОТКА ПРИБЫТИЯ КУРЬЕРА
     if (lastMessage.type === 'courier_arrived') {
       console.log('🚚 КУРЬЕР ПРИБЫЛ!', lastMessage.data);
       showCourierArrivedNotification(lastMessage.data);
     }
     
-    // ✅ Обработка назначения курьера
     if (lastMessage.type === 'order_assigned') {
-      const { order_id, courier_name, courier_phone, estimated_time } = lastMessage.data;
+      const { courier_name, courier_phone, estimated_time } = lastMessage.data;
       showNotification(
         'Курьер назначен!',
         `${courier_name} (${courier_phone}) везет ваш заказ. Ожидайте ${estimated_time || 30} минут.`,
@@ -241,7 +225,6 @@ export default function HomePage() {
     }
   }, []);
 
-  // Splash screen
   useEffect(() => {
     isMountedRef.current = true;
     
@@ -264,7 +247,6 @@ export default function HomePage() {
     }
   }, []);
 
-  // Загрузка данных пользователя
   useEffect(() => {
     const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
@@ -302,35 +284,26 @@ export default function HomePage() {
     fetchUser();
   }, []);
 
-  // Первоначальная загрузка
   useEffect(() => {
     if (showSplash) return;
-    
     if (!initialLoadDoneRef.current) {
       initialLoadDoneRef.current = true;
       fetchBags(true, true);
     }
   }, [showSplash, fetchBags]);
 
-  // Очистка
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
   }, []);
 
-  // Обновление при событии
   useEffect(() => {
     const handleRefreshOffers = () => {
-      console.log('🔄 Принудительное обновление списка');
       fetchBags(false, false);
     };
-    
     window.addEventListener('refreshOffers', handleRefreshOffers);
-    
-    return () => {
-      window.removeEventListener('refreshOffers', handleRefreshOffers);
-    };
+    return () => window.removeEventListener('refreshOffers', handleRefreshOffers);
   }, [fetchBags]);
 
   const handleLogout = async () => {
@@ -343,9 +316,7 @@ export default function HomePage() {
 
   const handleCategoryClick = (categoryId: string) => {
     setSelectedCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
+      prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId]
     );
   };
 
@@ -368,7 +339,8 @@ export default function HomePage() {
       refresh: 'Жаңарту',
       lastUpdate: 'Соңғы жаңарту',
       connected: 'Қосылған',
-      disconnected: 'Қосылым жоқ'
+      disconnected: 'Қосылым жоқ',
+      nearbyShops: 'Жақын маңдағы дүкендер мен кафелер'
     },
     ru: {
       greeting: 'Привет',
@@ -388,7 +360,8 @@ export default function HomePage() {
       refresh: 'Обновить',
       lastUpdate: 'Последнее обновление',
       connected: 'Подключено',
-      disconnected: 'Нет соединения'
+      disconnected: 'Нет соединения',
+      nearbyShops: 'Ближайшие магазины и кафе'
     }
   };
 
@@ -465,9 +438,7 @@ export default function HomePage() {
               <button
                 onClick={() => setLang('kz')}
                 className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'kz' 
-                    ? 'bg-white text-emerald-600' 
-                    : 'bg-white/20 text-white hover:bg-white/30'
+                  lang === 'kz' ? 'bg-white text-emerald-600' : 'bg-white/20 text-white hover:bg-white/30'
                 }`}
               >
                 Қаз
@@ -475,9 +446,7 @@ export default function HomePage() {
               <button
                 onClick={() => setLang('ru')}
                 className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'ru' 
-                    ? 'bg-white text-emerald-600' 
-                    : 'bg-white/20 text-white hover:bg-white/30'
+                  lang === 'ru' ? 'bg-white text-emerald-600' : 'bg-white/20 text-white hover:bg-white/30'
                 }`}
               >
                 Рус
@@ -486,8 +455,7 @@ export default function HomePage() {
             
             {user ? (
               <button onClick={handleLogout} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition flex items-center gap-2">
-                <span>🚪</span>
-                <span>{t[lang].logout}</span>
+                <span>🚪</span><span>{t[lang].logout}</span>
               </button>
             ) : (
               <div className="flex gap-2">
@@ -501,6 +469,25 @@ export default function HomePage() {
 
       <div className="px-6 -mt-4">
         <input type="text" placeholder={t[lang].search} className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+
+      {/* ✅ КАРТА С БЛИЖАЙШИМИ МАГАЗИНАМИ - НОВЫЙ БЛОК */}
+      <div className="px-6 mt-6">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-gray-100">
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <span>🏪</span> {t[lang].nearbyShops}
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
+          </div>
+          <div className="h-64">
+            <SuppliersMap 
+              userLat={location.lat} 
+              userLon={location.lon}
+              onSupplierClick={(id) => router.push(`/offers/${id}`)}
+            />
+          </div>
+        </div>
       </div>
 
       {user && (
