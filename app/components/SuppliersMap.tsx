@@ -1,4 +1,4 @@
-// app/components/SuppliersMap.tsx
+// app/components/SuppliersMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -56,9 +56,23 @@ export default function SuppliersMap({ userLat, userLon, onSupplierClick }: Supp
     try {
       const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`);
       const data = await response.json();
-      setSuppliers(data.suppliers || []);
+      
+      // ✅ ФИЛЬТРУЕМ ТОЛЬКО ПОСТАВЩИКОВ С КООРДИНАТАМИ
+      const validSuppliers = (data.suppliers || []).filter(
+        (supplier: Supplier) => 
+          supplier.lat && 
+          supplier.lon && 
+          typeof supplier.lat === 'number' && 
+          typeof supplier.lon === 'number' &&
+          !isNaN(supplier.lat) && 
+          !isNaN(supplier.lon)
+      );
+      
+      setSuppliers(validSuppliers);
+      console.log(`📍 Найдено поставщиков: ${validSuppliers.length} из ${data.suppliers?.length || 0}`);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
+      setSuppliers([]);
     } finally {
       setLoading(false);
     }
@@ -70,8 +84,13 @@ export default function SuppliersMap({ userLat, userLon, onSupplierClick }: Supp
       fetchNearbySuppliers(userLat, userLon);
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => fetchNearbySuppliers(position.coords.latitude, position.coords.longitude),
-        (error) => { console.error(error); setLoading(false); }
+        (position) => {
+          fetchNearbySuppliers(position.coords.latitude, position.coords.longitude);
+        },
+        (error) => { 
+          console.error('Geolocation error:', error); 
+          setLoading(false);
+        }
       );
     } else {
       setLoading(false);
@@ -83,8 +102,12 @@ export default function SuppliersMap({ userLat, userLon, onSupplierClick }: Supp
     if (!mapLoaded || loading || suppliers.length === 0) return;
     if (!mapRef.current || mapInstanceRef.current) return;
     
-    const centerLat = userLat || suppliers[0]?.lat || 43.238;
-    const centerLon = userLon || suppliers[0]?.lon || 76.945;
+    // ✅ НАХОДИМ ЦЕНТР КАРТЫ (первый валидный поставщик или Алматы)
+    const validSuppliersWithCoords = suppliers.filter(s => s.lat && s.lon);
+    if (validSuppliersWithCoords.length === 0) return;
+    
+    const centerLat = userLat || validSuppliersWithCoords[0].lat || 43.238;
+    const centerLon = userLon || validSuppliersWithCoords[0].lon || 76.945;
     
     mapInstanceRef.current = window.L.map(mapRef.current).setView([centerLat, centerLon], 12);
     
@@ -94,7 +117,21 @@ export default function SuppliersMap({ userLat, userLon, onSupplierClick }: Supp
       maxZoom: 19
     }).addTo(mapInstanceRef.current);
     
-    suppliers.forEach(supplier => {
+    // ✅ ДОБАВЛЯЕМ МАРКЕРЫ ТОЛЬКО ДЛЯ ВАЛИДНЫХ ПОСТАВЩИКОВ
+    const bounds: any[] = [];
+    
+    validSuppliersWithCoords.forEach(supplier => {
+      // ✅ ПРОВЕРКА КООРДИНАТ ПЕРЕД СОЗДАНИЕМ МАРКЕРА
+      if (!supplier.lat || !supplier.lon) {
+        console.warn(`⚠️ Поставщик ${supplier.id} (${supplier.business_name}) не имеет координат`);
+        return;
+      }
+      
+      if (isNaN(supplier.lat) || isNaN(supplier.lon)) {
+        console.warn(`⚠️ Поставщик ${supplier.id} имеет некорректные координаты: ${supplier.lat}, ${supplier.lon}`);
+        return;
+      }
+      
       const icon = window.L.divIcon({
         html: `<div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🏪</div>`,
         iconSize: [40, 40],
@@ -105,7 +142,7 @@ export default function SuppliersMap({ userLat, userLon, onSupplierClick }: Supp
         .addTo(mapInstanceRef.current)
         .bindPopup(`
           <div class="text-center min-w-[200px]">
-            <div class="font-bold text-lg">${supplier.business_name}</div>
+            <div class="font-bold text-lg">${supplier.business_name || 'Магазин'}</div>
             <div class="text-sm text-gray-600">${supplier.address || 'Адрес не указан'}</div>
             <div class="flex justify-center gap-2 mt-2 text-sm">
               <span>⭐ ${supplier.rating || 4.5}</span>
@@ -117,19 +154,26 @@ export default function SuppliersMap({ userLat, userLon, onSupplierClick }: Supp
             </button>
           </div>
         `);
+      
+      bounds.push([supplier.lat, supplier.lon]);
     });
     
+    // Обработчик кликов
     setTimeout(() => {
       document.querySelectorAll('.view-offers-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
+          e.stopPropagation();
           const id = parseInt((e.target as HTMLElement).dataset.id || '0');
           if (id && onSupplierClick) onSupplierClick(id);
         });
       });
     }, 100);
     
-    const bounds = window.L.latLngBounds(suppliers.map(s => [s.lat, s.lon]));
-    mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+    // Масштабируем карту под все маркеры
+    if (bounds.length > 0) {
+      const mapBounds = window.L.latLngBounds(bounds);
+      mapInstanceRef.current.fitBounds(mapBounds, { padding: [50, 50] });
+    }
     
   }, [mapLoaded, loading, suppliers, userLat, userLon, onSupplierClick]);
 
@@ -147,6 +191,19 @@ export default function SuppliersMap({ userLat, userLon, onSupplierClick }: Supp
         <div className="text-center">
           <div className="text-4xl mb-2">📍</div>
           <p className="text-gray-500 text-sm">Рядом нет магазинов</p>
+          <button 
+            onClick={() => {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (position) => fetchNearbySuppliers(position.coords.latitude, position.coords.longitude),
+                  () => {}
+                );
+              }
+            }}
+            className="mt-2 text-emerald-600 text-xs underline"
+          >
+            Обновить
+          </button>
         </div>
       </div>
     );
