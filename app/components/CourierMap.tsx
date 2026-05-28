@@ -215,8 +215,7 @@ export default function CourierMap({
   };
 
   // ============ ЗАГРУЗКА МАГАЗИНОВ (с учетом геолокации) ============
-  
-// В CourierMap.tsx, измените радиус:
+  // В CourierMap.tsx, измените радиус:
 const fetchNearbySuppliers = async () => {
   if (isLoadingLocation) return;
   
