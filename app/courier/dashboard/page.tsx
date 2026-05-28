@@ -900,7 +900,7 @@ export default function CourierDashboard() {
             {orderStatus === 'almost_done' && (
               <button
                 onClick={completeDelivery}
-                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold mt-4"
+                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold mt-4 mb-8"
               >
                 ✅ Завершить доставку
               </button>

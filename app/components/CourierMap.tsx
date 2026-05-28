@@ -1,5 +1,4 @@
-// app/components/CourierMap.tsx - полностью обновленный
-
+// app/components/CourierMap.tsx - полностью обновленный с магазинами
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -14,7 +13,6 @@ const loadLeaflet = async () => {
     L = leaflet.default;
     await import('leaflet/dist/leaflet.css');
     
-    // ✅ ОТКЛЮЧАЕМ СТАНДАРТНЫЕ МАРКЕРЫ LEAFLET
     delete (L.Icon.Default.prototype as any)._getIconUrl;
     L.Icon.Default.mergeOptions({
       iconRetinaUrl: '',
@@ -38,6 +36,16 @@ interface CourierLocation {
   current_order_status?: string;
 }
 
+interface Supplier {
+  id: number;
+  business_name: string;
+  lat: number;
+  lon: number;
+  address: string;
+  distance_km: number;
+  surprise_bags_count: number;
+}
+
 interface CourierMapProps {
   orderId?: number;
   restaurantLocation?: { lat: number; lon: number };
@@ -55,6 +63,7 @@ export default function CourierMap({
 }: CourierMapProps) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [couriers, setCouriers] = useState<Map<number, CourierLocation>>(new Map());
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedCourier, setSelectedCourier] = useState<number | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -64,6 +73,7 @@ export default function CourierMap({
   const mapInstanceRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const markersRef = useRef<Map<number, any>>(new Map());
+  const supplierMarkersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
@@ -113,7 +123,6 @@ export default function CourierMap({
     
     mapInstanceRef.current = L.map(mapRef.current).setView([centerLat, centerLon], 14);
     
-    // ✅ Используем светлую тему карты без стандартных маркеров
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
       subdomains: 'abcd',
@@ -126,7 +135,8 @@ export default function CourierMap({
     console.log(`🗺️ Карта инициализирована`);
   }, [mapLoaded, mapCenter]);
 
-  // ✅ КАСТОМНЫЕ ИКОНКИ (без стандартных маркеров Leaflet)
+  // ============ ИКОНКИ ============
+  
   const getCourierIcon = (status?: string) => {
     const color = status === 'almost_done' ? '#eab308' : 
                   status === 'delivering' ? '#3b82f6' : 
@@ -145,7 +155,15 @@ export default function CourierMap({
     });
   };
 
-  // ✅ ИКОНКА ДЛЯ ТЕКУЩЕГО ПОЛОЖЕНИЯ ПОЛЬЗОВАТЕЛЯ
+  const getSupplierIcon = () => {
+    return L.divIcon({
+      html: `<div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🏪</div>`,
+      iconSize: [40, 40],
+      className: 'custom-div-icon',
+      popupAnchor: [0, -20]
+    });
+  };
+
   const getUserLocationIcon = () => {
     return L.divIcon({
       html: `<div class="relative">
@@ -175,11 +193,91 @@ export default function CourierMap({
     });
   };
 
-  // ✅ ДОБАВЛЯЕМ МАРКЕР ТЕКУЩЕГО ПОЛОЖЕНИЯ
+  // ============ ЗАГРУЗКА МАГАЗИНОВ ============
+  
+  const fetchNearbySuppliers = async () => {
+    if (!userLocation) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${userLocation.lat}&lon=${userLocation.lon}&radius=50`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      
+      if (data.suppliers && data.suppliers.length > 0) {
+        setSuppliers(data.suppliers);
+        console.log(`🏪 Загружено ${data.suppliers.length} магазинов`);
+      }
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  };
+
+  // Добавление маркеров магазинов на карту
+  const addSupplierMarkers = useCallback(() => {
+    if (!mapInstanceRef.current) return;
+    
+    // Очищаем старые маркеры
+    supplierMarkersRef.current.forEach(marker => marker.remove());
+    supplierMarkersRef.current = [];
+    
+    suppliers.forEach(supplier => {
+      if (!supplier.lat || !supplier.lon) return;
+      
+      const icon = getSupplierIcon();
+      const marker = L.marker([supplier.lat, supplier.lon], { icon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup(`
+          <div class="text-center min-w-[180px]">
+            <div class="font-bold text-lg">${supplier.business_name}</div>
+            <div class="text-sm text-gray-600">${supplier.address || 'Адрес не указан'}</div>
+            <div class="flex justify-center gap-2 mt-2 text-sm">
+              <span>📦 ${supplier.surprise_bags_count} сюрпризов</span>
+              <span>📍 ${supplier.distance_km} км</span>
+            </div>
+            <button class="mt-2 bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs view-offers-btn" data-id="${supplier.id}">
+              Смотреть сюрпризы
+            </button>
+          </div>
+        `);
+      
+      supplierMarkersRef.current.push(marker);
+    });
+    
+    // Обработчик кликов на кнопки в попапах
+    setTimeout(() => {
+      document.querySelectorAll('.view-offers-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = (e.target as HTMLElement).dataset.id;
+          if (id) {
+            window.location.href = `/offers/${id}`;
+          }
+        });
+      });
+    }, 100);
+  }, [suppliers]);
+
+  // Загружаем магазины при изменении местоположения
+  useEffect(() => {
+    if (userLocation) {
+      fetchNearbySuppliers();
+    }
+  }, [userLocation]);
+
+  // Добавляем маркеры магазинов на карту
+  useEffect(() => {
+    if (mapInstanceRef.current && suppliers.length > 0) {
+      addSupplierMarkers();
+    }
+  }, [mapInstanceRef.current, suppliers, addSupplierMarkers]);
+
+  // ============ МАРКЕРЫ КУРЬЕРОВ И ПОЛЬЗОВАТЕЛЯ ============
+  
+  // Добавляем маркер текущего положения пользователя
   useEffect(() => {
     if (!mapInstanceRef.current || !userLocation) return;
     
-    // Удаляем старый маркер
     if (userMarkerRef.current) {
       userMarkerRef.current.remove();
     }
@@ -289,7 +387,7 @@ export default function CourierMap({
     }
   }, [restaurantLocation, customerLocation, mapLoaded]);
 
-  // Обновление маркеров
+  // Обновление маркеров курьеров
   useEffect(() => {
     if (mapInstanceRef.current) {
       updateCourierMarkers();
@@ -315,7 +413,7 @@ export default function CourierMap({
     };
   }, [mapInstanceRef.current]);
 
-  // WebSocket
+  // WebSocket для курьеров
   useEffect(() => {
     if (!mapLoaded) return;
     
@@ -372,7 +470,7 @@ export default function CourierMap({
     };
   }, [mapLoaded, API_URL]);
 
-  // Загрузка начальных позиций
+  // Загрузка начальных позиций курьеров
   useEffect(() => {
     const fetchInitialCouriers = async () => {
       try {
