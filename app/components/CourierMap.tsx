@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - полностью обновленный с магазинами
+// app/components/CourierMap.tsx - магазины в радиусе 50 км
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -102,6 +102,9 @@ export default function CourierMap({
       setMapCenter([customerLocation.lat, customerLocation.lon]);
     } else if (userLocation?.lat && userLocation?.lon) {
       setMapCenter([userLocation.lat, userLocation.lon]);
+    } else {
+      // Центр Актобе по умолчанию
+      setMapCenter([50.289, 57.149]);
     }
   }, [restaurantLocation, customerLocation, userLocation]);
 
@@ -121,7 +124,7 @@ export default function CourierMap({
     
     const [centerLat, centerLon] = mapCenter;
     
-    mapInstanceRef.current = L.map(mapRef.current).setView([centerLat, centerLon], 14);
+    mapInstanceRef.current = L.map(mapRef.current).setView([centerLat, centerLon], 12);
     
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -193,25 +196,39 @@ export default function CourierMap({
     });
   };
 
-  // ============ ЗАГРУЗКА МАГАЗИНОВ ============
+  // ============ ЗАГРУЗКА МАГАЗИНОВ В РАДИУСЕ 50 КМ ============
   
   const fetchNearbySuppliers = async () => {
-    if (!userLocation) return;
+    // Используем геолокацию пользователя или координаты по умолчанию
+    const lat = userLocation?.lat || 50.289;
+    const lon = userLocation?.lon || 57.149;
     
     try {
-      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${userLocation.lat}&lon=${userLocation.lon}&radius=50`, {
+      // ✅ РАДИУС 50 КМ
+      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=50`, {
         credentials: 'include'
       });
       const data = await response.json();
       
       if (data.suppliers && data.suppliers.length > 0) {
         setSuppliers(data.suppliers);
-        console.log(`🏪 Загружено ${data.suppliers.length} магазинов`);
+        console.log(`🏪 Загружено ${data.suppliers.length} магазинов в радиусе 50 км`);
+      } else {
+        console.log('🏪 Нет магазинов в радиусе 50 км');
+        setSuppliers([]);
       }
     } catch (error) {
       console.error('Error fetching suppliers:', error);
+      setSuppliers([]);
     }
   };
+
+  // Загружаем магазины при изменении местоположения или при загрузке карты
+  useEffect(() => {
+    if (mapLoaded) {
+      fetchNearbySuppliers();
+    }
+  }, [mapLoaded, userLocation]);
 
   // Добавление маркеров магазинов на карту
   const addSupplierMarkers = useCallback(() => {
@@ -256,14 +273,13 @@ export default function CourierMap({
         });
       });
     }, 100);
-  }, [suppliers]);
-
-  // Загружаем магазины при изменении местоположения
-  useEffect(() => {
-    if (userLocation) {
-      fetchNearbySuppliers();
+    
+    // Масштабируем карту, чтобы показать все маркеры, если их много
+    if (supplierMarkersRef.current.length > 0 && mapInstanceRef.current) {
+      const bounds = L.latLngBounds(supplierMarkersRef.current.map(m => m.getLatLng()));
+      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [userLocation]);
+  }, [suppliers]);
 
   // Добавляем маркеры магазинов на карту
   useEffect(() => {
