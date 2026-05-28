@@ -216,36 +216,32 @@ export default function CourierMap({
 
   // ============ ЗАГРУЗКА МАГАЗИНОВ (с учетом геолокации) ============
   
-  const fetchNearbySuppliers = async () => {
-    if (isLoadingLocation) return;
+// В CourierMap.tsx, измените радиус:
+const fetchNearbySuppliers = async () => {
+  if (isLoadingLocation) return;
+  
+  const lat = userLocation?.lat || 50.289;
+  const lon = userLocation?.lon || 57.149;
+  
+  // ✅ РАДИУС 500 КМ (вместо 50/100)
+  const radius = 500;  // <-- ИЗМЕНИТЕ ЭТО ЗНАЧЕНИЕ
+  
+  console.log(`📍 Поиск магазинов: lat=${lat}, lon=${lon}, radius=${radius}км`);
+  
+  try {
+    const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`, {
+      credentials: 'include'
+    });
+    const data = await response.json();
     
-    const lat = userLocation?.lat || 50.289;
-    const lon = userLocation?.lon || 57.149;
-    const radius = locationError ? 100 : 50;
-    
-    console.log(`📍 Поиск магазинов: lat=${lat}, lon=${lon}, radius=${radius}км`);
-    
-    try {
-      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`, {
-        credentials: 'include'
-      });
-      const data = await response.json();
-      
-      if (data.suppliers && data.suppliers.length > 0) {
-        setSuppliers(data.suppliers);
-        console.log(`🏪 Загружено ${data.suppliers.length} магазинов в радиусе ${radius} км`);
-        data.suppliers.forEach((s: any) => {
-          console.log(`  - ${s.business_name}: ${s.distance_km} км, сюрпризов: ${s.surprise_bags_count}`);
-        });
-      } else {
-        console.log(`🏪 Нет магазинов в радиусе ${radius} км`);
-        setSuppliers([]);
-      }
-    } catch (error) {
-      console.error('Error fetching suppliers:', error);
-      setSuppliers([]);
+    if (data.suppliers && data.suppliers.length > 0) {
+      setSuppliers(data.suppliers);
+      console.log(`🏪 Загружено ${data.suppliers.length} магазинов в радиусе ${radius} км`);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching suppliers:', error);
+  }
+};
 
   // Загружаем магазины после получения геолокации
   useEffect(() => {
