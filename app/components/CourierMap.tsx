@@ -197,24 +197,28 @@ export default function CourierMap({
   };
 
   // ============ ЗАГРУЗКА МАГАЗИНОВ В РАДИУСЕ 50 КМ ============
-  
-  const fetchNearbySuppliers = async () => {
-    // Используем геолокацию пользователя или координаты по умолчанию
-    const lat = userLocation?.lat || 50.289;
-    const lon = userLocation?.lon || 57.149;
+    const fetchNearbySuppliers = async () => {
+    // Используем геолокацию пользователя или центр Актобе
+    const lat = userLocation?.lat || 50.29;
+    const lon = userLocation?.lon || 57.15;
     
     try {
-      // ✅ РАДИУС 50 КМ
-      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=50`, {
+      // ✅ РАДИУС 100 КМ (было 50)
+      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=100`, {
         credentials: 'include'
       });
       const data = await response.json();
       
       if (data.suppliers && data.suppliers.length > 0) {
         setSuppliers(data.suppliers);
-        console.log(`🏪 Загружено ${data.suppliers.length} магазинов в радиусе 50 км`);
+        console.log(`🏪 Загружено ${data.suppliers.length} магазинов в радиусе 100 км`);
+        
+        // Логируем каждый магазин для отладки
+        data.suppliers.forEach((s: any) => {
+          console.log(`  - ${s.business_name}: ${s.distance_km} км, сюрпризов: ${s.surprise_bags_count}`);
+        });
       } else {
-        console.log('🏪 Нет магазинов в радиусе 50 км');
+        console.log('🏪 Нет магазинов в радиусе 100 км');
         setSuppliers([]);
       }
     } catch (error) {
