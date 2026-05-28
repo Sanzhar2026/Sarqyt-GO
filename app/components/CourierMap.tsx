@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - магазины в радиусе 50 км
+// app/components/CourierMap.tsx - ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -67,6 +67,8 @@ export default function CourierMap({
   const [selectedCourier, setSelectedCourier] = useState<number | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   
   const mapRef = useRef<any>(null);
@@ -78,18 +80,35 @@ export default function CourierMap({
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Получаем реальное местоположение пользователя
+  // ============ ПОЛУЧЕНИЕ ГЕОЛОКАЦИИ ============
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setLocationError('Геолокация не поддерживается');
+      setIsLoadingLocation(false);
+      setUserLocation({ lat: 50.289, lon: 57.149 });
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
         setUserLocation({ lat, lon });
+        setLocationError(null);
+        setIsLoadingLocation(false);
         console.log(`📍 Текущее положение: ${lat}, ${lon}`);
       },
-      (error) => console.error('Geolocation error:', error),
+      (error) => {
+        console.error('Geolocation error:', error);
+        let errorMsg = 'Не удалось определить местоположение';
+        if (error.code === 1) errorMsg = 'Доступ к геолокации запрещен';
+        if (error.code === 2) errorMsg = 'Позиция недоступна';
+        if (error.code === 3) errorMsg = 'Таймаут геолокации';
+        
+        setLocationError(errorMsg);
+        setIsLoadingLocation(false);
+        setUserLocation({ lat: 50.289, lon: 57.149 });
+      },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   }, []);
@@ -103,7 +122,6 @@ export default function CourierMap({
     } else if (userLocation?.lat && userLocation?.lon) {
       setMapCenter([userLocation.lat, userLocation.lon]);
     } else {
-      // Центр Актобе по умолчанию
       setMapCenter([50.289, 57.149]);
     }
   }, [restaurantLocation, customerLocation, userLocation]);
@@ -196,29 +214,31 @@ export default function CourierMap({
     });
   };
 
-  // ============ ЗАГРУЗКА МАГАЗИНОВ В РАДИУСЕ 50 КМ ============
-    const fetchNearbySuppliers = async () => {
-    // Используем геолокацию пользователя или центр Актобе
-    const lat = userLocation?.lat || 50.29;
-    const lon = userLocation?.lon || 57.15;
+  // ============ ЗАГРУЗКА МАГАЗИНОВ (с учетом геолокации) ============
+  
+  const fetchNearbySuppliers = async () => {
+    if (isLoadingLocation) return;
+    
+    const lat = userLocation?.lat || 50.289;
+    const lon = userLocation?.lon || 57.149;
+    const radius = locationError ? 100 : 50;
+    
+    console.log(`📍 Поиск магазинов: lat=${lat}, lon=${lon}, radius=${radius}км`);
     
     try {
-      // ✅ РАДИУС 100 КМ (было 50)
-      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=100`, {
+      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`, {
         credentials: 'include'
       });
       const data = await response.json();
       
       if (data.suppliers && data.suppliers.length > 0) {
         setSuppliers(data.suppliers);
-        console.log(`🏪 Загружено ${data.suppliers.length} магазинов в радиусе 100 км`);
-        
-        // Логируем каждый магазин для отладки
+        console.log(`🏪 Загружено ${data.suppliers.length} магазинов в радиусе ${radius} км`);
         data.suppliers.forEach((s: any) => {
           console.log(`  - ${s.business_name}: ${s.distance_km} км, сюрпризов: ${s.surprise_bags_count}`);
         });
       } else {
-        console.log('🏪 Нет магазинов в радиусе 100 км');
+        console.log(`🏪 Нет магазинов в радиусе ${radius} км`);
         setSuppliers([]);
       }
     } catch (error) {
@@ -227,18 +247,17 @@ export default function CourierMap({
     }
   };
 
-  // Загружаем магазины при изменении местоположения или при загрузке карты
+  // Загружаем магазины после получения геолокации
   useEffect(() => {
-    if (mapLoaded) {
+    if (mapLoaded && !isLoadingLocation) {
       fetchNearbySuppliers();
     }
-  }, [mapLoaded, userLocation]);
+  }, [mapLoaded, isLoadingLocation, userLocation]);
 
   // Добавление маркеров магазинов на карту
   const addSupplierMarkers = useCallback(() => {
     if (!mapInstanceRef.current) return;
     
-    // Очищаем старые маркеры
     supplierMarkersRef.current.forEach(marker => marker.remove());
     supplierMarkersRef.current = [];
     
@@ -265,7 +284,6 @@ export default function CourierMap({
       supplierMarkersRef.current.push(marker);
     });
     
-    // Обработчик кликов на кнопки в попапах
     setTimeout(() => {
       document.querySelectorAll('.view-offers-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -277,15 +295,8 @@ export default function CourierMap({
         });
       });
     }, 100);
-    
-    // Масштабируем карту, чтобы показать все маркеры, если их много
-    if (supplierMarkersRef.current.length > 0 && mapInstanceRef.current) {
-      const bounds = L.latLngBounds(supplierMarkersRef.current.map(m => m.getLatLng()));
-      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
-    }
   }, [suppliers]);
 
-  // Добавляем маркеры магазинов на карту
   useEffect(() => {
     if (mapInstanceRef.current && suppliers.length > 0) {
       addSupplierMarkers();
@@ -294,7 +305,6 @@ export default function CourierMap({
 
   // ============ МАРКЕРЫ КУРЬЕРОВ И ПОЛЬЗОВАТЕЛЯ ============
   
-  // Добавляем маркер текущего положения пользователя
   useEffect(() => {
     if (!mapInstanceRef.current || !userLocation) return;
     
@@ -309,7 +319,6 @@ export default function CourierMap({
     
   }, [userLocation, mapInstanceRef.current]);
 
-  // Обновление маркеров курьеров
   const updateCourierMarkers = useCallback(() => {
     if (!mapInstanceRef.current) return;
     
@@ -407,7 +416,6 @@ export default function CourierMap({
     }
   }, [restaurantLocation, customerLocation, mapLoaded]);
 
-  // Обновление маркеров курьеров
   useEffect(() => {
     if (mapInstanceRef.current) {
       updateCourierMarkers();
@@ -427,7 +435,6 @@ export default function CourierMap({
     };
     
     window.addEventListener('centerMap', handleCenterMap as EventListener);
-    
     return () => {
       window.removeEventListener('centerMap', handleCenterMap as EventListener);
     };
@@ -548,6 +555,37 @@ export default function CourierMap({
           <span className="text-xs">{wsConnected ? 'Live' : 'Connecting...'}</span>
         </div>
       </div>
+      
+      {/* Индикатор статуса геолокации */}
+      {locationError && (
+        <div className="absolute top-4 left-4 z-10 bg-yellow-100 rounded-lg shadow-lg px-3 py-1 text-xs text-yellow-700">
+          📍 {locationError}. Показаны магазины в радиусе 100 км
+        </div>
+      )}
+      
+      {isLoadingLocation && (
+        <div className="absolute top-4 left-4 z-10 bg-blue-100 rounded-lg shadow-lg px-3 py-1 text-xs text-blue-700">
+          📍 Определение местоположения...
+        </div>
+      )}
+      
+      {/* Кнопка центрирования на пользователе */}
+      <button
+        onClick={() => {
+          if (userLocation && mapInstanceRef.current) {
+            mapInstanceRef.current.setView([userLocation.lat, userLocation.lon], 15);
+          }
+        }}
+        className="absolute bottom-4 right-4 z-10 bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all"
+        title="Мое местоположение"
+      >
+        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
       
       {/* Контейнер карты */}
       <div ref={mapRef} className="w-full h-full rounded-2xl" style={{ height: '100%' }} />
