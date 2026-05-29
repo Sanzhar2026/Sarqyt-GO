@@ -217,6 +217,7 @@ export default function CourierMap({
   // ============ ЗАГРУЗКА МАГАЗИНОВ (с учетом геолокации) ============
   // В CourierMap.tsx, измените радиус:
 // Временно убираем фильтрацию по расстоянию на фронтенде
+// Временно убираем фильтрацию по расстоянию на фронтенде
 const fetchNearbySuppliers = async () => {
   const lat = userLocation?.lat || 50.289;
   const lon = userLocation?.lon || 57.149;
