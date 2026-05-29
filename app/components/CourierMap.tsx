@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ
+// app/components/CourierMap.tsx - ФИНАЛЬНАЯ ВЕРСИЯ
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -22,6 +22,16 @@ const loadLeaflet = async () => {
   }
   return L;
 };
+
+// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ (ВЫНЕСЕНА ВОВНЕ)
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dlat = (lat2 - lat1) * Math.PI / 180;
+  const dlon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dlat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dlon/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
 interface CourierLocation {
   courier_id: number;
@@ -214,64 +224,56 @@ export default function CourierMap({
     });
   };
 
-  // ============ ЗАГРУЗКА МАГАЗИНОВ (с учетом геолокации) ============
-  // В CourierMap.tsx, измените радиус:
-// Временно убираем фильтрацию по расстоянию на фронтенде
-// Временно убираем фильтрацию по расстоянию на фронтенде
-const fetchNearbySuppliers = async () => {
-  const lat = userLocation?.lat || 50.289;
-  const lon = userLocation?.lon || 57.149;
+  // ============ ЗАГРУЗКА МАГАЗИНОВ ============
   
-  try {
-    // ✅ ВРЕМЕННО: загружаем ВСЕХ поставщиков без фильтрации по расстоянию
-    const response = await fetch(`${API_URL}/api/suppliers`, {
-      credentials: 'include'
-    });
-    const allSuppliers = await response.json();
+  const fetchNearbySuppliers = async () => {
+    const lat = userLocation?.lat || 50.289;
+    const lon = userLocation?.lon || 57.149;
     
-    // Загружаем сюрпризы
-    const bagsResponse = await fetch(`${API_URL}/api/surprise-bags`, {
-      credentials: 'include'
-    });
-    const allBags = await bagsResponse.json();
-    
-    // Фильтруем только по наличию сюрпризов
-    const suppliersWithBags = new Set();
-    allBags.forEach((bag: any) => {
-      if (bag.available_quantity > 0 && bag.is_active) {
-        suppliersWithBags.add(bag.supplier_id);
-      }
-    });
-    
-    const validSuppliers = allSuppliers
-      .filter((s: any) => suppliersWithBags.has(s.id) && s.lat && s.lon && s.is_active === true)
-      .map((s: any) => {
-        // Рассчитываем расстояние для отображения
-        const distance = haversineDistance(lat, lon, s.lat, s.lon);
-        return {
-          ...s,
-          distance_km: distance,
-          surprise_bags_count: 1
-        };
+    try {
+      // Загружаем ВСЕХ поставщиков
+      const response = await fetch(`${API_URL}/api/suppliers`, {
+        credentials: 'include'
       });
-    
-    console.log(`🏪 НАЙДЕНО МАГАЗИНОВ: ${validSuppliers.length}`);
-    setSuppliers(validSuppliers);
-    
-  } catch (error) {
-    console.error('Error fetching suppliers:', error);
-  }
-};
-
-// Добавьте функцию haversineDistance в начало компонента
-function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dlat = (lat2 - lat1) * Math.PI / 180;
-  const dlon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dlat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dlon/2)**2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
+      const allSuppliers = await response.json();
+      
+      // Загружаем сюрпризы
+      const bagsResponse = await fetch(`${API_URL}/api/surprise-bags`, {
+        credentials: 'include'
+      });
+      const allBags = await bagsResponse.json();
+      
+      // Фильтруем только по наличию сюрпризов
+      const suppliersWithBags = new Set();
+      allBags.forEach((bag: any) => {
+        if (bag.available_quantity > 0 && bag.is_active) {
+          suppliersWithBags.add(bag.supplier_id);
+        }
+      });
+      
+      const validSuppliers = allSuppliers
+        .filter((s: any) => suppliersWithBags.has(s.id) && s.lat && s.lon && s.is_active === true)
+        .map((s: any) => ({
+          id: s.id,
+          business_name: s.business_name,
+          lat: s.lat,
+          lon: s.lon,
+          address: s.address || 'Адрес не указан',
+          distance_km: haversineDistance(lat, lon, s.lat, s.lon),
+          surprise_bags_count: 1
+        }));
+      
+      console.log(`🏪 НАЙДЕНО МАГАЗИНОВ: ${validSuppliers.length}`);
+      validSuppliers.forEach((s: any) => {
+        console.log(`  - ${s.business_name}: ${s.distance_km.toFixed(2)} км`);
+      });
+      
+      setSuppliers(validSuppliers);
+      
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  };
 
   // Загружаем магазины после получения геолокации
   useEffect(() => {
@@ -299,7 +301,7 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
             <div class="text-sm text-gray-600">${supplier.address || 'Адрес не указан'}</div>
             <div class="flex justify-center gap-2 mt-2 text-sm">
               <span>📦 ${supplier.surprise_bags_count} сюрпризов</span>
-              <span>📍 ${supplier.distance_km} км</span>
+              <span>📍 ${supplier.distance_km.toFixed(2)} км</span>
             </div>
             <button class="mt-2 bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs view-offers-btn" data-id="${supplier.id}">
               Смотреть сюрпризы
@@ -308,6 +310,7 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
         `);
       
       supplierMarkersRef.current.push(marker);
+      console.log(`✅ Маркер добавлен: ${supplier.business_name}`);
     });
     
     setTimeout(() => {
