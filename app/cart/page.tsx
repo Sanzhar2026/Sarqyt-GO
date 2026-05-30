@@ -1,4 +1,3 @@
-// app/cart/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -31,14 +30,6 @@ export default function CartPage() {
   const { lang, setLang } = useLanguage();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('kaspi');
-  const [cardDetails, setCardDetails] = useState({
-    number: '',
-    expiry: '',
-    cvv: '',
-    holder: ''
-  });
-  const [paymentError, setPaymentError] = useState('');
   const [processingStep, setProcessingStep] = useState<'form' | 'processing' | 'success'>('form');
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -58,14 +49,10 @@ export default function CartPage() {
       items: 'тауар',
       checkout: 'Тапсырыс беру',
       timeExpired: 'Уақыт өтті',
-      paymentMethod: 'Төлем әдісін таңдаңыз',
+      paymentMethod: 'Kaspi QR арқылы төлеу',
       amount: 'Сома',
       back: 'Артқа',
-      pay: 'Төлеу (демо)',
-      kaspiDesc: 'Kaspi.kz арқылы төлеу',
-      otherMethods: 'Басқа төлем әдістері (демо)',
-      cardNumber: 'Карта нөмірі',
-      expiry: 'Мерзім',
+      pay: 'Kaspi QR арқылы төлеу',
       emptyCart: 'Себет бос',
       addItems: 'Тауарларды қосыңыз',
       shop: 'Сатып алу',
@@ -73,7 +60,9 @@ export default function CartPage() {
       bookingWarning: 'Броньдеу уақыты аяқталуға жақын',
       timeRemaining: 'Қалған уақыт',
       deliveryAddress: 'Жеткізу мекенжайы',
-      enterAddress: 'Мекенжайыңызды енгізіңіз'
+      enterAddress: 'Мекенжайыңызды енгізіңіз',
+      processing: 'Өңделуде',
+      redirecting: 'Төлем бетіне өту...'
     },
     ru: {
       cart: 'Корзина',
@@ -84,14 +73,10 @@ export default function CartPage() {
       items: 'товаров',
       checkout: 'Оформить заказ',
       timeExpired: 'Время истекло',
-      paymentMethod: 'Выберите способ оплаты',
+      paymentMethod: 'Оплата через Kaspi QR',
       amount: 'Сумма',
       back: 'Назад',
-      pay: 'Оплатить (демо)',
-      kaspiDesc: 'Оплата через Kaspi.kz',
-      otherMethods: 'Другие способы оплаты (демо)',
-      cardNumber: 'Номер карты',
-      expiry: 'Срок',
+      pay: 'Оплатить Kaspi QR',
       emptyCart: 'Корзина пуста',
       addItems: 'Добавьте товары',
       shop: 'Перейти к покупкам',
@@ -99,7 +84,9 @@ export default function CartPage() {
       bookingWarning: 'Время бронирования истекает',
       timeRemaining: 'Осталось',
       deliveryAddress: 'Адрес доставки',
-      enterAddress: 'Введите ваш адрес'
+      enterAddress: 'Введите ваш адрес',
+      processing: 'Обработка',
+      redirecting: 'Переход на страницу оплаты...'
     }
   };
 
@@ -218,11 +205,9 @@ export default function CartPage() {
   }, [reservation, router, showTimerWarning, lang, t]);
 
   const loadCart = () => {
-    // ✅ sessionStorage вместо localStorage
     const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
     setCartItems(cart);
     
-    // Проверяем, есть ли активная резервация в товарах
     const activeReservation = cart.find((item: any) => item.reservation_id && item.expires_at);
     if (activeReservation) {
       setReservation({
@@ -266,12 +251,11 @@ export default function CartPage() {
       alert('Пожалуйста, укажите адрес доставки');
       return;
     }
-    setPaymentError('');
     setProcessingStep('form');
     setShowPaymentModal(true);
   };
 
-  // Создание заказа перед оплатой
+  // Создание заказов перед оплатой
   const createOrders = async () => {
     const createdOrders = [];
     
@@ -313,89 +297,13 @@ export default function CartPage() {
         timestamp: Date.now()
       }));
       
+      // Переход на Kaspi QR
       window.location.href = KASPI_QR_URL;
       
     } catch (error) {
       console.error('Error creating orders:', error);
       alert(error instanceof Error ? error.message : 'Ошибка при создании заказа');
       setProcessingStep('form');
-    }
-  };
-
-  const validateCardDetails = () => {
-    const cleanNumber = cardDetails.number.replace(/\s/g, '');
-    if (cleanNumber.length !== 16 && cleanNumber.length > 0) {
-      setPaymentError('Введите корректный номер карты (16 цифр)');
-      return false;
-    }
-    return true;
-  };
-
-  const processPayment = async () => {
-    if (!validateCardDetails()) return;
-    
-    setProcessingStep('processing');
-    
-    try {
-      const orders = await createOrders();
-      console.log('✅ Заказы созданы:', orders);
-      
-      if (reservation) {
-        await fetch('https://toogood-2ncf.onrender.com/api/payment/confirm-reservation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ reservation_id: reservation.id })
-        });
-      }
-      
-      setTimeout(() => {
-        setProcessingStep('success');
-        sessionStorage.removeItem('cart');
-        setCartItems([]);
-        
-        setTimeout(() => {
-          setShowPaymentModal(false);
-          router.push('/orders');
-        }, 2000);
-      }, 2000);
-      
-    } catch (error) {
-      console.error('Payment error:', error);
-      setPaymentError('Ошибка при оформлении заказа');
-      setProcessingStep('form');
-    }
-  };
-
-  const formatCardNumber = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    const groups = cleaned.match(/.{1,4}/g);
-    return groups ? groups.join(' ') : cleaned;
-  };
-
-  const formatExpiry = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    if (cleaned.length >= 2) {
-      return cleaned.slice(0, 2) + '/' + cleaned.slice(2, 4);
-    }
-    return cleaned;
-  };
-
-  const fillDemoCard = (method: string) => {
-    const demos = {
-      kaspi: { number: '4405 1234 5678 9012', expiry: '12/26', cvv: '123' },
-      halyk: { number: '4400 1234 5678 9012', expiry: '12/26', cvv: '123' },
-      mastercard: { number: '5555 1234 5678 9012', expiry: '12/26', cvv: '123' },
-      visa: { number: '4111 1234 5678 9012', expiry: '12/26', cvv: '123' }
-    };
-    const demo = demos[method as keyof typeof demos];
-    if (demo) {
-      setCardDetails({
-        number: demo.number,
-        expiry: demo.expiry,
-        cvv: demo.cvv,
-        holder: 'TEST USER'
-      });
     }
   };
 
@@ -556,13 +464,13 @@ export default function CartPage() {
         ))}
       </div>
 
-      {/* Payment Modal */}
+      {/* Payment Modal - ТОЛЬКО KASPI QR */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full">
             <div className="p-6">
               <div className="text-center mb-6">
-                <div className="text-6xl mb-3">💳</div>
+                <div className="text-6xl mb-3">📱</div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].paymentMethod}</h2>
                 <p className="text-gray-500">
                   {t[lang].amount}: <span className="font-bold text-emerald-600 text-xl">{getTotalPrice()} ₸</span>
@@ -574,10 +482,11 @@ export default function CartPage() {
                 )}
               </div>
               
-              {/* KASPI QR */}
+              {/* Kaspi QR Button */}
               <button
                 onClick={handleKaspiPayment}
-                className="w-full p-5 rounded-2xl border-2 border-[#EA0033] bg-[#EA0033]/5 mb-4 transition-all hover:shadow-lg"
+                disabled={processingStep === 'processing'}
+                className="w-full p-5 rounded-2xl border-2 border-[#EA0033] bg-[#EA0033]/5 mb-4 transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-[#EA0033] rounded-xl flex items-center justify-center">
@@ -585,104 +494,30 @@ export default function CartPage() {
                   </div>
                   <div className="flex-1 text-left">
                     <h3 className="font-bold text-lg">Kaspi QR</h3>
-                    <p className="text-sm text-gray-500">{t[lang].kaspiDesc}</p>
+                    <p className="text-sm text-gray-500">
+                      {processingStep === 'processing' ? t[lang].redirecting : t[lang].pay}
+                    </p>
                   </div>
-                  <span className="text-2xl">→</span>
+                  {processingStep === 'processing' ? (
+                    <div className="w-6 h-6 border-2 border-[#EA0033] border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="text-2xl">→</span>
+                  )}
                 </div>
               </button>
 
-              <details className="mt-2">
-                <summary className="text-center text-sm text-gray-400 cursor-pointer py-2">
-                  💳 {t[lang].otherMethods}
-                </summary>
-                <div className="mt-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    {['halyk', 'mastercard', 'visa'].map((method) => (
-                      <button
-                        key={method}
-                        onClick={() => {
-                          setPaymentMethod(method);
-                          fillDemoCard(method);
-                        }}
-                        className={`p-4 rounded-xl border-2 transition-all ${
-                          paymentMethod === method ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200'
-                        }`}
-                      >
-                        <div className="text-2xl mb-1">
-                          {method === 'halyk' && '🏦'}
-                          {method === 'mastercard' && '💳'}
-                          {method === 'visa' && '💳'}
-                        </div>
-                        <div className="text-sm font-medium capitalize">{method}</div>
-                      </button>
-                    ))}
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t[lang].cardNumber}</label>
-                      <input
-                        type="text"
-                        placeholder="1234 5678 9012 3456"
-                        value={cardDetails.number}
-                        onChange={(e) => setCardDetails({...cardDetails, number: formatCardNumber(e.target.value)})}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl"
-                        maxLength={19}
-                      />
-                    </div>
-                    
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">{t[lang].expiry}</label>
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          value={cardDetails.expiry}
-                          onChange={(e) => setCardDetails({...cardDetails, expiry: formatExpiry(e.target.value)})}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl"
-                          maxLength={5}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
-                        <input
-                          type="password"
-                          placeholder="123"
-                          value={cardDetails.cvv}
-                          onChange={(e) => setCardDetails({...cardDetails, cvv: e.target.value.replace(/\D/g, '').slice(0, 3)})}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl"
-                          maxLength={3}
-                        />
-                      </div>
-                    </div>
-                    
-                    {paymentError && (
-                      <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">⚠️ {paymentError}</div>
-                    )}
-                    
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => setShowPaymentModal(false)}
-                        className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold"
-                      >
-                        {t[lang].back}
-                      </button>
-                      <button
-                        onClick={processPayment}
-                        className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 text-white py-3 rounded-xl font-semibold"
-                      >
-                        {t[lang].pay}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </details>
-
               <div className="mt-6 p-3 bg-blue-50 rounded-xl">
                 <p className="text-xs text-blue-700 text-center">
-                  🔒 {lang === 'kz' ? 'Kaspi.kz төлем бетіне өту' : 'Переход на страницу оплаты Kaspi.kz'}
+                  🔒 {lang === 'kz' ? 'Kaspi.kz төлем бетіне өтесіз' : 'Вы перейдете на страницу оплаты Kaspi.kz'}
                 </p>
               </div>
+
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="w-full mt-4 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50"
+              >
+                {t[lang].back}
+              </button>
             </div>
           </div>
         </div>
