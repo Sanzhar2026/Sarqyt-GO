@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/courier/dashboard/page.tsx - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -30,6 +30,7 @@ export default function CourierDashboard() {
   
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const orderCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -67,6 +68,45 @@ export default function CourierDashboard() {
       }
     }
   };
+
+  // ✅ ПЕРИОДИЧЕСКАЯ ПРОВЕРКА СТАТУСА ЗАКАЗА (КАЖДЫЕ 30 СЕКУНД)
+  useEffect(() => {
+    if (!currentOrder) return;
+    
+    const checkOrderStatus = async () => {
+      try {
+        const token = sessionStorage.getItem('courierToken');
+        const response = await fetch(`${API_URL}/api/orders/${currentOrder.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const order = await response.json();
+        
+        if (order.status === 'cancelled') {
+          showNotification(
+  `❌ Заказ #${order.order_number} отменен! ${order.refund_reason || 'Заказ был отменен'}`,
+  'error'
+);
+          setCurrentOrder(null);
+          setOrderStatus(null);
+          setCurrentProgress(0);
+          await fetchStatus();
+          await fetchAvailableOrders();
+          
+          if (orderCheckIntervalRef.current) {
+            clearInterval(orderCheckIntervalRef.current);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking order status:', error);
+      }
+    };
+    
+    orderCheckIntervalRef.current = setInterval(checkOrderStatus, 30000);
+    
+    return () => {
+      if (orderCheckIntervalRef.current) clearInterval(orderCheckIntervalRef.current);
+    };
+  }, [currentOrder]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -152,14 +192,14 @@ export default function CourierDashboard() {
     };
   }, []);
 
-  // ✅ HEARTBEAT ДЛЯ WEBSOCKET (КАЖДЫЕ 30 СЕКУНД)
+  // ✅ HEARTBEAT ДЛЯ WEBSOCKET (КАЖДЫЕ 25 СЕКУНД)
   useEffect(() => {
     const heartbeat = setInterval(() => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: "ping" }));
         console.log('💓 Heartbeat sent');
       }
-    }, 30000);
+    }, 25000);
     
     return () => clearInterval(heartbeat);
   }, []);
@@ -333,58 +373,97 @@ export default function CourierDashboard() {
       }
     };
     
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('📨 WebSocket message:', data);
+   ws.onmessage = async (event) => {
+  try {
+    const data = JSON.parse(event.data);
+    console.log('📨 WebSocket message:', data);
+    
+    if (data.type === 'connected') {
+      console.log('✅ WebSocket подтвержден для курьера:', data.courier_id);
+    }
+    
+    if (data.type === 'new_order_for_courier') {
+      showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
+      
+      setAvailableOrders(prev => [{
+        order_id: data.data.order_id,
+        order_number: data.data.order_number,
+        supplier_name: data.data.supplier_name,
+        distance_km: 0,
+        estimated_time_minutes: 0,
+        amount: data.data.amount,
+        bag_name: data.data.bag_name,
+        customer_address: data.data.customer_address,
+        supplier_lat: data.data.supplier_lat,
+        supplier_lon: data.data.supplier_lon,
+        customer_lat: data.data.customer_lat,
+        customer_lon: data.data.customer_lon
+      }, ...prev]);
+    }
+    
+    if (data.type === 'proposed_order') {
+      setProposedOrder({
+        order_id: data.order_id,
+        distance_km: data.distance_km,
+        expires_in: data.expires_in_seconds
+      });
+      setShowProposalModal(true);
+    } 
+    
+    else if (data.type === 'order_assigned') {
+      await fetchStatus();
+      await fetchCurrentOrder(data.order_id);
+    } 
+    
+    else if (data.type === 'delivery_confirmed') {
+      showNotification('✅ Клиент подтвердил получение заказа!', 'success');
+      await fetchStatus();
+      await fetchCurrentOrder(data.data.order_id);
+    }
+    
+    else if (data.type === 'order_cancelled') {
+      const { order_id, order_number, reason, cancelled_by } = data.data;
+      
+      console.log(`❌ Заказ #${order_number} отменен. Причина: ${reason}, Кем: ${cancelled_by}`);
+      
+      showNotification(
+  `❌ Заказ #${order_number} отменен! Причина: ${reason}. ${cancelled_by === 'admin' ? 'Администратор' : 'Клиент'} отменил заказ.`,
+  'error'
+);
+      
+      if (currentOrder?.id === order_id || currentOrder?.order_id === order_id) {
+        setCurrentOrder(null);
+        setOrderStatus(null);
+        setCurrentProgress(0);
         
-        if (data.type === 'connected') {
-          console.log('✅ WebSocket подтвержден для курьера:', data.courier_id);
-        }
-        
-        if (data.type === 'new_order_for_courier') {
-          showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
-          
-          setAvailableOrders(prev => [{
-            order_id: data.data.order_id,
-            order_number: data.data.order_number,
-            supplier_name: data.data.supplier_name,
-            distance_km: 0,
-            estimated_time_minutes: 0,
-            amount: data.data.amount,
-            bag_name: data.data.bag_name,
-            customer_address: data.data.customer_address,
-            supplier_lat: data.data.supplier_lat,
-            supplier_lon: data.data.supplier_lon,
-            customer_lat: data.data.customer_lat,
-            customer_lon: data.data.customer_lon
-          }, ...prev]);
-        }
-        
-        if (data.type === 'proposed_order') {
-          setProposedOrder({
-            order_id: data.order_id,
-            distance_km: data.distance_km,
-            expires_in: data.expires_in_seconds
-          });
-          setShowProposalModal(true);
-        } else if (data.type === 'order_assigned') {
-          fetchStatus();
-          fetchCurrentOrder(data.order_id);
-        } else if (data.type === 'delivery_confirmed') {
-          showNotification('✅ Клиент подтвердил получение заказа!', 'success');
-          fetchStatus();
-          fetchCurrentOrder(data.data.order_id);
-        }
-        
-        if (data.type === 'pong') {
-          console.log('💓 Heartbeat received');
-        }
-        
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        // ✅ ИСПРАВЛЕНО: убрали async/await внутри setTimeout
+        setTimeout(() => {
+          alert(`❌ Заказ #${order_number} был отменен.\nПричина: ${reason}`);
+        }, 500);
       }
-    };
+      
+      await fetchStatus();
+      await fetchAvailableOrders();
+    }
+    
+    else if (data.type === 'order_returned') {
+      const { order_id, order_number, reason } = data.data;
+      
+     showNotification(
+  `🔄 Заказ #${order_number} возвращен в список. ${reason || 'Заказ снова доступен для взятия'}`,
+  'info'
+);
+      await fetchAvailableOrders();
+    }
+    
+    if (data.type === 'pong') {
+      console.log('💓 Heartbeat received');
+    }
+    
+  } catch (error) {
+    console.error('Error parsing WebSocket message:', error);
+  }
+};
     
     ws.onclose = () => {
       console.log('WebSocket disconnected, reconnecting...');
@@ -396,7 +475,6 @@ export default function CourierDashboard() {
     };
   };
 
-  // ✅ ИСПРАВЛЕНО: ИНТЕРВАЛ 5 СЕКУНД (ВМЕСТО 3)
   const startLocationTracking = () => {
     if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
     
@@ -435,7 +513,7 @@ export default function CourierDashboard() {
           { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
         );
       }
-    }, 5000); // ← 5 СЕКУНД ВМЕСТО 3
+    }, 5000);
   };
   
   const centerToMyLocation = () => {
@@ -680,7 +758,7 @@ export default function CourierDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-40">
       {/* Header */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
@@ -827,53 +905,52 @@ export default function CourierDashboard() {
         </div>
       )}
 
-      {/* Текущий заказ - С ИНДИКАТОРОМ ПРОГРЕССА */}
+      {/* Текущий заказ */}
       {currentOrder && currentOrder.status !== 'delivered' && (
-        <div className="px-4 mb-6">
+        <div className="px-4 mb-6 pb-40">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h2 className="font-bold text-lg mb-4">📦 Текущий заказ #{currentOrder.order_number}</h2>
             
             <div className="space-y-3 mb-4">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                 <span className="text-gray-500">Ресторан:</span>
-                <span className="font-medium">{currentOrder.supplier?.business_name}</span>
+                <span className="font-medium text-right">{currentOrder.supplier?.business_name}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                 <span className="text-gray-500">Клиент:</span>
-                <span className="font-medium">{currentOrder.customer_address || 'Адрес не указан'}</span>
+                <span className="font-medium text-right">{currentOrder.customer_address || 'Адрес не указан'}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-gray-500">Сумма:</span>
-                <span className="font-bold text-emerald-600">{currentOrder.amount_paid} ₸</span>
+                <span className="font-bold text-emerald-600 text-lg">{currentOrder.amount_paid} ₸</span>
               </div>
             </div>
             
-            <div className="mt-3">
+            <div className="mt-4 mb-4">
               <div className="flex justify-between text-xs text-gray-500 mb-1">
                 <span>Прогресс доставки</span>
-                <span>{orderStatus === 'almost_done' ? '🔔 Почти закончил' : `${currentProgress}%`}</span>
+                <span className="font-semibold">{orderStatus === 'almost_done' ? '🔔 Почти закончил' : `${currentProgress}%`}</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                 <div 
-                  className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
+                  className="bg-emerald-600 h-3 rounded-full transition-all duration-500"
                   style={{ width: `${currentProgress}%` }}
                 />
               </div>
               {currentProgress >= 50 && availableOrders.length > 0 && (
-                <div className="mt-3 p-2 bg-blue-50 rounded-lg text-center">
-                  <p className="text-xs text-blue-600">
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg text-center border border-blue-200">
+                  <p className="text-xs text-blue-700 font-medium">
                     💡 Вы выполнили {currentProgress}% заказа! Есть новые предложения выше.
                   </p>
                 </div>
               )}
             </div>
             
-            {/* КНОПКА "Я ПРИЕХАЛ / ПРИШЕЛ" */}
             {currentOrder.status === 'out_for_delivery' && (
               <button
                 onClick={courierArrived}
                 disabled={arriving}
-                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold mt-3 flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold mt-2 flex items-center justify-center gap-2 text-lg"
               >
                 {arriving ? (
                   <>
@@ -888,10 +965,9 @@ export default function CourierDashboard() {
               </button>
             )}
             
-            {/* Ожидание подтверждения клиента */}
             {currentOrder.status === 'nearby' && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-3 text-center">
-                <div className="text-2xl mb-1">⏳</div>
+                <div className="text-3xl mb-1">⏳</div>
                 <p className="font-semibold text-yellow-700">Ожидаем подтверждения от клиента</p>
                 <p className="text-xs text-yellow-600 mt-1">Клиент получил уведомление о вашем прибытии</p>
               </div>
@@ -900,7 +976,7 @@ export default function CourierDashboard() {
             {orderStatus === 'almost_done' && (
               <button
                 onClick={completeDelivery}
-                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold mt-4 mb-8"
+                className="w-full bg-emerald-600 text-white py-4 rounded-xl font-semibold mt-4 text-lg shadow-lg"
               >
                 ✅ Завершить доставку
               </button>
@@ -983,6 +1059,9 @@ export default function CourierDashboard() {
           </div>
         </div>
       )}
+      
+      {/* Дополнительный отступ внизу */}
+      <div className="h-16" />
     </div>
   );
 }

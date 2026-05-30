@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/page.tsx - ПОЛНАЯ ФИНАЛЬНАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -374,18 +374,35 @@ export default function HomePage() {
     { id: 'desserts', nameKz: 'Тәттілер', nameRu: 'Десерты', emoji: '🍰' }
   ];
 
-  const LogoCircle = () => (
-    <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
-      <Image 
-        src="/logotype.jpeg" 
-        alt="Sarqyn Food Logo" 
-        sizes="(max-width: 768px) 100vw, 320px"
-        width={800} 
-        height={800} 
-        className="object-cover w-full h-full"
-      />
-    </div>
-  );
+  const LogoCircle = () => {
+    const [imgError, setImgError] = useState(false);
+    
+    if (imgError) {
+      return (
+        <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
+          <div className="text-center">
+            <div className="text-8xl mb-4">🍽️</div>
+            <p className="text-white text-xl font-bold">Sarqyn Food</p>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+        <Image 
+          src="/logotype.jpeg" 
+          alt="Sarqyt GO" 
+          sizes="(max-width: 768px) 100vw, 320px"
+          width={800} 
+          height={800} 
+          className="object-cover w-full h-full"
+          priority
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  };
 
   if (showSplash) {
     return (
@@ -471,7 +488,7 @@ export default function HomePage() {
         <input type="text" placeholder={t[lang].search} className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500" />
       </div>
 
-      {/* ✅ КАРТА С БЛИЖАЙШИМИ МАГАЗИНАМИ - НОВЫЙ БЛОК */}
+      {/* ✅ КАРТА С БЛИЖАЙШИМИ МАГАЗИНАМИ */}
       <div className="px-6 mt-6">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
