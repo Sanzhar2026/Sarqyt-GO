@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,6 +12,8 @@ export default function CourierLogin() {
   const [loading, setLoading] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  
+  const redirectingRef = useRef(false); // ← Флаг для предотвращения повторных редиректов
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -20,12 +22,16 @@ export default function CourierLogin() {
     let isMounted = true;
     
     const checkAlreadyLoggedIn = async () => {
+      // Если уже редиректим - выходим
+      if (redirectingRef.current) return;
+      
       try {
         const token = sessionStorage.getItem('courierToken');
         const courierData = sessionStorage.getItem('courier');
         
         if (token && courierData) {
           console.log('✅ Найдены данные в sessionStorage');
+          redirectingRef.current = true;
           if (isMounted) {
             router.replace('/courier/dashboard');
           }
@@ -44,6 +50,7 @@ export default function CourierLogin() {
             const data = await response.json();
             if (data.success && data.is_verified === true) {
               sessionStorage.setItem('courier', JSON.stringify(data));
+              redirectingRef.current = true;
               if (isMounted) {
                 router.replace('/courier/dashboard');
               }
@@ -69,6 +76,10 @@ export default function CourierLogin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Если уже редиректим - не делаем новый запрос
+    if (redirectingRef.current) return;
+    
     setLoading(true);
     setError('');
     setPendingVerification(false);
@@ -99,7 +110,8 @@ export default function CourierLogin() {
         
         console.log('✅ Успешный вход, данные сохранены');
         
-        // ✅ ИСПРАВЛЕНО: используем router.replace вместо window.location
+        // ✅ Устанавливаем флаг и делаем редирект
+        redirectingRef.current = true;
         router.replace('/courier/dashboard');
         
       } else if (response.status === 403) {
@@ -133,7 +145,7 @@ export default function CourierLogin() {
       <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-lg">
         <div className="text-center mb-8">
           <div className="text-6xl mb-4">🚚</div>
-          <h1 className="text-2xl font-bold text-emerald-600">Sarqyn GO</h1>
+          <h1 className="text-2xl font-bold text-emerald-600">Sarqyt GO</h1>
           <p className="text-gray-500 mt-2">Вход для курьеров</p>
         </div>
 
@@ -170,7 +182,7 @@ export default function CourierLogin() {
           />
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || redirectingRef.current}
             className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
           >
             {loading ? 'Вход...' : 'Войти'}
