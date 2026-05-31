@@ -104,11 +104,12 @@ export default function OfferCard({
     }
 
     setAddingToCart(true);
-    
+    const token = sessionStorage.getItem('authToken');
+
     try {
       const response = await fetch(`${API_URL}/api/cart/add`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
         credentials: 'include',
         body: JSON.stringify({ bag_id: id, quantity: 1 })
       });
