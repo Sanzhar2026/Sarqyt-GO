@@ -126,19 +126,25 @@ export default function CartPage() {
   }, []);
 
   // Функция проверки резервации
-  const checkReservation = async () => {
-    try {
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/reservation', {
-        credentials: 'include'
-      });
-      const data = await response.json();
-      if (data.reservation) {
-        setReservation(data.reservation);
-      }
-    } catch (error) {
-      console.error('Error checking reservation:', error);
+// Функция проверки резервации
+const checkReservation = async () => {
+  try {
+    const token = sessionStorage.getItem('authToken');
+    const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/reservation', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`  // ← ДОБАВИТЬ
+      },
+      credentials: 'include'
+    });
+    const data = await response.json();
+    if (data.reservation) {
+      setReservation(data.reservation);
     }
-  };
+  } catch (error) {
+    console.error('Error checking reservation:', error);
+  }
+};
 
   // Загрузка корзины и проверка резервации
   useEffect(() => {
@@ -256,56 +262,74 @@ export default function CartPage() {
   };
 
   // Создание заказов перед оплатой
-  const createOrders = async () => {
-    const createdOrders = [];
+// Создание заказов перед оплатой
+const createOrders = async () => {
+  const createdOrders = [];
+  
+  // ✅ ПОЛУЧАЕМ ТОКЕН
+  const token = sessionStorage.getItem('authToken');
+  console.log('🔑 Токен для запроса:', token ? `${token.substring(0, 30)}...` : 'НЕТ ТОКЕНА');
+  
+  for (const item of cartItems) {
+    const response = await fetch('https://toogood-2ncf.onrender.com/api/orders', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`  // ← ДОБАВИТЬ ЭТУ СТРОКУ
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        bag_id: item.id,
+        lat: userLocation?.lat || 43.238,
+        lon: userLocation?.lon || 76.945,
+        address: customerAddress
+      })
+    });
     
-    for (const item of cartItems) {
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          bag_id: item.id,
-          lat: userLocation?.lat || 43.238,
-          lon: userLocation?.lon || 76.945,
-          address: customerAddress
-        })
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || `Ошибка создания заказа для ${item.name}`);
-      }
-      
-      const order = await response.json();
-      createdOrders.push(order);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || `Ошибка создания заказа для ${item.name}`);
     }
     
-    return createdOrders;
-  };
+    const order = await response.json();
+    createdOrders.push(order);
+  }
+  
+  return createdOrders;
+};
+
+
+
 
   const handleKaspiPayment = async () => {
-    setProcessingStep('processing');
+  // ✅ ПРОВЕРКА ТОКЕНА ПЕРЕД ОПЛАТОЙ
+  const token = sessionStorage.getItem('authToken');
+  if (!token) {
+    alert('Ошибка авторизации. Пожалуйста, войдите заново.');
+    router.push('/login');
+    return;
+  }
+  
+  setProcessingStep('processing');
+  
+  try {
+    const orders = await createOrders();
+    console.log('✅ Заказы созданы:', orders);
     
-    try {
-      const orders = await createOrders();
-      console.log('✅ Заказы созданы:', orders);
-      
-      sessionStorage.setItem('pending_order', JSON.stringify({
-        orders: orders,
-        total: getTotalPrice(),
-        timestamp: Date.now()
-      }));
-      
-      // Переход на Kaspi QR
-      window.location.href = KASPI_QR_URL;
-      
-    } catch (error) {
-      console.error('Error creating orders:', error);
-      alert(error instanceof Error ? error.message : 'Ошибка при создании заказа');
-      setProcessingStep('form');
-    }
-  };
+    sessionStorage.setItem('pending_order', JSON.stringify({
+      orders: orders,
+      total: getTotalPrice(),
+      timestamp: Date.now()
+    }));
+    
+    window.location.href = KASPI_QR_URL;
+    
+  } catch (error) {
+    console.error('Error creating orders:', error);
+    alert(error instanceof Error ? error.message : 'Ошибка при создании заказа');
+    setProcessingStep('form');
+  }
+};
 
   const formatTimeLeft = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
