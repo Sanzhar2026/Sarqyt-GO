@@ -298,10 +298,7 @@ const createOrders = async () => {
   return createdOrders;
 };
 
-
-
-
-  const handleKaspiPayment = async () => {
+const handleKaspiPayment = async () => {
   // ✅ ПРОВЕРКА ТОКЕНА ПЕРЕД ОПЛАТОЙ
   const token = sessionStorage.getItem('authToken');
   if (!token) {
@@ -316,17 +313,33 @@ const createOrders = async () => {
     const orders = await createOrders();
     console.log('✅ Заказы созданы:', orders);
     
+    // ✅ ПРАВИЛЬНО СОХРАНЯЕМ В sessionStorage
     sessionStorage.setItem('pending_order', JSON.stringify({
       orders: orders,
       total: getTotalPrice(),
       timestamp: Date.now()
     }));
     
+    // ✅ ДЛЯ ОТЛАДКИ - посмотри что сохраняется
+    console.log('💾 Сохранено в sessionStorage:', {
+      orders: orders,
+      total: getTotalPrice(),
+      timestamp: Date.now()
+    });
+    
+    // Переход на Kaspi QR
     window.location.href = KASPI_QR_URL;
     
   } catch (error) {
     console.error('Error creating orders:', error);
-    alert(error instanceof Error ? error.message : 'Ошибка при создании заказа');
+    // ✅ ПРАВИЛЬНОЕ ОТОБРАЖЕНИЕ ОШИБКИ
+    let errorMessage = 'Ошибка при создании заказа';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object') {
+      errorMessage = JSON.stringify(error);
+    }
+    alert(errorMessage);
     setProcessingStep('form');
   }
 };
