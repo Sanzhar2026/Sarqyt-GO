@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "NODE_OPTIONS='--max-old-space-size=256' next start",
-    "start:render": "NODE_OPTIONS='--max-old-space-size=256' next start --port $PORT"
+    "start": "NODE_OPTIONS='--max-old-space-size=350' next start",
+    "start:render": "NODE_OPTIONS='--max-old-space-size=350' next start --port $PORT"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.0.0",
