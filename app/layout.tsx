@@ -1,6 +1,6 @@
 // app/layout.tsx (оставьте как есть)
 'use client';
-
+import { WebSocketListener } from './components/WebSocketListener';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import './globals.css';
@@ -73,11 +73,13 @@ export default function RootLayout({
       <html lang="kz" suppressHydrationWarning>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes" />
-          <title>Sarqyn Food</title>
+          <title>Sarqyt GO</title>
         </head>
         <body className="bg-gray-50">
           <div className="max-w-md mx-auto relative min-h-screen">
+
             {children}
+            <WebSocketListener />
             {!hideBottomNav && <BottomNav />}
           </div>
         </body>
