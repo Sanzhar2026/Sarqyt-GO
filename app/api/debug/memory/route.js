@@ -13,6 +13,6 @@ export async function GET() {
     "container": {
       "total_mb": 512
     },
-    "explanation": "Node.js процесс обычно занимает 80-150 MB, остальное - базовый образ Linux"
+    "explanation": "Node.js process takes approximately 80-150 MB, the rest is the base Linux image"
   });
 }
