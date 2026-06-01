@@ -68,33 +68,7 @@ export default function CourierDashboard() {
       }
     }
   };
-// Добавьте этот useEffect для мониторинга состояния соединения
 
-useEffect(() => {
-    if (!isOnline) return;
-    
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-    
-    const monitorConnection = setInterval(() => {
-        if (wsRef.current && wsRef.current.readyState !== WebSocket.OPEN) {
-            reconnectAttempts++;
-            console.log(`⚠️ WebSocket not open, attempt ${reconnectAttempts}/${maxReconnectAttempts}`);
-            
-            if (reconnectAttempts <= maxReconnectAttempts) {
-                connectWebSocket();
-            } else {
-                console.log('❌ Max reconnection attempts reached');
-                showNotification('Не удалось подключиться к серверу. Обновите страницу.', 'error');
-                clearInterval(monitorConnection);
-            }
-        } else if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            reconnectAttempts = 0; // Сброс при успешном соединении
-        }
-    }, 15000); // Проверяем каждые 15 секунд
-    
-    return () => clearInterval(monitorConnection);
-}, [isOnline]);
   // ✅ ПЕРИОДИЧЕСКАЯ ПРОВЕРКА СТАТУСА ЗАКАЗА (КАЖДЫЕ 30 СЕКУНД)
   useEffect(() => {
     if (!currentOrder) return;
@@ -376,202 +350,130 @@ useEffect(() => {
     }
   };
 
-  // app/courier/dashboard/page.tsx - Improved WebSocket
-
-const connectWebSocket = () => {
+  const connectWebSocket = () => {
     const token = sessionStorage.getItem('courierToken');
-    
-    console.log('🔍 WebSocket connection attempt');
-    
     if (!token) {
-        console.log('❌ Нет токена для WebSocket');
-        return;
+      console.log('❌ Нет токена для WebSocket');
+      return;
     }
     
-    // Закрываем существующее соединение если есть
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        console.log('Closing existing WebSocket connection');
-        wsRef.current.close();
-    }
-    
-    const encodedToken = encodeURIComponent(token);
-    const wsUrl = `${API_URL.replace('https', 'wss')}/ws/courier-tracking?token=${encodedToken}`;
-    
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(`${API_URL.replace('https', 'wss')}/ws/courier-tracking?token=${token}`);
     wsRef.current = ws;
     
-    // Переменные для heartbeat
-    let heartbeatInterval = null;
-    let connectionTimeout = null;
-    
     ws.onopen = () => {
-        console.log('✅ WebSocket connected');
-        
-        // Очищаем таймаут подключения
-        if (connectionTimeout) clearTimeout(connectionTimeout);
-        
-        // Отправляем initial ping
-        ws.send(JSON.stringify({ type: "ping" }));
-        
-        // Настраиваем регулярный heartbeat (каждые 20 секунд)
-        heartbeatInterval = setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: "ping" }));
-                console.log('💓 Heartbeat sent');
-            } else {
-                console.log('⚠️ Cannot send heartbeat - WebSocket not open');
-                if (heartbeatInterval) clearInterval(heartbeatInterval);
-            }
-        }, 20000);
-        
-        if (userLocation) {
-            ws.send(JSON.stringify({
-                type: "update_location",
-                lat: userLocation.lat,
-                lon: userLocation.lon
-            }));
-            console.log('📍 Initial location sent');
-        }
-        
-        showNotification('✅ Подключен к серверу', 'success');
+      console.log('✅ WebSocket connected');
+      ws.send(JSON.stringify({ type: "ping" }));
+      
+      if (userLocation) {
+        ws.send(JSON.stringify({
+          type: "update_location",
+          lat: userLocation.lat,
+          lon: userLocation.lon
+        }));
+      }
     };
     
-    ws.onmessage = async (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            console.log('📨 WebSocket message:', data.type);
-            
-            if (data.type === 'connected') {
-                console.log('✅ WebSocket подтвержден для курьера:', data.courier_id);
-            }
-            
-            else if (data.type === 'pong') {
-                console.log('💓 Heartbeat received');
-            }
-            
-            else if (data.type === 'ping') {
-                // Ответ на ping от сервера
-                ws.send(JSON.stringify({ type: "pong" }));
-                console.log('💓 Pong sent to server');
-            }
-            
-            else if (data.type === 'new_order_for_courier') {
-                showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
-                
-                setAvailableOrders(prev => [{
-                    order_id: data.data.order_id,
-                    order_number: data.data.order_number,
-                    supplier_name: data.data.supplier_name,
-                    distance_km: 0,
-                    estimated_time_minutes: 0,
-                    amount: data.data.amount,
-                    bag_name: data.data.bag_name,
-                    customer_address: data.data.customer_address,
-                    supplier_lat: data.data.supplier_lat,
-                    supplier_lon: data.data.supplier_lon,
-                    customer_lat: data.data.customer_lat,
-                    customer_lon: data.data.customer_lon
-                }, ...prev]);
-            }
-            
-            else if (data.type === 'proposed_order') {
-                setProposedOrder({
-                    order_id: data.order_id,
-                    distance_km: data.distance_km,
-                    expires_in: data.expires_in_seconds
-                });
-                setShowProposalModal(true);
-            } 
-            
-            else if (data.type === 'order_assigned') {
-                showNotification('✅ Заказ назначен вам!', 'success');
-                await fetchStatus();
-                await fetchCurrentOrder(data.order_id);
-            } 
-            
-            else if (data.type === 'delivery_confirmed') {
-                showNotification('✅ Клиент подтвердил получение заказа!', 'success');
-                await fetchStatus();
-                await fetchCurrentOrder(data.data.order_id);
-            }
-            
-            else if (data.type === 'order_cancelled') {
-                const { order_id, order_number, reason, cancelled_by } = data.data;
-                
-                console.log(`❌ Заказ #${order_number} отменен`);
-                
-                showNotification(
-                    `❌ Заказ #${order_number} отменен! Причина: ${reason}`,
-                    'error'
-                );
-                
-                if (currentOrder?.id === order_id || currentOrder?.order_id === order_id) {
-                    setCurrentOrder(null);
-                    setOrderStatus(null);
-                    setCurrentProgress(0);
-                    
-                    setTimeout(() => {
-                        alert(`❌ Заказ #${order_number} был отменен.\nПричина: ${reason}`);
-                    }, 500);
-                }
-                
-                await fetchStatus();
-                await fetchAvailableOrders();
-            }
-            
-            else if (data.type === 'order_returned') {
-                const { order_number, reason } = data.data;
-                showNotification(
-                    `🔄 Заказ #${order_number} возвращен в список. ${reason || 'Заказ снова доступен'}`,
-                    'info'
-                );
-                await fetchAvailableOrders();
-            }
-            
-        } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-        }
+   ws.onmessage = async (event) => {
+  try {
+    const data = JSON.parse(event.data);
+    console.log('📨 WebSocket message:', data);
+    
+    if (data.type === 'connected') {
+      console.log('✅ WebSocket подтвержден для курьера:', data.courier_id);
+    }
+    
+    if (data.type === 'new_order_for_courier') {
+      showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
+      
+      setAvailableOrders(prev => [{
+        order_id: data.data.order_id,
+        order_number: data.data.order_number,
+        supplier_name: data.data.supplier_name,
+        distance_km: 0,
+        estimated_time_minutes: 0,
+        amount: data.data.amount,
+        bag_name: data.data.bag_name,
+        customer_address: data.data.customer_address,
+        supplier_lat: data.data.supplier_lat,
+        supplier_lon: data.data.supplier_lon,
+        customer_lat: data.data.customer_lat,
+        customer_lon: data.data.customer_lon
+      }, ...prev]);
+    }
+    
+    if (data.type === 'proposed_order') {
+      setProposedOrder({
+        order_id: data.order_id,
+        distance_km: data.distance_km,
+        expires_in: data.expires_in_seconds
+      });
+      setShowProposalModal(true);
+    } 
+    
+    else if (data.type === 'order_assigned') {
+      await fetchStatus();
+      await fetchCurrentOrder(data.order_id);
+    } 
+    
+    else if (data.type === 'delivery_confirmed') {
+      showNotification('✅ Клиент подтвердил получение заказа!', 'success');
+      await fetchStatus();
+      await fetchCurrentOrder(data.data.order_id);
+    }
+    
+    else if (data.type === 'order_cancelled') {
+      const { order_id, order_number, reason, cancelled_by } = data.data;
+      
+      console.log(`❌ Заказ #${order_number} отменен. Причина: ${reason}, Кем: ${cancelled_by}`);
+      
+      showNotification(
+  `❌ Заказ #${order_number} отменен! Причина: ${reason}. ${cancelled_by === 'admin' ? 'Администратор' : 'Клиент'} отменил заказ.`,
+  'error'
+);
+      
+      if (currentOrder?.id === order_id || currentOrder?.order_id === order_id) {
+        setCurrentOrder(null);
+        setOrderStatus(null);
+        setCurrentProgress(0);
+        
+        // ✅ ИСПРАВЛЕНО: убрали async/await внутри setTimeout
+        setTimeout(() => {
+          alert(`❌ Заказ #${order_number} был отменен.\nПричина: ${reason}`);
+        }, 500);
+      }
+      
+      await fetchStatus();
+      await fetchAvailableOrders();
+    }
+    
+    else if (data.type === 'order_returned') {
+      const { order_id, order_number, reason } = data.data;
+      
+     showNotification(
+  `🔄 Заказ #${order_number} возвращен в список. ${reason || 'Заказ снова доступен для взятия'}`,
+  'info'
+);
+      await fetchAvailableOrders();
+    }
+    
+    if (data.type === 'pong') {
+      console.log('💓 Heartbeat received');
+    }
+    
+  } catch (error) {
+    console.error('Error parsing WebSocket message:', error);
+  }
+};
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected, reconnecting...');
+      setTimeout(connectWebSocket, 3000);
     };
     
     ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        // Не показываем уведомление при каждой ошибке, чтобы не спамить
+      console.error('WebSocket error:', error);
     };
-    
-    ws.onclose = (event) => {
-        console.log(`WebSocket closed - Code: ${event.code}, Reason: ${event.reason}`);
-        
-        // Очищаем интервалы
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
-        if (connectionTimeout) clearTimeout(connectionTimeout);
-        
-        // Не переподключаемся при ошибке авторизации
-        if (event.code === 1008) {
-            console.log('Authorization failed, not reconnecting');
-            showNotification('Сессия истекла. Пожалуйста, войдите заново.', 'error');
-            return;
-        }
-        
-        // Переподключаемся только если курьер онлайн
-        if (isOnline) {
-            const reconnectDelay = 5000; // 5 seconds
-            console.log(`Reconnecting in ${reconnectDelay/1000} seconds...`);
-            setTimeout(() => {
-                if (isOnline) {
-                    connectWebSocket();
-                }
-            }, reconnectDelay);
-        }
-    };
-    
-    // Таймаут подключения
-    connectionTimeout = setTimeout(() => {
-        if (ws.readyState !== WebSocket.OPEN) {
-            console.log('Connection timeout, closing...');
-            ws.close();
-        }
-    }, 10000);
-};
+  };
 
   const startLocationTracking = () => {
     if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);

@@ -8,7 +8,8 @@ const nextConfig = {
       },
     ];
   },
-  // 👇 ДОБАВЬ ЭТУ СЕКЦИЮ
+
+  // Настройки изображений
   images: {
     remotePatterns: [
       {
@@ -17,7 +18,6 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Если используешь другие источники изображений, добавь их сюда
       {
         protocol: 'https',
         hostname: 'picsum.photos',
@@ -32,10 +32,31 @@ const nextConfig = {
       },
     ],
   },
+
+  // ✅ ДОБАВЛЕНО: Оптимизация памяти
+  experimental: {
+    workerThreads: false,  // Отключаем worker threads (экономия памяти)
+    cpus: 1,               // Ограничиваем количество CPU (экономия памяти)
+  },
+
+  // ✅ ДОБАВЛЕНО: Уменьшение размера сборки
+  compress: true,          // Включаем сжатие
+  swcMinify: true,         // Используем SWC для минификации (быстрее и меньше памяти)
+
+  // ✅ ДОБАВЛЕНО: Отключение source maps в production (экономия памяти)
+  productionBrowserSourceMaps: false,
+
   // Опционально: игнорировать ошибки TypeScript при сборке
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // ✅ ДОБАВЛЕНО: Дополнительные оптимизации
+  reactStrictMode: true,   // Помогает найти проблемы с памятью
+  poweredByHeader: false,  // Убираем X-Powered-By header (экономия)
+  
+  // Настройки для Render.com
+  output: 'standalone',     // Уменьшает размер деплоя (экономия памяти)
 };
 
 module.exports = nextConfig;
