@@ -11,6 +11,8 @@ export const useWebSocket = (url: string | null) => {
             return;
         }
 
+        console.log('🔌 Подключение WebSocket:', url.substring(0, 80) + '...');
+        
         const ws = new WebSocket(url);
         wsRef.current = ws;
 

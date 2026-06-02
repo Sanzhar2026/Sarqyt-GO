@@ -62,59 +62,40 @@ export default function OrderDetailPage() {
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ Функция для получения токена из разных источников
+  // ✅ Функция для получения токена
   const getAuthToken = () => {
-    // Пробуем из sessionStorage
-    let token = sessionStorage.getItem('authToken');
-    
-    // Если нет, пробуем из localStorage
-    if (!token) {
-      token = localStorage.getItem('token');
-    }
-    
-    // Если нет, пробуем из sessionStorage с другим ключом
-    if (!token) {
-      token = sessionStorage.getItem('token');
-    }
-    
-    console.log('🔑 Токен получен:', !!token);
+    const token = sessionStorage.getItem('authToken');
+    console.log('🔑 Токен:', token ? `${token.substring(0, 30)}...` : 'НЕТ ТОКЕНА');
     return token;
   };
 
-  // ✅ Функция для авторизованных запросов с проверкой 403
+  // ✅ Функция для авторизованных запросов
   const authFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     
-    console.log(`📡 Запрос к ${url}, токен: ${!!token}`);
-    
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    // Если нет токена - перенаправляем на логин
+    if (!token) {
+      console.error('❌ Нет токена, перенаправление на логин');
+      sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+      router.push('/login');
+      throw new Error('No token');
     }
     
     const response = await fetch(url, {
       ...options,
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
       credentials: 'include',
     });
     
     // Если 401 или 403 - перенаправляем на логин
     if (response.status === 401 || response.status === 403) {
-      console.error(`❌ Ошибка авторизации ${response.status}, перенаправление на логин...`);
-      
-      // Очищаем все токены
+      console.error(`❌ Ошибка авторизации ${response.status}`);
       sessionStorage.removeItem('authToken');
-      sessionStorage.removeItem('token');
-      localStorage.removeItem('token');
-      
-      // Сохраняем текущий URL для возврата
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
-      
-      // Перенаправляем на логин
       router.push('/login');
       throw new Error('Unauthorized');
     }
@@ -156,15 +137,10 @@ export default function OrderDetailPage() {
     if (!orderId) return;
     
     try {
-      const token = getAuthToken();
-      console.log('🔑 Токен для запроса заказа:', !!token);
       console.log('📦 Запрашиваем заказ:', orderId);
-      
       const response = await authFetch(`${API_URL}/api/orders/${orderId}`);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Ошибка ответа:', response.status, errorText);
         throw new Error(`Order not found: ${response.status}`);
       }
       
@@ -189,11 +165,15 @@ export default function OrderDetailPage() {
     if (!orderId) return;
 
     const token = getAuthToken();
-    const wsUrl = token 
-      ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(token)}`
-      : 'wss://toogood-2ncf.onrender.com/ws';
     
-    console.log('🔌 Подключение WebSocket для заказа:', wsUrl);
+    // ✅ Если нет токена - не подключаемся
+    if (!token) {
+      console.log('⚠️ Нет токена, WebSocket не подключен');
+      return;
+    }
+
+    const wsUrl = `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(token)}`;
+    console.log('🔌 Подключение WebSocket для заказа');
     
     const ws = new WebSocket(wsUrl);
     
