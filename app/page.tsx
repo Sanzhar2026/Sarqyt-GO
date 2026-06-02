@@ -44,17 +44,15 @@ export default function HomePage() {
   const [showSupplierBags, setShowSupplierBags] = useState(false);
   const [selectedSupplierBags, setSelectedSupplierBags] = useState<SurpriseBag[]>([]);
   const [selectedSupplierName, setSelectedSupplierName] = useState('');
-  const [authToken, setAuthToken] = useState<string | null>(null);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  useEffect(() => {
-    const token = sessionStorage.getItem('authToken');
-    console.log('🔑 Token found:', !!token);
-    setAuthToken(token);
-  }, []);
+  // ✅ ИСПРАВЛЕНО: получаем токен СРАЗУ, без useEffect
+  const authToken = typeof window !== 'undefined' ? sessionStorage.getItem('authToken') : null;
+  
+  console.log('🔑 Token found:', !!authToken);
 
   const wsUrl = authToken 
     ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
@@ -204,6 +202,12 @@ export default function HomePage() {
     
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
       fetchBags(false, false);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Новый сюрприз! 🎁', {
+          body: 'Появился новый сюрприз рядом с вами!',
+          icon: '/logo.png'
+        });
+      }
     }
     
     if (lastMessage.type === 'delete_bag') {
