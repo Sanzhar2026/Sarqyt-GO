@@ -1,4 +1,3 @@
-// app/orders/[id]/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -63,6 +62,22 @@ export default function OrderDetailPage() {
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
+  // ✅ Функция для получения токена
+  const getAuthToken = () => sessionStorage.getItem('authToken');
+
+  // ✅ Функция для авторизованных запросов
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  };
+
   // Получаем геолокацию
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -94,13 +109,20 @@ export default function OrderDetailPage() {
   // Загрузка заказа
   const fetchOrder = async () => {
     const orderId = params?.id;
-    
     if (!orderId) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
-        credentials: 'include'
-      });
+      const token = getAuthToken();
+      console.log('🔑 Токен для запроса заказа:', !!token);
+      
+      const response = await authFetch(`${API_URL}/api/orders/${orderId}`);
+      
+      if (response.status === 401) {
+        console.error('❌ Не авторизован. Перенаправление на логин...');
+        router.push('/login');
+        return;
+      }
+      
       if (!response.ok) throw new Error('Order not found');
       const data = await response.json();
       setOrder(data);
@@ -121,7 +143,12 @@ export default function OrderDetailPage() {
     const orderId = params?.id;
     if (!orderId) return;
 
-    const ws = new WebSocket('wss://toogood-2ncf.onrender.com/ws');
+    const token = getAuthToken();
+    const wsUrl = token 
+      ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(token)}`
+      : 'wss://toogood-2ncf.onrender.com/ws';
+    
+    const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
       console.log('🔌 WebSocket connected for order');
@@ -176,9 +203,8 @@ export default function OrderDetailPage() {
     
     setConfirming(true);
     try {
-      const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order.id}`, {
+      const response = await authFetch(`${API_URL}/api/customer/confirm-delivery/${order.id}`, {
         method: 'POST',
-        credentials: 'include'
       });
       
       const data = await response.json();
@@ -205,10 +231,8 @@ export default function OrderDetailPage() {
     
     setSubmitting(true);
     try {
-      const response = await fetch(`${API_URL}/api/order/${order?.id}/reject`, {
+      const response = await authFetch(`${API_URL}/api/order/${order?.id}/reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ reason: refundReason })
       });
       
