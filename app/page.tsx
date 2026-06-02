@@ -1,740 +1,482 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
+import CategoryCard from './components/CategoryCard';
+import OfferCard from './components/OfferCard';
+import { useGeolocation } from './hooks/useGeolocation';
+import { useWebSocket } from './hooks/useWebSocket';
+import { setGlobalHideBottomNav } from './layout';
+import { useLanguage } from './layout';
 
-const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: false });
-const DeliveryMapWithRoute = dynamic(() => import('../../components/DeliveryMapWithRoute'), { ssr: false });
+const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: false });
 
-export default function CourierDashboard() {
+type Tab = 'preferences' | 'discover';
+
+interface SurpriseBag {
+  id: number;
+  name: string;
+  description: string;
+  original_price: number;
+  discounted_price: number;
+  discount_percentage: number;
+  image_url: string;
+  available_quantity: number;
+  supplier_name: string;
+  supplier_id: number;
+  is_active?: boolean;  // ✅ Добавлено
+}
+
+export default function HomePage() {
   const router = useRouter();
-  const [isOnline, setIsOnline] = useState(false);
-  const [status, setStatus] = useState<any>(null);
+  const location = useGeolocation();
+  const { lang, setLang } = useLanguage(); 
+  const [activeTab, setActiveTab] = useState<Tab>('discover');
+  const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentOrder, setCurrentOrder] = useState<any>(null);
-  const [proposedOrder, setProposedOrder] = useState<any>(null);
-  const [orderStatus, setOrderStatus] = useState<string | null>(null);
-  const [showProposalModal, setShowProposalModal] = useState(false);
-  const [availableOrders, setAvailableOrders] = useState<any[]>([]);
-  const [showOrdersList, setShowOrdersList] = useState(false);
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [switching, setSwitching] = useState(false);
-  const [locating, setLocating] = useState(false);
-  const [arriving, setArriving] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+  const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showSupplierBags, setShowSupplierBags] = useState(false);
+  const [selectedSupplierBags, setSelectedSupplierBags] = useState<SurpriseBag[]>([]);
+  const [selectedSupplierName, setSelectedSupplierName] = useState('');
+  const [authToken, setAuthToken] = useState<string | null>(null);
   
-  const [currentProgress, setCurrentProgress] = useState(0);
-  const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
-  const [wsFailed, setWsFailed] = useState(false);
-  
-  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const orderCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const wsReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const MAX_WS_RECONNECT_ATTEMPTS = 3;
+  const isMountedRef = useRef(true);
+  const initialLoadDoneRef = useRef(false);
+  const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371;
-    const dlat = (lat2 - lat1) * Math.PI / 180;
-    const dlon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dlat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dlon/2)**2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  const updateProgress = (currentLat: number, currentLon: number) => {
-    if (!currentOrder || !currentOrder.customer_lat || !currentOrder.customer_lon) return;
-    
-    const distanceToCustomer = calculateDistance(
-      currentLat, currentLon,
-      currentOrder.customer_lat, currentOrder.customer_lon
-    );
-    
-    if (currentOrder.supplier?.lat && currentOrder.supplier?.lon) {
-      const totalDistance = calculateDistance(
-        currentOrder.supplier.lat, currentOrder.supplier.lon,
-        currentOrder.customer_lat, currentOrder.customer_lon
-      );
-      
-      if (totalDistance > 0) {
-        let progress = Math.floor((1 - distanceToCustomer / totalDistance) * 100);
-        progress = Math.max(0, Math.min(100, progress));
-        setCurrentProgress(progress);
-        
-        if (progress >= 50 && isOnline) {
-          fetchAvailableOrders();
-        }
-      }
-    }
-  };
-
-  // ✅ ПЕРИОДИЧЕСКАЯ ПРОВЕРКА СТАТУСА ЗАКАЗА (КАЖДЫЕ 30 СЕКУНД)
+  // Получаем токен
   useEffect(() => {
-    if (!currentOrder) return;
-    
-    const checkOrderStatus = async () => {
-      try {
-        const token = sessionStorage.getItem('courierToken');
-        const response = await fetch(`/api/orders/${currentOrder.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const order = await response.json();
-        
-        if (order.status === 'cancelled') {
-          showNotification(
-            `❌ Заказ #${order.order_number} отменен! ${order.refund_reason || 'Заказ был отменен'}`,
-            'error'
-          );
-          setCurrentOrder(null);
-          setOrderStatus(null);
-          setCurrentProgress(0);
-          await fetchStatus();
-          await fetchAvailableOrders();
-          
-          if (orderCheckIntervalRef.current) {
-            clearInterval(orderCheckIntervalRef.current);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking order status:', error);
-      }
-    };
-    
-    orderCheckIntervalRef.current = setInterval(checkOrderStatus, 30000);
-    
-    return () => {
-      if (orderCheckIntervalRef.current) clearInterval(orderCheckIntervalRef.current);
-    };
-  }, [currentOrder]);
-
-  // ✅ АВТОРИЗАЦИЯ
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = sessionStorage.getItem('courierToken');
-      const courierData = sessionStorage.getItem('courier');
-      
-      console.log('🔍 Проверка авторизации курьера:', { hasToken: !!token, hasData: !!courierData });
-      
-      if (!token || !courierData) {
-        console.log('❌ Нет данных, редирект на логин');
-        router.push('/courier/login');
-        return;
-      }
-      
-      try {
-        const response = await fetch(`/api/courier/status`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        console.log('📡 Статус ответа:', response.status);
-        
-        if (response.status === 401) {
-          sessionStorage.removeItem('courierToken');
-          sessionStorage.removeItem('courier');
-          sessionStorage.removeItem('isCourierLoggedIn');
-          router.push('/courier/login');
-          return;
-        }
-        
-        if (response.status === 403) {
-          setPendingVerification(true);
-          setLoading(false);
-          return;
-        }
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Данные курьера:', data);
-          
-          if (data.success) {
-            if (!data.is_verified) {
-              setPendingVerification(true);
-              setLoading(false);
-              return;
-            }
-            
-            setStatus(data);
-            setIsOnline(data.is_online);
-            setOrderStatus(data.current_order_status);
-            
-            sessionStorage.setItem('courier', JSON.stringify(data));
-            
-            if (data.is_online && !locationIntervalRef.current) {
-              startLocationTracking();
-              connectWebSocket();
-            }
-            
-            if (data.current_order_id) {
-              fetchCurrentOrder(data.current_order_id);
-            }
-            
-            setLoading(false);
-          } else {
-            router.push('/courier/login');
-          }
-        } else {
-          router.push('/courier/login');
-        }
-      } catch (error) {
-        console.error('Auth error:', error);
-        router.push('/courier/login');
-      }
-    };
-    
-    checkAuth();
-    
-    return () => {
-      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
-      if (orderCheckIntervalRef.current) clearInterval(orderCheckIntervalRef.current);
-      if (wsReconnectTimeoutRef.current) clearTimeout(wsReconnectTimeoutRef.current);
-      if (wsRef.current) wsRef.current.close();
-    };
-  }, [router]);
-
-  // ✅ HEARTBEAT ДЛЯ WEBSOCKET (КАЖДЫЕ 25 СЕКУНД)
-  useEffect(() => {
-    const heartbeat = setInterval(() => {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "ping" }));
-        console.log('💓 Heartbeat sent');
-      }
-    }, 25000);
-    
-    return () => clearInterval(heartbeat);
+    const token = sessionStorage.getItem('authToken');
+    console.log('🔑 Токен на главной:', token ? 'Есть' : 'Нет');
+    setAuthToken(token);
   }, []);
 
-  // ✅ ГЕОЛОКАЦИЯ
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lon: position.coords.longitude
-          });
-          console.log(`📍 Текущее положение: ${position.coords.latitude}, ${position.coords.longitude}`);
-        },
-        (error) => console.error('Geolocation error:', error),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
+  // WebSocket URL только если есть токен
+  const wsUrl = authToken 
+    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
+    : null;
+  
+  const { isConnected, lastMessage } = useWebSocket(wsUrl);
+
+  const refreshAfterOrder = useCallback(async () => {
+    console.log('🔄 Обновление данных после заказа...');
+    await fetchBags();
   }, []);
 
-  // ✅ WEBSOCKET CONNECTION
-  const connectWebSocket = () => {
-    const token = sessionStorage.getItem('courierToken');
+  const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
+    if (!isMountedRef.current) return;
     
-    if (!token || wsFailed || wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
-      console.log('❌ WebSocket connection failed permanently');
-      return;
-    }
-    
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.close();
-    }
-    
-    const encodedToken = encodeURIComponent(token);
-    const wsUrl = `wss://toogood-2ncf.onrender.com/ws/courier-tracking?token=${encodedToken}`;
-    
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    
-    let heartbeatInterval: NodeJS.Timeout | null = null;
-    const connectionTimeout = setTimeout(() => {
-      if (ws.readyState !== WebSocket.OPEN) {
-        console.log('⚠️ WebSocket connection timeout');
-        ws.close();
-      }
-    }, 10000);
-    
-    ws.onopen = () => {
-      console.log('✅ WebSocket connected');
-      clearTimeout(connectionTimeout);
-      setWsReconnectAttempts(0);
-      setWsFailed(false);
-      
-      ws.send(JSON.stringify({ type: "ping" }));
-      
-      heartbeatInterval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "ping" }));
-        }
-      }, 20000);
-      
-      if (userLocation) {
-        ws.send(JSON.stringify({
-          type: "update_location",
-          lat: userLocation.lat,
-          lon: userLocation.lon
-        }));
-      }
-    };
-    
-    ws.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('📨 WebSocket message:', data.type);
-        
-        switch(data.type) {
-          case 'connected':
-            console.log('✅ WebSocket confirmed for courier:', data.courier_id);
-            break;
-          case 'pong':
-            console.log('💓 Heartbeat received');
-            break;
-          case 'ping':
-            ws.send(JSON.stringify({ type: "pong" }));
-            break;
-          case 'new_order_for_courier':
-            showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
-            setAvailableOrders(prev => [{
-              order_id: data.data.order_id,
-              order_number: data.data.order_number,
-              supplier_name: data.data.supplier_name,
-              distance_km: 0,
-              estimated_time_minutes: 0,
-              amount: data.data.amount,
-              bag_name: data.data.bag_name,
-              customer_address: data.data.customer_address,
-              supplier_lat: data.data.supplier_lat,
-              supplier_lon: data.data.supplier_lon,
-              customer_lat: data.data.customer_lat,
-              customer_lon: data.data.customer_lon
-            }, ...prev]);
-            break;
-          case 'proposed_order':
-            setProposedOrder({
-              order_id: data.order_id,
-              distance_km: data.distance_km,
-              expires_in: data.expires_in_seconds
-            });
-            setShowProposalModal(true);
-            break;
-          case 'order_assigned':
-            showNotification('✅ Заказ назначен вам!', 'success');
-            await fetchStatus();
-            await fetchCurrentOrder(data.order_id);
-            break;
-          case 'delivery_confirmed':
-            showNotification('✅ Клиент подтвердил получение заказа!', 'success');
-            await fetchStatus();
-            await fetchCurrentOrder(data.data.order_id);
-            break;
-          case 'order_cancelled':
-            const { order_number, reason } = data.data;
-            showNotification(`❌ Заказ #${order_number} отменен! Причина: ${reason}`, 'error');
-            if (currentOrder?.order_number === order_number) {
-              setCurrentOrder(null);
-              setOrderStatus(null);
-              setCurrentProgress(0);
-            }
-            await fetchStatus();
-            await fetchAvailableOrders();
-            break;
-          case 'order_returned':
-            const { order_number: orderNum, reason: returnReason } = data.data;
-            showNotification(`🔄 Заказ #${orderNum} возвращен в список. ${returnReason || ''}`, 'info');
-            await fetchAvailableOrders();
-            break;
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-    
-    ws.onclose = (event) => {
-      console.log(`WebSocket closed - Code: ${event.code}`);
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
-      
-      if (event.code === 1008) {
-        console.log('Auth error, not reconnecting');
-        return;
-      }
-      
-      if (isOnline && !wsFailed && wsReconnectAttempts < MAX_WS_RECONNECT_ATTEMPTS) {
-        const newAttempts = wsReconnectAttempts + 1;
-        setWsReconnectAttempts(newAttempts);
-        wsReconnectTimeoutRef.current = setTimeout(() => {
-          if (isOnline) connectWebSocket();
-        }, 5000);
-      } else if (wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
-        setWsFailed(true);
-        showNotification('Не удалось подключиться к серверу. Обновите страницу.', 'error');
-      }
-    };
-  };
-
-  // ✅ ОБНОВЛЕНИЕ ЛОКАЦИИ
-  const startLocationTracking = () => {
-    if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-    
-    locationIntervalRef.current = setInterval(() => {
-      if (navigator.geolocation && isOnline) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            setUserLocation({ lat, lon });
-            
-            const token = sessionStorage.getItem('courierToken');
-            try {
-              await fetch(`/api/courier/update-location`, {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ lat, lon })
-              });
-            } catch (error) {
-              console.error('Error updating location:', error);
-            }
-            
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              wsRef.current.send(JSON.stringify({
-                type: "update_location",
-                lat: lat,
-                lon: lon
-              }));
-            }
-          },
-          (error) => console.error('Geolocation error:', error),
-          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-        );
-      }
-    }, 5000);
-  };
-  
-  // ✅ ЦЕНТРИРОВАНИЕ КАРТЫ
-  const centerToMyLocation = () => {
-    setLocating(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setUserLocation({ lat: latitude, lon: longitude });
-          window.dispatchEvent(new CustomEvent('centerMap', { 
-            detail: { lat: latitude, lon: longitude, zoom: 16 }
-          }));
-          setLocating(false);
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          alert('Не удалось определить местоположение');
-          setLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      alert('Геолокация не поддерживается');
-      setLocating(false);
-    }
-  };
-
-  // ✅ СТАТУС КУРЬЕРА
-  const fetchStatus = async () => {
-    const token = sessionStorage.getItem('courierToken');
-    if (!token) return;
-    
-    try {
-      const res = await fetch(`/api/courier/status`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIsOnline(data.is_online);
-        setStatus(data);
-        setOrderStatus(data.current_order_status);
-        
-        if (data.current_order_id) {
-          fetchCurrentOrder(data.current_order_id);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching status:', error);
-    }
-  };
-
-  // ✅ ТЕКУЩИЙ ЗАКАЗ
-  const fetchCurrentOrder = async (orderId: number) => {
-    const token = sessionStorage.getItem('courierToken');
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      console.log('📦 Заказ получен:', data);
-      setCurrentOrder(data);
-    } catch (error) {
-      console.error('Error fetching order:', error);
-    }
-  };
-
-  // ✅ ДОСТУПНЫЕ ЗАКАЗЫ
-  const fetchAvailableOrders = async () => {
-    const token = sessionStorage.getItem('courierToken');
-    try {
-      const res = await fetch(`/api/courier/available-orders`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setAvailableOrders(data.orders || []);
-      }
-    } catch (error) {
-      console.error('Error fetching available orders:', error);
-    }
-  };
-
-  // ✅ ВЗЯТЬ ЗАКАЗ
-  const takeOrder = async (orderId: number) => {
-    const token = sessionStorage.getItem('courierToken');
-    
-    if (!token) {
-      alert('Ошибка авторизации');
-      router.push('/courier/login');
-      return;
+    if (showLoading && !isInitial) {
+      setIsRefreshing(true);
     }
     
     try {
-      const response = await fetch(`/api/courier/take-order/${orderId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+      console.log('🔄 Загрузка сюрпризов...');
+      const response = await fetch(`/api/surprise-bags`, {
+        credentials: 'include'
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
       
       const data = await response.json();
-      if (response.ok && data.success) {
-        showNotification('✅ Заказ взят в работу!', 'success');
-        await fetchStatus();
-        await fetchCurrentOrder(orderId);
-        setShowOrdersList(false);
-        await fetchAvailableOrders();
-      } else {
-        alert(data.message || 'Ошибка при взятии заказа');
-      }
-    } catch (error) {
-      console.error('Error taking order:', error);
-      alert('Ошибка при взятии заказа');
-    }
-  };
-
-  // ✅ КУРЬЕР ПРИБЫЛ
-  const courierArrived = async () => {
-    if (!currentOrder) return;
-    
-    setArriving(true);
-    const token = sessionStorage.getItem('courierToken');
-    try {
-      const res = await fetch(`/api/courier/arrived/${currentOrder.id}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const filteredBags = data.filter((bag: SurpriseBag) => bag.available_quantity > 0);
       
-      const data = await res.json();
-      if (data.success) {
-        showNotification(`✅ Уведомление отправлено клиенту!`, 'success');
-        fetchStatus();
-        fetchCurrentOrder(currentOrder.id);
-      } else {
-        alert(data.message || 'Ошибка');
+      if (isMountedRef.current) {
+        setBags(filteredBags);
+        setLastUpdate(new Date());
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Ошибка при отправке уведомления');
+    } catch (err) {
+      console.error('Ошибка загрузки:', err);
+      if (isMountedRef.current) {
+        setBags([]);
+      }
     } finally {
-      setArriving(false);
-    }
-  };
-
-  // ✅ ВКЛ/ВЫКЛ РЕЖИМА
-  const toggleOnlineMode = async () => {
-    if (switching) return;
-    setSwitching(true);
-    
-    const token = sessionStorage.getItem('courierToken');
-    
-    if (!isOnline) {
-      if (!navigator.geolocation) {
-        alert('Разрешите доступ к геолокации');
-        setSwitching(false);
-        return;
-      }
-      
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const res = await fetch(`/api/courier/go-online`, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                lat: position.coords.latitude,
-                lon: position.coords.longitude
-              })
-            });
-            
-            const data = await res.json();
-            if (data.success) {
-              setIsOnline(true);
-              setWsReconnectAttempts(0);
-              setWsFailed(false);
-              startLocationTracking();
-              connectWebSocket();
-              await fetchAvailableOrders();
-            } else {
-              alert(data.message || 'Ошибка');
-            }
-          } catch (error) {
-            alert('Ошибка при выходе на линию');
-          } finally {
-            setSwitching(false);
-          }
-        },
-        () => {
-          alert('Разрешите доступ к геолокации');
-          setSwitching(false);
-        }
-      );
-    } else {
-      try {
-        const res = await fetch(`/api/courier/go-offline`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        const data = await res.json();
-        if (data.success) {
-          setIsOnline(false);
-          
-          if (locationIntervalRef.current) {
-            clearInterval(locationIntervalRef.current);
-            locationIntervalRef.current = null;
-          }
-          
-          if (heartbeatIntervalRef.current) {
-            clearInterval(heartbeatIntervalRef.current);
-            heartbeatIntervalRef.current = null;
-          }
-          
-          if (wsRef.current) {
-            wsRef.current.close();
-            wsRef.current = null;
-          }
-        } else {
-          alert(data.message || 'Ошибка');
-        }
-      } catch (error) {
-        alert('Ошибка при уходе с линии');
-      } finally {
-        setSwitching(false);
+      if (isMountedRef.current) {
+        if (showLoading && !isInitial) setIsRefreshing(false);
+        if (isInitial) setLoading(false);
       }
     }
-  };
+  }, []);
 
-  // ✅ ПРИНЯТЬ ПРЕДЛОЖЕНИЕ
-  const acceptProposal = async () => {
-    if (!proposedOrder) return;
-    const token = sessionStorage.getItem('courierToken');
-    try {
-      const res = await fetch(`/api/courier/respond-to-proposal`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ response: 'accept' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setShowProposalModal(false);
-        setProposedOrder(null);
-        fetchStatus();
-      } else {
-        alert(data.message);
-      }
-    } catch (error) {
-      console.error('Error accepting proposal:', error);
-    }
-  };
-
-  // ✅ ОТКЛОНИТЬ ПРЕДЛОЖЕНИЕ
-  const declineProposal = async () => {
-    if (!proposedOrder) return;
-    const token = sessionStorage.getItem('courierToken');
-    try {
-      const res = await fetch(`/api/courier/respond-to-proposal`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ response: 'decline' })
-      });
-      const data = await res.json();
-      setShowProposalModal(false);
-      setProposedOrder(null);
-    } catch (error) {
-      console.error('Error declining proposal:', error);
-    }
-  };
-
-  // ✅ ЗАВЕРШИТЬ ДОСТАВКУ
-  const completeDelivery = async () => {
-    if (!currentOrder) return;
-    const token = sessionStorage.getItem('courierToken');
-    try {
-      const res = await fetch(`/api/courier/complete-order/${currentOrder.id}`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCurrentOrder(null);
-        setOrderStatus(null);
-        fetchStatus();
-        fetchAvailableOrders();
-      }
-    } catch (error) {
-      console.error('Error completing delivery:', error);
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'almost_done': return '🔔 Почти закончил';
-      case 'delivering': return '🚚 Доставка';
-      case 'assigned': return '📦 Заказ назначен';
-      case 'nearby': return '📍 Рядом с клиентом';
-      default: return '✅ На линии';
-    }
-  };
-
-  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-24 left-4 right-4 z-50 p-4 rounded-xl text-white text-center ${
-      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
-    } animate-slide-up`;
-    toast.textContent = message;
+    toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
+      type === 'success' ? 'bg-emerald-600' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
+    }`;
+    toast.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '🚚'}</span>
+        <div class="flex-1">
+          <div class="font-bold">${title}</div>
+          <div class="text-sm opacity-90">${body}</div>
+        </div>
+      </div>
+    `;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    
+    setTimeout(() => {
+      toast.classList.add('animate-fade-out');
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/logo.png' });
+    }
   };
+const showCourierArrivedNotification = (data: any) => {
+  console.log('🔔 Показываем уведомление о прибытии курьера:', data);
+  
+  const { order_id, order_number, courier_name, courier_phone, message } = data;
+  
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
+  toast.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-l-4 border-emerald-500">
+      <div class="p-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-lg">🚚</div>
+          <div class="flex-1">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-gray-800 text-sm">Курьер прибыл!</h3>
+              <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-lg leading-none ml-2">✕</button>
+            </div>
+            <p class="text-emerald-600 text-xs">Заказ #${order_number} • ${courier_name}</p>
+          </div>
+        </div>
+        
+        <div class="flex gap-2 mt-3">
+          <button id="go-to-order-btn" class="flex-1 bg-emerald-500 text-white py-1.5 rounded-xl text-xs font-semibold hover:bg-emerald-600 transition">
+            📦 Перейти
+          </button>
+          <button id="later-btn" class="px-3 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium hover:bg-gray-200 transition">
+            Позже
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  const goToOrder = () => {
+    toast.classList.add('animate-fade-out');
+    setTimeout(() => {
+      toast.remove();
+      router.push(`/orders/${order_id}`);
+    }, 300);
+  };
+  
+  const closeNotification = () => {
+    toast.classList.add('animate-fade-out');
+    setTimeout(() => toast.remove(), 300);
+  };
+  
+  toast.querySelector('#go-to-order-btn')?.addEventListener('click', goToOrder);
+  toast.querySelector('#later-btn')?.addEventListener('click', closeNotification);
+  toast.querySelector('#close-notification-btn')?.addEventListener('click', closeNotification);
+  
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      closeNotification();
+    }
+  }, 6000);
+};
+
+  const handleSupplierClick = (supplierId: number, supplierName: string) => {
+    const supplierBags = bags.filter(bag => bag.supplier_id === supplierId);
+    setSelectedSupplierBags(supplierBags);
+    setSelectedSupplierName(supplierName);
+    setShowSupplierBags(true);
+  };
+
+  const closeSupplierBags = () => {
+    setShowSupplierBags(false);
+    setSelectedSupplierBags([]);
+    setSelectedSupplierName('');
+  };
+
+  // Обработка WebSocket сообщений
+  useEffect(() => {
+    if (!lastMessage) return;
+    
+    console.log('📡 WebSocket событие:', lastMessage);
+    
+    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
+      fetchBags(false, false);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Новый сюрприз! 🎁', {
+          body: 'Появился новый сюрприз рядом с вами!',
+          icon: '/logo.png'
+        });
+      }
+    }
+    
+    if (lastMessage.type === 'delete_bag') {
+      fetchBags(false, false);
+    }
+    
+    // ✅ ОБРАБОТКА ОБНОВЛЕНИЯ КОЛИЧЕСТВА ТОВАРА
+    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
+      const { bag_id, available_quantity, is_active } = lastMessage.data;
+      
+      console.log(`🔄 Обновляем товар ${bag_id}: осталось ${available_quantity}`);
+      
+      setBags(prevBags => {
+        // Обновляем количество у конкретного товара
+        const updatedBags = prevBags.map(bag => 
+          bag.id === bag_id 
+            ? { ...bag, available_quantity: available_quantity, is_active: is_active ?? bag.is_active }
+            : bag
+        );
+        
+        // ✅ Убираем товары, у которых закончилось количество
+        const filteredBags = updatedBags.filter(bag => bag.available_quantity > 0);
+        
+        console.log(`📦 Было ${prevBags.length} товаров, стало ${filteredBags.length}`);
+        
+        if (filteredBags.length !== prevBags.length) {
+          setLastUpdate(new Date());
+        }
+        
+        return filteredBags;
+      });
+    }
+    
+    if (lastMessage.type === 'courier_arrived') {
+      console.log('🚚 КУРЬЕР ПРИБЫЛ!', lastMessage.data);
+      showCourierArrivedNotification(lastMessage.data);
+    }
+    
+    if (lastMessage.type === 'order_assigned') {
+      const { courier_name, courier_phone, estimated_time } = lastMessage.data;
+      showNotification(
+        'Курьер назначен!',
+        `${courier_name} (${courier_phone}) везет ваш заказ. Ожидайте ${estimated_time || 30} минут.`,
+        'info'
+      );
+    }
+  }, [lastMessage, fetchBags]);
+
+  const handleManualRefresh = () => {
+    fetchBags(true, false);
+  };
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    const hasLoaded = sessionStorage.getItem('has_loaded');
+    
+    if (!hasLoaded) {
+      setGlobalHideBottomNav(true);
+      setShowSplash(true);
+      
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+        setGlobalHideBottomNav(false);
+        sessionStorage.setItem('has_loaded', 'true');
+      }, 3500);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setShowSplash(false);
+      setGlobalHideBottomNav(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const storedUser = sessionStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        setUser({
+          name: parsed.full_name || parsed.name,
+          id: parsed.id,
+          phone: parsed.phone
+        });
+      } catch(e) {}
+    }
+    
+    const fetchUser = async () => {
+      try {
+        const res = await fetch(`/api/check-auth`, { 
+          credentials: 'include'
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated) {
+            const userData = {
+              name: data.user_name,
+              id: data.user_id,
+              phone: data.user_phone
+            };
+            setUser(userData);
+            sessionStorage.setItem('user', JSON.stringify(userData));
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    if (showSplash) return;
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+      fetchBags(true, true);
+    }
+  }, [showSplash, fetchBags]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleRefreshOffers = () => {
+      fetchBags(false, false);
+    };
+    window.addEventListener('refreshOffers', handleRefreshOffers);
+    return () => window.removeEventListener('refreshOffers', handleRefreshOffers);
+  }, [fetchBags]);
+
+  const handleLogout = async () => {
+    await fetch(`/api/logout`, { method: 'GET', credentials: 'include' });
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('authToken');
+    setUser(null);
+    window.location.href = '/';
+  };
+
+  const handleCategoryClick = (categoryId: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(categoryId) ? prev.filter(id => id !== categoryId) : [...prev, categoryId]
+    );
+  };
+
+  const t = {
+    kz: {
+      greeting: 'Сәлем',
+      guest: 'Қонақ',
+      subtitle: 'Бүгін не құтқарасыз?',
+      logout: 'Шығу',
+      login: 'Кіру',
+      register: 'Тіркелу',
+      search: 'Мейрамхана немесе тағам іздеу...',
+      preferences: 'Қалауларыңыз',
+      discover: 'Жақын ұсыныстар',
+      filter: 'Фильтр',
+      nearbyOffers: 'Жақын маңдағы ұсыныстар',
+      noOffers: 'Қазір жақын маңда ұсыныс жоқ',
+      iLike: 'Маған ұнайды',
+      myOrders: 'Менің тапсырыстарым',
+      refresh: 'Жаңарту',
+      lastUpdate: 'Соңғы жаңарту',
+      connected: 'Қосылған',
+      disconnected: 'Қосылым жоқ',
+      nearbyShops: 'Жақын маңдағы дүкендер мен кафелер',
+      viewSurprises: 'Тосын сыйларды көру',
+      close: 'Жабу',
+      available: 'Қолжетімді',
+      from: 'бастап',
+      order: 'Тапсырыс беру'
+    },
+    ru: {
+      greeting: 'Привет',
+      guest: 'Гость',
+      subtitle: 'Что спасете сегодня?',
+      logout: 'Выйти',
+      login: 'Войти',
+      register: 'Регистрация',
+      search: 'Поиск ресторана или блюда...',
+      preferences: 'Предпочтения',
+      discover: 'Ближайшие предложения',
+      filter: 'Фильтр',
+      nearbyOffers: 'Предложения рядом',
+      noOffers: 'Рядом нет предложений',
+      iLike: 'Мне нравится',
+      myOrders: 'Мои заказы',
+      refresh: 'Обновить',
+      lastUpdate: 'Последнее обновление',
+      connected: 'Подключено',
+      disconnected: 'Нет соединения',
+      nearbyShops: 'Ближайшие магазины и кафе',
+      viewSurprises: 'Посмотреть сюрпризы',
+      close: 'Закрыть',
+      available: 'Доступно',
+      from: 'от',
+      order: 'Заказать'
+    }
+  };
+
+  const categories = [
+    { id: 'kazakh', nameKz: 'Қазақ тағамы', nameRu: 'Казахская кухня', emoji: '🍖' },
+    { id: 'fastfood', nameKz: 'Фастфуд', nameRu: 'Фастфуд', emoji: '🍔' },
+    { id: 'pizza', nameKz: 'Пицца', nameRu: 'Пицца', emoji: '🍕' },
+    { id: 'healthy', nameKz: 'Здоровое питание', nameRu: 'Здоровое питание', emoji: '🥗' },
+    { id: 'asian', nameKz: 'Азия тағамы', nameRu: 'Азиатская кухня', emoji: '🍜' },
+    { id: 'desserts', nameKz: 'Тәттілер', nameRu: 'Десерты', emoji: '🍰' }
+  ];
+
+  const LogoCircle = () => {
+    const [imgError, setImgError] = useState(false);
+    
+    if (imgError) {
+      return (
+        <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
+          <div className="text-center">
+            <div className="text-8xl mb-4">🍽️</div>
+            <p className="text-white text-xl font-bold">Sarqyn Food</p>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+        <Image 
+          src="/logotype.jpeg" 
+          alt="Sarqyt GO" 
+          sizes="(max-width: 768px) 100vw, 320px"
+          width={800} 
+          height={800} 
+          className="object-cover w-full h-full"
+          priority
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  };
+
+  if (showSplash) {
+    return (
+      <div className="fixed inset-0 bg-emerald-600 flex flex-col items-center justify-center z-50">
+        <div className="text-center">
+          <LogoCircle />
+          <h1 className="text-4xl font-bold text-white mb-2">Sarqyn Food</h1>
+          <p className="text-emerald-100 text-sm">Дәмді тағамдар дүниені құтқарады</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -744,263 +486,220 @@ export default function CourierDashboard() {
     );
   }
 
-  if (pendingVerification) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-md">
-          <div className="text-6xl mb-4">⏳</div>
-          <h1 className="text-2xl font-bold mb-2">Заявка на рассмотрении</h1>
-          <p className="text-gray-500 mb-6">
-            Ваша заявка на регистрацию курьера еще не подтверждена администратором.
-          </p>
-          <Link href="/profile">
-            <button className="bg-emerald-600 text-white px-6 py-3 rounded-xl">
-              Вернуться в профиль
-            </button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 pb-40">
-      {/* Header */}
-      <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
-        <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className={`fixed top-0 right-0 z-50 m-2 px-2 py-1 rounded-full text-xs ${
+        isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+      }`}>
+        {isConnected ? '🟢 ' + t[lang].connected : '🔴 ' + t[lang].disconnected}
+      </div>
+
+      <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
+        <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-bold">🚚 Панель курьера</h1>
-            <p className="text-emerald-100 text-sm mt-1">
-              {status?.first_name} {status?.last_name}
-            </p>
-            {userLocation && (
-              <p className="text-emerald-100 text-xs mt-1 opacity-70">
-                📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}
-              </p>
+            <div className="flex items-center gap-2">
+              <div>
+                <h1 className="text-[28px] leading-none font-black tracking-[-1px] text-black">
+                  SARQYT <span className="text-[#FF9500]">GO</span>
+                </h1>
+              </div>
+            </div>
+            {user && user.phone && (
+              <div className="mt-2 flex items-center gap-2 text-xs bg-white/10 rounded-xl px-3 py-1.5 w-fit">
+                <span>📞</span>
+                <span>{user.phone}</span>
+              </div>
             )}
           </div>
-          <Link href="/profile" className="bg-white/20 rounded-full p-2">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </Link>
-        </div>
-      </div>
-
-      {/* Карта с курьерами */}
-      <div className="relative h-64 m-4 rounded-2xl overflow-hidden shadow-lg">
-        <CourierMap
-          orderId={currentOrder?.id}
-          restaurantLocation={currentOrder?.supplier ? { lat: currentOrder.supplier.lat, lon: currentOrder.supplier.lon } : undefined}
-          customerLocation={currentOrder?.customer_lat ? { lat: currentOrder.customer_lat, lon: currentOrder.customer_lon } : undefined}
-        />
-        
-        <button
-          onClick={centerToMyLocation}
-          disabled={locating}
-          className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95 disabled:opacity-50"
-        >
-          {locating ? (
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          )}
-        </button>
-        
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('fitBoundsToCouriers'))}
-          className="absolute bottom-4 left-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95"
-        >
-          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-              d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7 17H3v2h4v-2z" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Ползунок переключения режима */}
-      <div className="px-4 mb-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{isOnline ? '🟢' : '⚫'}</span>
-              <div>
-                <p className="font-semibold text-lg">{isOnline ? 'На линии' : 'Офлайн'}</p>
-                <p className="text-xs text-gray-500">
-                  {isOnline ? 'Вы готовы принимать заказы' : 'Включите режим чтобы получать заказы'}
-                </p>
-              </div>
+          
+          <div className="flex gap-2">
+            <div className="flex gap-1 mr-2">
+              <button
+                onClick={() => setLang('kz')}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                  lang === 'kz' ? 'bg-white text-emerald-600' : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                Қаз
+              </button>
+              <button
+                onClick={() => setLang('ru')}
+                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                  lang === 'ru' ? 'bg-white text-emerald-600' : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                Рус
+              </button>
             </div>
-            <button
-              onClick={toggleOnlineMode}
-              disabled={switching}
-              className={`relative w-16 h-8 rounded-full transition-all duration-300 ${isOnline ? 'bg-emerald-600' : 'bg-gray-300'} ${switching ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
-            >
-              <span className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 flex items-center justify-center text-xs ${isOnline ? 'translate-x-8' : 'translate-x-0'}`}>
-                {isOnline ? '✓' : '○'}
-              </span>
-            </button>
+            
+            {user ? (
+              <button onClick={handleLogout} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition flex items-center gap-2">
+                <span>🚪</span><span>{t[lang].logout}</span>
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <Link href="/login"><button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition">{t[lang].login}</button></Link>
+                <Link href="/signup"><button className="bg-white/30 hover:bg-white/40 px-4 py-2 rounded-2xl text-sm transition">{t[lang].register}</button></Link>
+              </div>
+            )}
           </div>
-          
-          {isOnline && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Статус:</span>
-                <span className="text-emerald-600 font-medium flex items-center gap-1">
-                  <span className="w-2 h-2 bg-emerald-600 rounded-full animate-pulse"></span>
-                  Принимаю заказы
-                </span>
-              </div>
-              {orderStatus && (
-                <div className="flex items-center justify-between text-sm mt-2">
-                  <span className="text-gray-500">Текущий статус:</span>
-                  <span className="text-blue-600 font-medium">{getStatusText(orderStatus)}</span>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {!isOnline && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-400 text-center">💤 Нажмите на ползунок чтобы выйти на линию</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* МАРШРУТ ДОСТАВКИ */}
-      {currentOrder && currentOrder.status === 'out_for_delivery' && (
-        <div className="px-4 mb-6">
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <h2 className="font-bold text-lg mb-4">🗺️ Маршрут доставки</h2>
-            <DeliveryMapWithRoute
-              orderId={currentOrder.id}
-              startLat={userLocation?.lat || currentOrder.supplier?.lat || 0}
-              startLon={userLocation?.lon || currentOrder.supplier?.lon || 0}
-              endLat={currentOrder.customer_lat || 0}
-              endLon={currentOrder.customer_lon || 0}
-              supplierName={currentOrder.supplier?.business_name || 'Ресторан'}
-              customerAddress={currentOrder.customer_address || 'Адрес клиента'}
-              onProgressUpdate={(progress) => console.log(`🚚 Прогресс доставки: ${progress}%`)}
+      <div className="px-6 -mt-4">
+        <input type="text" placeholder={t[lang].search} className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+      </div>
+
+      <div className="px-6 mt-6">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-gray-100">
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <span>🏪</span> {t[lang].nearbyShops}
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
+          </div>
+          <div className="h-72">
+            <SuppliersMap 
+              userLat={location.lat} 
+              userLon={location.lon}
+              onSupplierClick={handleSupplierClick}
+              showUserLocation={true}
             />
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Текущий заказ */}
-      {currentOrder && currentOrder.status !== 'delivered' && (
-        <div className="px-4 mb-6 pb-40">
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <h2 className="font-bold text-lg mb-4">📦 Текущий заказ #{currentOrder.order_number}</h2>
-            
-            <div className="space-y-3 mb-4">
-              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                <span className="text-gray-500">Ресторан:</span>
-                <span className="font-medium text-right">{currentOrder.supplier?.business_name}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                <span className="text-gray-500">Клиент:</span>
-                <span className="font-medium text-right">{currentOrder.customer_address || 'Адрес не указан'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Сумма:</span>
-                <span className="font-bold text-emerald-600 text-lg">{currentOrder.amount_paid} ₸</span>
-              </div>
+      {showSupplierBags && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="font-bold text-lg">{selectedSupplierName}</h3>
+              <button onClick={closeSupplierBags} className="text-gray-400 text-2xl">&times;</button>
             </div>
-            
-            <div className="mt-4 mb-4">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Прогресс доставки</span>
-                <span className="font-semibold">{orderStatus === 'almost_done' ? '🔔 Почти закончил' : `${currentProgress}%`}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div className="bg-emerald-600 h-3 rounded-full transition-all duration-500" style={{ width: `${currentProgress}%` }} />
-              </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {selectedSupplierBags.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">Нет доступных сюрпризов</p>
+              ) : (
+                <div className="space-y-4">
+                  {selectedSupplierBags.map((bag) => (
+                    <div key={bag.id} className="border rounded-xl p-3 hover:shadow-md transition">
+                      <div className="flex gap-3">
+                        {bag.image_url && (
+                          <img src={bag.image_url} alt={bag.name} className="w-20 h-20 object-cover rounded-lg" />
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{bag.name}</h4>
+                          <p className="text-xs text-gray-500 line-through">{bag.original_price} ₸</p>
+                          <p className="text-emerald-600 font-bold">{bag.discounted_price} ₸</p>
+                          <p className="text-xs text-gray-400">Доступно: {bag.available_quantity} шт.</p>
+                          <button 
+                            onClick={() => router.push(`/offers/${bag.id}`)}
+                            className="mt-2 bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs"
+                          >
+                            {t[lang].order}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            
-            {currentOrder.status === 'out_for_delivery' && (
-              <button
-                onClick={courierArrived}
-                disabled={arriving}
-                className="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold mt-2 flex items-center justify-center gap-2 text-lg"
-              >
-                {arriving ? (
-                  <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Отправка...</>
-                ) : (
-                  <>{status?.courier_type === 'driver' ? '🚚 Я приехал' : '🚶 Я пришел'}</>
-                )}
-              </button>
-            )}
-            
-            {currentOrder.status === 'nearby' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-3 text-center">
-                <div className="text-3xl mb-1">⏳</div>
-                <p className="font-semibold text-yellow-700">Ожидаем подтверждения от клиента</p>
-                <p className="text-xs text-yellow-600 mt-1">Клиент получил уведомление о вашем прибытии</p>
-              </div>
-            )}
-            
-            {orderStatus === 'almost_done' && (
-              <button onClick={completeDelivery} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-semibold mt-4 text-lg shadow-lg">
-                ✅ Завершить доставку
-              </button>
-            )}
           </div>
         </div>
       )}
 
-      {/* Доступные заказы */}
-      {isOnline && !currentOrder && (
-        <div className="px-4 mb-6 pb-32">
-          <button onClick={() => { fetchAvailableOrders(); setShowOrdersList(!showOrdersList); }} className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
-            📋 Список доступных заказов ({availableOrders.length})
-          </button>
-          
-          {showOrdersList && availableOrders.length > 0 && (
-            <div className="mt-3 space-y-3">
-              {availableOrders.map((order) => (
-                <div key={order.order_id} className="bg-white rounded-xl p-4 shadow-sm">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold">{order.supplier_name}</p>
-                      <p className="text-xs text-gray-500">{order.amount} ₸</p>
-                    </div>
-                    <span className="font-bold text-emerald-600">{order.amount} ₸</span>
-                  </div>
-                  <button onClick={() => takeOrder(order.order_id)} className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm">
-                    Взять заказ
-                  </button>
-                </div>
+      {user && (
+        <div className="px-6 mt-4">
+          <Link href="/orders">
+            <button className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2">
+              <span>📋</span>
+              <span>{t[lang].myOrders}</span>
+            </button>
+          </Link>
+        </div>
+      )}
+
+      <div className="px-6 mt-6">
+        <div className="bg-gray-100 p-1 rounded-3xl flex">
+          <button onClick={() => setActiveTab('preferences')} className={`flex-1 py-3 rounded-3xl font-semibold text-sm transition-all ${activeTab === 'preferences' ? 'bg-white shadow text-emerald-600' : 'text-gray-500'}`}>{t[lang].preferences}</button>
+          <button onClick={() => setActiveTab('discover')} className={`flex-1 py-3 rounded-3xl font-semibold text-sm transition-all ${activeTab === 'discover' ? 'bg-white shadow text-emerald-600' : 'text-gray-500'}`}>{t[lang].discover}</button>
+        </div>
+      </div>
+
+      <div className="px-6 mt-6 pb-24">
+        {activeTab === 'preferences' ? (
+          <>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="font-bold text-xl">{t[lang].preferences}</h2>
+              <button className="text-emerald-600 text-sm">{t[lang].filter}</button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {categories.map((category) => (
+                <CategoryCard 
+                  key={category.id} 
+                  name={lang === 'kz' ? category.nameKz : category.nameRu} 
+                  emoji={category.emoji} 
+                  isSelected={selectedCategories.includes(category.id)} 
+                  onClick={() => handleCategoryClick(category.id)} 
+                  lang={lang} 
+                />
               ))}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Модальное окно предложения заказа */}
-      {showProposalModal && proposedOrder && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6">
-            <div className="text-center mb-4">
-              <div className="text-5xl mb-3">📦</div>
-              <h2 className="text-xl font-bold">Новый заказ!</h2>
-              <p className="text-gray-500 text-sm mt-1">Расстояние до ресторана: {proposedOrder.distance_km} км</p>
-              <p className="text-xs text-gray-400 mt-2">Предложение действует {proposedOrder.expires_in} секунд</p>
+          </>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="font-bold text-xl">🔥 {t[lang].nearbyOffers}</h2>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleManualRefresh}
+                  disabled={isRefreshing}
+                  className="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs hover:bg-emerald-700 transition flex items-center gap-1 disabled:opacity-50"
+                >
+                  {isRefreshing ? '🔄 ...' : '🔄 ' + t[lang].refresh}
+                </button>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <button onClick={acceptProposal} className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-semibold">Принять</button>
-              <button onClick={declineProposal} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold">Отклонить</button>
+            
+            <div className="text-right text-xs text-gray-400 mb-3">
+              {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
+              {isConnected && <span className="ml-2 text-green-500">● Live</span>}
             </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="h-16" />
+            
+            <div className="space-y-6">
+              {bags.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-3xl">
+                  <div className="text-6xl mb-4">😢</div>
+                  <p className="text-gray-500">{t[lang].noOffers}</p>
+                  <button 
+                    onClick={handleManualRefresh}
+                    className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm"
+                  >
+                    🔄 Обновить
+                  </button>
+                </div>
+              ) : (
+                bags.map((bag, bagIdx) => (
+                  <OfferCard
+                    key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
+                    id={bag.id}
+                    name={bag.name}
+                    businessName={bag.supplier_name}
+                    distance={`${(Math.random() * 5 + 1).toFixed(1)} км`}
+                    price={bag.discounted_price}
+                    originalPrice={bag.original_price}
+                    discount={bag.discount_percentage}
+                    imageUrl={bag.image_url}
+                    description={bag.description}
+                    onOrderSuccess={refreshAfterOrder}
+                  />
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
