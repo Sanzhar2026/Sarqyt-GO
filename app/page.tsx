@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ФИНАЛЬНАЯ ВЕРСИЯ
+// app/page.tsx - ИСПРАВЛЕННАЯ ФИНАЛЬНАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -43,6 +43,9 @@ export default function HomePage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showSupplierBags, setShowSupplierBags] = useState(false);
+  const [selectedSupplierBags, setSelectedSupplierBags] = useState<SurpriseBag[]>([]);
+  const [selectedSupplierName, setSelectedSupplierName] = useState('');
   
   const { isConnected, lastMessage } = useWebSocket('wss://toogood-2ncf.onrender.com/ws');
   
@@ -119,7 +122,9 @@ export default function HomePage() {
   };
 
   const showCourierArrivedNotification = (data: any) => {
-    const { order_id, order_number, courier_name, courier_phone } = data;
+    console.log('🔔 Показываем уведомление о прибытии курьера:', data);
+    
+    const { order_id, order_number, courier_name, courier_phone, message } = data;
     
     const toast = document.createElement('div');
     toast.className = 'fixed top-20 left-4 right-4 z-50 bg-white rounded-2xl shadow-xl border-l-4 border-green-500 overflow-hidden animate-slide-down';
@@ -132,7 +137,7 @@ export default function HomePage() {
             <p class="text-sm text-gray-500">${courier_name} • ${courier_phone}</p>
           </div>
         </div>
-        <p class="text-sm text-gray-600 mb-3">Заказ #${order_number} ожидает подтверждения</p>
+        <p class="text-sm text-gray-600 mb-3">${message || `Заказ #${order_number} ожидает подтверждения`}</p>
         <div class="flex gap-2">
           <button id="go-to-order-btn" class="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-sm font-semibold">
             📦 Перейти к заказу
@@ -170,6 +175,21 @@ export default function HomePage() {
     }
   };
 
+  // ✅ Функция для показа сюрпризов выбранного магазина
+  const handleSupplierClick = (supplierId: number, supplierName: string) => {
+    const supplierBags = bags.filter(bag => bag.supplier_id === supplierId);
+    setSelectedSupplierBags(supplierBags);
+    setSelectedSupplierName(supplierName);
+    setShowSupplierBags(true);
+  };
+
+  // ✅ Функция закрытия модального окна с сюрпризами магазина
+  const closeSupplierBags = () => {
+    setShowSupplierBags(false);
+    setSelectedSupplierBags([]);
+    setSelectedSupplierName('');
+  };
+
   useEffect(() => {
     if (!lastMessage) return;
     
@@ -199,8 +219,9 @@ export default function HomePage() {
       setLastUpdate(new Date());
     }
     
+    // ✅ ОБРАБОТКА УВЕДОМЛЕНИЯ О ПРИБЫТИИ КУРЬЕРА
     if (lastMessage.type === 'courier_arrived') {
-      console.log('🚚 КУРЬЕР ПРИБЫЛ!', lastMessage.data);
+      console.log('🚚 КУРЬЕР ПРИБЫЛ! Данные:', lastMessage.data);
       showCourierArrivedNotification(lastMessage.data);
     }
     
@@ -340,7 +361,12 @@ export default function HomePage() {
       lastUpdate: 'Соңғы жаңарту',
       connected: 'Қосылған',
       disconnected: 'Қосылым жоқ',
-      nearbyShops: 'Жақын маңдағы дүкендер мен кафелер'
+      nearbyShops: 'Жақын маңдағы дүкендер мен кафелер',
+      viewSurprises: 'Тосын сыйларды көру',
+      close: 'Жабу',
+      available: 'Қолжетімді',
+      from: 'бастап',
+      order: 'Тапсырыс беру'
     },
     ru: {
       greeting: 'Привет',
@@ -361,7 +387,12 @@ export default function HomePage() {
       lastUpdate: 'Последнее обновление',
       connected: 'Подключено',
       disconnected: 'Нет соединения',
-      nearbyShops: 'Ближайшие магазины и кафе'
+      nearbyShops: 'Ближайшие магазины и кафе',
+      viewSurprises: 'Посмотреть сюрпризы',
+      close: 'Закрыть',
+      available: 'Доступно',
+      from: 'от',
+      order: 'Заказать'
     }
   };
 
@@ -488,7 +519,7 @@ export default function HomePage() {
         <input type="text" placeholder={t[lang].search} className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500" />
       </div>
 
-      {/* ✅ КАРТА С БЛИЖАЙШИМИ МАГАЗИНАМИ */}
+      {/* ✅ КАРТА С БЛИЖАЙШИМИ МАГАЗИНАМИ И ГЕОЛОКАЦИЕЙ ПОЛЬЗОВАТЕЛЯ */}
       <div className="px-6 mt-6">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
@@ -497,15 +528,57 @@ export default function HomePage() {
             </h2>
             <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
           </div>
-          <div className="h-64">
+          <div className="h-72">
             <SuppliersMap 
-              userLat={location.lat} 
-              userLon={location.lon}
-              onSupplierClick={(id) => router.push(`/offers/${id}`)}
-            />
+  userLat={location.lat} 
+  userLon={location.lon}
+  onSupplierClick={handleSupplierClick}
+  showUserLocation={true}  // ✅ ТЕПЕРЬ РАБОТАЕТ
+/>
           </div>
         </div>
       </div>
+
+      {/* ✅ МОДАЛЬНОЕ ОКНО С СЮРПРИЗАМИ ВЫБРАННОГО МАГАЗИНА */}
+      {showSupplierBags && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="font-bold text-lg">{selectedSupplierName}</h3>
+              <button onClick={closeSupplierBags} className="text-gray-400 text-2xl">&times;</button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {selectedSupplierBags.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">Нет доступных сюрпризов</p>
+              ) : (
+                <div className="space-y-4">
+                  {selectedSupplierBags.map((bag) => (
+                    <div key={bag.id} className="border rounded-xl p-3 hover:shadow-md transition">
+                      <div className="flex gap-3">
+                        {bag.image_url && (
+                          <img src={bag.image_url} alt={bag.name} className="w-20 h-20 object-cover rounded-lg" />
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{bag.name}</h4>
+                          <p className="text-xs text-gray-500 line-through">{bag.original_price} ₸</p>
+                          <p className="text-emerald-600 font-bold">{bag.discounted_price} ₸</p>
+                          <p className="text-xs text-gray-400">Доступно: {bag.available_quantity} шт.</p>
+                          <button 
+                            onClick={() => router.push(`/offers/${bag.id}`)}
+                            className="mt-2 bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs"
+                          >
+                            {t[lang].order}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {user && (
         <div className="px-6 mt-4">
