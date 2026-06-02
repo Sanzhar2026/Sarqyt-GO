@@ -1,4 +1,3 @@
-// app/signup/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -142,7 +141,6 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Сохраняем в sessionStorage
         sessionStorage.setItem('user', JSON.stringify({
           id: data.user_id,
           name: fullName,

@@ -1,4 +1,3 @@
-// app/page.tsx - ИСПРАВЛЕННАЯ ФИНАЛЬНАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -13,7 +12,6 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { setGlobalHideBottomNav } from './layout';
 import { useLanguage } from './layout';
 
-// ✅ ДИНАМИЧЕСКИЙ ИМПОРТ КАРТЫ (без SSR)
 const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: false });
 
 type Tab = 'preferences' | 'discover';
@@ -46,12 +44,23 @@ export default function HomePage() {
   const [showSupplierBags, setShowSupplierBags] = useState(false);
   const [selectedSupplierBags, setSelectedSupplierBags] = useState<SurpriseBag[]>([]);
   const [selectedSupplierName, setSelectedSupplierName] = useState('');
-  
-  const { isConnected, lastMessage } = useWebSocket('wss://toogood-2ncf.onrender.com/ws');
+  const [authToken, setAuthToken] = useState<string | null>(null);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
   const API_URL = 'https://toogood-2ncf.onrender.com';
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('authToken');
+    console.log('🔑 Token found:', !!token);
+    setAuthToken(token);
+  }, []);
+
+  const wsUrl = authToken 
+    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
+    : null;
+  
+  const { isConnected, lastMessage } = useWebSocket(wsUrl);
 
   const refreshAfterOrder = useCallback(async () => {
     console.log('🔄 Обновление данных после заказа...');
@@ -175,7 +184,6 @@ export default function HomePage() {
     }
   };
 
-  // ✅ Функция для показа сюрпризов выбранного магазина
   const handleSupplierClick = (supplierId: number, supplierName: string) => {
     const supplierBags = bags.filter(bag => bag.supplier_id === supplierId);
     setSelectedSupplierBags(supplierBags);
@@ -183,7 +191,6 @@ export default function HomePage() {
     setShowSupplierBags(true);
   };
 
-  // ✅ Функция закрытия модального окна с сюрпризами магазина
   const closeSupplierBags = () => {
     setShowSupplierBags(false);
     setSelectedSupplierBags([]);
@@ -197,12 +204,6 @@ export default function HomePage() {
     
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
       fetchBags(false, false);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Новый сюрприз! 🎁', {
-          body: 'Появился новый сюрприз рядом с вами!',
-          icon: '/logo.png'
-        });
-      }
     }
     
     if (lastMessage.type === 'delete_bag') {
@@ -219,9 +220,8 @@ export default function HomePage() {
       setLastUpdate(new Date());
     }
     
-    // ✅ ОБРАБОТКА УВЕДОМЛЕНИЯ О ПРИБЫТИИ КУРЬЕРА
     if (lastMessage.type === 'courier_arrived') {
-      console.log('🚚 КУРЬЕР ПРИБЫЛ! Данные:', lastMessage.data);
+      console.log('🚚 КУРЬЕР ПРИБЫЛ!', lastMessage.data);
       showCourierArrivedNotification(lastMessage.data);
     }
     
@@ -233,7 +233,6 @@ export default function HomePage() {
         'info'
       );
     }
-    
   }, [lastMessage, fetchBags]);
 
   const handleManualRefresh = () => {
@@ -331,6 +330,7 @@ export default function HomePage() {
     await fetch(`${API_URL}/logout`, { method: 'GET', credentials: 'include' });
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('authToken');
     setUser(null);
     window.location.href = '/';
   };
@@ -519,7 +519,6 @@ export default function HomePage() {
         <input type="text" placeholder={t[lang].search} className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500" />
       </div>
 
-      {/* ✅ КАРТА С БЛИЖАЙШИМИ МАГАЗИНАМИ И ГЕОЛОКАЦИЕЙ ПОЛЬЗОВАТЕЛЯ */}
       <div className="px-6 mt-6">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
@@ -530,16 +529,15 @@ export default function HomePage() {
           </div>
           <div className="h-72">
             <SuppliersMap 
-  userLat={location.lat} 
-  userLon={location.lon}
-  onSupplierClick={handleSupplierClick}
-  showUserLocation={true}  // ✅ ТЕПЕРЬ РАБОТАЕТ
-/>
+              userLat={location.lat} 
+              userLon={location.lon}
+              onSupplierClick={handleSupplierClick}
+              showUserLocation={true}
+            />
           </div>
         </div>
       </div>
 
-      {/* ✅ МОДАЛЬНОЕ ОКНО С СЮРПРИЗАМИ ВЫБРАННОГО МАГАЗИНА */}
       {showSupplierBags && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">

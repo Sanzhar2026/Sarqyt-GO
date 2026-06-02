@@ -1,40 +1,29 @@
-// useWebSocket.ts
 import { useEffect, useRef, useState } from 'react';
 
-export const useWebSocket = (url: string) => {
+export const useWebSocket = (url: string | null) => {
     const [isConnected, setIsConnected] = useState(false);
     const [lastMessage, setLastMessage] = useState<any>(null);
     const wsRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
+        if (!url) {
+            console.log('⚠️ WebSocket URL не предоставлен (нет токена)');
+            return;
+        }
+
         const ws = new WebSocket(url);
         wsRef.current = ws;
 
         ws.onopen = () => {
-            console.log('WebSocket connected');
+            console.log('✅ WebSocket connected');
             setIsConnected(true);
-            // Send initial handshake as JSON
-            ws.send(JSON.stringify({ type: 'client_ready' }));
         };
 
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                console.log('Received:', data);
+                console.log('📨 WebSocket received:', data.type);
                 setLastMessage(data);
-                
-                // Handle different message types
-                switch(data.type) {
-                    case 'connected':
-                        console.log('Connected to channel:', data.channels);
-                        break;
-                    case 'error':
-                        console.error('Server error:', data.message);
-                        break;
-                    default:
-                        // Handle other message types
-                        break;
-                }
             } catch (error) {
                 console.error('Failed to parse message:', error);
             }
@@ -44,15 +33,9 @@ export const useWebSocket = (url: string) => {
             console.error('WebSocket error:', error);
         };
 
-        ws.onclose = (event) => {
-            console.log('WebSocket disconnected:', event.code, event.reason);
+        ws.onclose = () => {
+            console.log('WebSocket disconnected');
             setIsConnected(false);
-            
-            // Attempt to reconnect after 3 seconds
-            setTimeout(() => {
-                console.log('Attempting to reconnect...');
-                // Reconnection logic here
-            }, 3000);
         };
 
         return () => {

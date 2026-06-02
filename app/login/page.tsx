@@ -1,4 +1,3 @@
-// app/login/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -66,7 +65,6 @@ export default function LoginPage() {
       const data = await response.json();
       
       if (response.ok && data.success) {
-        // Сохраняем в sessionStorage
         sessionStorage.setItem('user', JSON.stringify({
           id: data.user.id,
           name: data.user.full_name,
