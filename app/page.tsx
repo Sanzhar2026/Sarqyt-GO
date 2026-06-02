@@ -132,8 +132,7 @@ export default function HomePage() {
       new Notification(title, { body, icon: '/logo.png' });
     }
   };
-
-  const showCourierArrivedNotification = (data: any) => {
+const showCourierArrivedNotification = (data: any) => {
   console.log('🔔 Показываем уведомление о прибытии курьера:', data);
   
   const { order_id, order_number, courier_name, courier_phone, message } = data;
@@ -141,34 +140,24 @@ export default function HomePage() {
   const toast = document.createElement('div');
   toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
   toast.innerHTML = `
-    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-l-4 border-emerald-500">
-      <div class="p-4">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-xl">🚚</div>
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-l-4 border-emerald-500">
+      <div class="p-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-lg">🚚</div>
           <div class="flex-1">
-            <h3 class="font-bold text-gray-800 text-sm">Курьер прибыл!</h3>
-            <p class="text-emerald-600 text-xs">Заказ #${order_number}</p>
-          </div>
-          <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
-        </div>
-        
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <p class="font-semibold text-gray-800 text-sm">${courier_name}</p>
-            <p class="text-gray-500 text-xs flex items-center gap-1">📞 ${courier_phone}</p>
-          </div>
-          <div class="bg-emerald-100 px-2 py-1 rounded-full">
-            <span class="text-emerald-700 text-xs font-medium">Курьер</span>
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-gray-800 text-sm">Курьер прибыл!</h3>
+              <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-lg leading-none ml-2">✕</button>
+            </div>
+            <p class="text-emerald-600 text-xs">Заказ #${order_number} • ${courier_name}</p>
           </div>
         </div>
         
-        <p class="text-gray-600 text-xs mb-4">${message || `Курьер ожидает вас для передачи заказа #${order_number}`}</p>
-        
-        <div class="flex gap-2">
-          <button id="go-to-order-btn" class="flex-1 bg-emerald-500 text-white py-2 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition active:scale-95">
+        <div class="flex gap-2 mt-3">
+          <button id="go-to-order-btn" class="flex-1 bg-emerald-500 text-white py-1.5 rounded-xl text-xs font-semibold hover:bg-emerald-600 transition">
             📦 Перейти
           </button>
-          <button id="later-btn" class="px-4 bg-gray-100 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-200 transition active:scale-95">
+          <button id="later-btn" class="px-3 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium hover:bg-gray-200 transition">
             Позже
           </button>
         </div>
@@ -199,7 +188,7 @@ export default function HomePage() {
     if (document.body.contains(toast)) {
       closeNotification();
     }
-  }, 8000);
+  }, 6000);
 };
 
   const handleSupplierClick = (supplierId: number, supplierName: string) => {
