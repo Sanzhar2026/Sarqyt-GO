@@ -128,59 +128,92 @@ export default function HomePage() {
     }
   };
 
-  const showCourierArrivedNotification = (data: any) => {
-    console.log('🔔 Показываем уведомление о прибытии курьера:', data);
-    
-    const { order_id, order_number, courier_name, courier_phone, message } = data;
-    
-    const toast = document.createElement('div');
-    toast.className = 'fixed top-20 left-4 right-4 z-50 bg-white rounded-2xl shadow-xl border-l-4 border-green-500 overflow-hidden animate-slide-down';
-    toast.innerHTML = `
+ const showCourierArrivedNotification = (data: any) => {
+  console.log('🔔 Показываем уведомление о прибытии курьера:', data);
+  
+  const { order_id, order_number, courier_name, courier_phone, message } = data;
+  
+  // Создаем уведомление
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
+  toast.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-l-4 border-emerald-500">
+      <!-- Header -->
+      <div class="bg-emerald-50 px-4 py-3 flex items-center gap-3">
+        <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xl">
+          🚚
+        </div>
+        <div class="flex-1">
+          <h3 class="font-bold text-emerald-800 text-sm">Курьер прибыл!</h3>
+          <p class="text-emerald-600 text-xs">Заказ #${order_number}</p>
+        </div>
+        <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-xl leading-none">
+          ✕
+        </button>
+      </div>
+      
+      <!-- Body -->
       <div class="p-4">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">🚚</div>
-          <div class="flex-1">
-            <h3 class="font-bold text-gray-800">Курьер прибыл!</h3>
-            <p class="text-sm text-gray-500">${courier_name} • ${courier_phone}</p>
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <p class="font-semibold text-gray-800 text-base">${courier_name}</p>
+            <p class="text-gray-500 text-xs flex items-center gap-1">
+              <span>📞</span> ${courier_phone}
+            </p>
+          </div>
+          <div class="bg-emerald-100 px-3 py-1 rounded-full">
+            <span class="text-emerald-700 text-xs font-medium">🚶‍♂️ Курьер</span>
           </div>
         </div>
-        <p class="text-sm text-gray-600 mb-3">${message || `Заказ #${order_number} ожидает подтверждения`}</p>
-        <div class="flex gap-2">
-          <button id="go-to-order-btn" class="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-sm font-semibold">
+        
+        <p class="text-gray-600 text-sm mb-4">
+          ${message || `Курьер ожидает вас для передачи заказа #${order_number}`}
+        </p>
+        
+        <div class="flex gap-3">
+          <button id="go-to-order-btn" class="flex-1 bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition active:scale-95">
             📦 Перейти к заказу
           </button>
-          <button id="close-notification-btn" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-sm">
-            ✕
+          <button id="later-btn" class="px-4 bg-gray-100 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-200 transition active:scale-95">
+            Позже
           </button>
         </div>
       </div>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    toast.querySelector('#go-to-order-btn')?.addEventListener('click', () => {
-      toast.remove();
-      router.push(`/orders/${order_id}`);
-    });
-    
-    toast.querySelector('#close-notification-btn')?.addEventListener('click', () => {
-      toast.remove();
-    });
-    
-    setTimeout(() => {
-      if (document.body.contains(toast)) {
-        toast.classList.add('animate-fade-out');
-        setTimeout(() => toast.remove(), 300);
-      }
-    }, 15000);
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('🚚 Курьер прибыл!', {
-        body: `${courier_name} ожидает вас. Нажмите чтобы подтвердить заказ #${order_number}`,
-        icon: '/logo.png'
-      });
-    }
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Обработчики
+  const goToOrder = () => {
+    toast.remove();
+    router.push(`/orders/${order_id}`);
   };
+  
+  const closeNotification = () => {
+    toast.classList.add('animate-fade-out');
+    setTimeout(() => toast.remove(), 300);
+  };
+  
+  toast.querySelector('#go-to-order-btn')?.addEventListener('click', goToOrder);
+  toast.querySelector('#later-btn')?.addEventListener('click', closeNotification);
+  toast.querySelector('#close-notification-btn')?.addEventListener('click', closeNotification);
+  
+  // Автоматическое закрытие через 10 секунд
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      closeNotification();
+    }
+  }, 10000);
+  
+  // Уведомление браузера (если разрешено)
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('🚚 Курьер прибыл!', {
+      body: `${courier_name} ожидает вас. Нажмите чтобы подтвердить заказ #${order_number}`,
+      icon: '/logo.png'
+    });
+  }
+};
 
   const handleSupplierClick = (supplierId: number, supplierName: string) => {
     const supplierBags = bags.filter(bag => bag.supplier_id === supplierId);

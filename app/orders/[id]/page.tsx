@@ -292,14 +292,30 @@ export default function OrderDetailPage() {
   };
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const toast = document.createElement('div');
-    toast.className = `fixed bottom-24 left-4 right-4 z-50 p-4 rounded-xl text-white text-center ${
-      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
-    } animate-slide-up`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
+  
+  const bgColor = type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  
+  toast.innerHTML = `
+    <div class="${bgColor} rounded-2xl shadow-lg p-4 flex items-center gap-3">
+      <span class="text-white text-xl">${icon}</span>
+      <p class="flex-1 text-white text-sm font-medium">${message}</p>
+      <button class="close-toast text-white opacity-70 text-xl leading-none">✕</button>
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  const close = () => {
+    toast.classList.add('animate-fade-out');
+    setTimeout(() => toast.remove(), 300);
   };
+  
+  toast.querySelector('.close-toast')?.addEventListener('click', close);
+  setTimeout(close, 3000);
+};
 
   if (loading) {
     return (
