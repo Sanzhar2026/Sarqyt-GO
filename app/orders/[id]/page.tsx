@@ -60,8 +60,6 @@ export default function OrderDetailPage() {
   const [location, setLocation] = useState<{ lat: number; lon: number; city: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
-
   // ✅ Функция для получения токена
   const getAuthToken = () => {
     const token = sessionStorage.getItem('authToken');
@@ -69,11 +67,10 @@ export default function OrderDetailPage() {
     return token;
   };
 
-  // ✅ Функция для авторизованных запросов
+  // ✅ Функция для авторизованных запросов (через прокси)
   const authFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     
-    // Если нет токена - перенаправляем на логин
     if (!token) {
       console.error('❌ Нет токена, перенаправление на логин');
       sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
@@ -91,7 +88,6 @@ export default function OrderDetailPage() {
       credentials: 'include',
     });
     
-    // Если 401 или 403 - перенаправляем на логин
     if (response.status === 401 || response.status === 403) {
       console.error(`❌ Ошибка авторизации ${response.status}`);
       sessionStorage.removeItem('authToken');
@@ -138,7 +134,7 @@ export default function OrderDetailPage() {
     
     try {
       console.log('📦 Запрашиваем заказ:', orderId);
-      const response = await authFetch(`${API_URL}/api/orders/${orderId}`);
+      const response = await authFetch(`/api/orders/${orderId}`);
       
       if (!response.ok) {
         throw new Error(`Order not found: ${response.status}`);
@@ -166,7 +162,6 @@ export default function OrderDetailPage() {
 
     const token = getAuthToken();
     
-    // ✅ Если нет токена - не подключаемся
     if (!token) {
       console.log('⚠️ Нет токена, WebSocket не подключен');
       return;
@@ -243,7 +238,7 @@ export default function OrderDetailPage() {
     
     setConfirming(true);
     try {
-      const response = await authFetch(`${API_URL}/api/customer/confirm-delivery/${order.id}`, {
+      const response = await authFetch(`/api/customer/confirm-delivery/${order.id}`, {
         method: 'POST',
       });
       
@@ -271,7 +266,7 @@ export default function OrderDetailPage() {
     
     setSubmitting(true);
     try {
-      const response = await authFetch(`${API_URL}/api/order/${order?.id}/reject`, {
+      const response = await authFetch(`/api/order/${order?.id}/reject`, {
         method: 'POST',
         body: JSON.stringify({ reason: refundReason })
       });
