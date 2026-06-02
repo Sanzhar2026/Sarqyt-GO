@@ -1,4 +1,3 @@
-// app/courier/dashboard/page.tsx - ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -27,12 +26,16 @@ export default function CourierDashboard() {
   const [arriving, setArriving] = useState(false);
   
   const [currentProgress, setCurrentProgress] = useState(0);
+  const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
+  const [wsFailed, setWsFailed] = useState(false);
   
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const orderCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const wsReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  const MAX_WS_RECONNECT_ATTEMPTS = 3;
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371;
@@ -76,16 +79,16 @@ export default function CourierDashboard() {
     const checkOrderStatus = async () => {
       try {
         const token = sessionStorage.getItem('courierToken');
-        const response = await fetch(`${API_URL}/api/orders/${currentOrder.id}`, {
+        const response = await fetch(`/api/orders/${currentOrder.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const order = await response.json();
         
         if (order.status === 'cancelled') {
           showNotification(
-  `❌ Заказ #${order.order_number} отменен! ${order.refund_reason || 'Заказ был отменен'}`,
-  'error'
-);
+            `❌ Заказ #${order.order_number} отменен! ${order.refund_reason || 'Заказ был отменен'}`,
+            'error'
+          );
           setCurrentOrder(null);
           setOrderStatus(null);
           setCurrentProgress(0);
@@ -108,6 +111,7 @@ export default function CourierDashboard() {
     };
   }, [currentOrder]);
 
+  // ✅ АВТОРИЗАЦИЯ
   useEffect(() => {
     const checkAuth = async () => {
       const token = sessionStorage.getItem('courierToken');
@@ -122,7 +126,7 @@ export default function CourierDashboard() {
       }
       
       try {
-        const response = await fetch(`${API_URL}/api/courier/status`, {
+        const response = await fetch(`/api/courier/status`, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
@@ -188,9 +192,12 @@ export default function CourierDashboard() {
     
     return () => {
       if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      if (orderCheckIntervalRef.current) clearInterval(orderCheckIntervalRef.current);
+      if (wsReconnectTimeoutRef.current) clearTimeout(wsReconnectTimeoutRef.current);
       if (wsRef.current) wsRef.current.close();
     };
-  }, []);
+  }, [router]);
 
   // ✅ HEARTBEAT ДЛЯ WEBSOCKET (КАЖДЫЕ 25 СЕКУНД)
   useEffect(() => {
@@ -204,6 +211,7 @@ export default function CourierDashboard() {
     return () => clearInterval(heartbeat);
   }, []);
 
+  // ✅ ГЕОЛОКАЦИЯ
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -220,26 +228,235 @@ export default function CourierDashboard() {
     }
   }, []);
 
+  // ✅ WEBSOCKET CONNECTION
+  const connectWebSocket = () => {
+    const token = sessionStorage.getItem('courierToken');
+    
+    if (!token || wsFailed || wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
+      console.log('❌ WebSocket connection failed permanently');
+      return;
+    }
+    
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.close();
+    }
+    
+    const encodedToken = encodeURIComponent(token);
+    const wsUrl = `wss://toogood-2ncf.onrender.com/ws/courier-tracking?token=${encodedToken}`;
+    
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+    
+    let heartbeatInterval: NodeJS.Timeout | null = null;
+    const connectionTimeout = setTimeout(() => {
+      if (ws.readyState !== WebSocket.OPEN) {
+        console.log('⚠️ WebSocket connection timeout');
+        ws.close();
+      }
+    }, 10000);
+    
+    ws.onopen = () => {
+      console.log('✅ WebSocket connected');
+      clearTimeout(connectionTimeout);
+      setWsReconnectAttempts(0);
+      setWsFailed(false);
+      
+      ws.send(JSON.stringify({ type: "ping" }));
+      
+      heartbeatInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 20000);
+      
+      if (userLocation) {
+        ws.send(JSON.stringify({
+          type: "update_location",
+          lat: userLocation.lat,
+          lon: userLocation.lon
+        }));
+      }
+    };
+    
+    ws.onmessage = async (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📨 WebSocket message:', data.type);
+        
+        switch(data.type) {
+          case 'connected':
+            console.log('✅ WebSocket confirmed for courier:', data.courier_id);
+            break;
+          case 'pong':
+            console.log('💓 Heartbeat received');
+            break;
+          case 'ping':
+            ws.send(JSON.stringify({ type: "pong" }));
+            break;
+          case 'new_order_for_courier':
+            showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
+            setAvailableOrders(prev => [{
+              order_id: data.data.order_id,
+              order_number: data.data.order_number,
+              supplier_name: data.data.supplier_name,
+              distance_km: 0,
+              estimated_time_minutes: 0,
+              amount: data.data.amount,
+              bag_name: data.data.bag_name,
+              customer_address: data.data.customer_address,
+              supplier_lat: data.data.supplier_lat,
+              supplier_lon: data.data.supplier_lon,
+              customer_lat: data.data.customer_lat,
+              customer_lon: data.data.customer_lon
+            }, ...prev]);
+            break;
+          case 'proposed_order':
+            setProposedOrder({
+              order_id: data.order_id,
+              distance_km: data.distance_km,
+              expires_in: data.expires_in_seconds
+            });
+            setShowProposalModal(true);
+            break;
+          case 'order_assigned':
+            showNotification('✅ Заказ назначен вам!', 'success');
+            await fetchStatus();
+            await fetchCurrentOrder(data.order_id);
+            break;
+          case 'delivery_confirmed':
+            showNotification('✅ Клиент подтвердил получение заказа!', 'success');
+            await fetchStatus();
+            await fetchCurrentOrder(data.data.order_id);
+            break;
+          case 'order_cancelled':
+            const { order_number, reason } = data.data;
+            showNotification(`❌ Заказ #${order_number} отменен! Причина: ${reason}`, 'error');
+            if (currentOrder?.order_number === order_number) {
+              setCurrentOrder(null);
+              setOrderStatus(null);
+              setCurrentProgress(0);
+            }
+            await fetchStatus();
+            await fetchAvailableOrders();
+            break;
+          case 'order_returned':
+            const { order_number: orderNum, reason: returnReason } = data.data;
+            showNotification(`🔄 Заказ #${orderNum} возвращен в список. ${returnReason || ''}`, 'info');
+            await fetchAvailableOrders();
+            break;
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    ws.onclose = (event) => {
+      console.log(`WebSocket closed - Code: ${event.code}`);
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      
+      if (event.code === 1008) {
+        console.log('Auth error, not reconnecting');
+        return;
+      }
+      
+      if (isOnline && !wsFailed && wsReconnectAttempts < MAX_WS_RECONNECT_ATTEMPTS) {
+        const newAttempts = wsReconnectAttempts + 1;
+        setWsReconnectAttempts(newAttempts);
+        wsReconnectTimeoutRef.current = setTimeout(() => {
+          if (isOnline) connectWebSocket();
+        }, 5000);
+      } else if (wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
+        setWsFailed(true);
+        showNotification('Не удалось подключиться к серверу. Обновите страницу.', 'error');
+      }
+    };
+  };
+
+  // ✅ ОБНОВЛЕНИЕ ЛОКАЦИИ
+  const startLocationTracking = () => {
+    if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+    
+    locationIntervalRef.current = setInterval(() => {
+      if (navigator.geolocation && isOnline) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            setUserLocation({ lat, lon });
+            
+            const token = sessionStorage.getItem('courierToken');
+            try {
+              await fetch(`/api/courier/update-location`, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ lat, lon })
+              });
+            } catch (error) {
+              console.error('Error updating location:', error);
+            }
+            
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({
+                type: "update_location",
+                lat: lat,
+                lon: lon
+              }));
+            }
+          },
+          (error) => console.error('Geolocation error:', error),
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+      }
+    }, 5000);
+  };
+  
+  // ✅ ЦЕНТРИРОВАНИЕ КАРТЫ
+  const centerToMyLocation = () => {
+    setLocating(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lon: longitude });
+          window.dispatchEvent(new CustomEvent('centerMap', { 
+            detail: { lat: latitude, lon: longitude, zoom: 16 }
+          }));
+          setLocating(false);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          alert('Не удалось определить местоположение');
+          setLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      alert('Геолокация не поддерживается');
+      setLocating(false);
+    }
+  };
+
+  // ✅ СТАТУС КУРЬЕРА
   const fetchStatus = async () => {
     const token = sessionStorage.getItem('courierToken');
     if (!token) return;
     
     try {
-      const res = await fetch(`${API_URL}/api/courier/status`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const res = await fetch(`/api/courier/status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (data.success) {
         setIsOnline(data.is_online);
         setStatus(data);
         setOrderStatus(data.current_order_status);
-        
-        if (data.is_online && !locationIntervalRef.current) {
-          startLocationTracking();
-          connectWebSocket();
-        }
         
         if (data.current_order_id) {
           fetchCurrentOrder(data.current_order_id);
@@ -250,13 +467,12 @@ export default function CourierDashboard() {
     }
   };
 
+  // ✅ ТЕКУЩИЙ ЗАКАЗ
   const fetchCurrentOrder = async (orderId: number) => {
     const token = sessionStorage.getItem('courierToken');
     try {
-      const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const res = await fetch(`/api/orders/${orderId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       console.log('📦 Заказ получен:', data);
@@ -266,13 +482,12 @@ export default function CourierDashboard() {
     }
   };
 
+  // ✅ ДОСТУПНЫЕ ЗАКАЗЫ
   const fetchAvailableOrders = async () => {
     const token = sessionStorage.getItem('courierToken');
     try {
-      const res = await fetch(`${API_URL}/api/courier/available-orders`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const res = await fetch(`/api/courier/available-orders`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (data.success) {
@@ -283,19 +498,18 @@ export default function CourierDashboard() {
     }
   };
 
+  // ✅ ВЗЯТЬ ЗАКАЗ
   const takeOrder = async (orderId: number) => {
     const token = sessionStorage.getItem('courierToken');
     
-    console.log(`📦 Попытка взять заказ ${orderId}`);
-    
     if (!token) {
-      alert('Ошибка авторизации. Пожалуйста, войдите заново.');
+      alert('Ошибка авторизации');
       router.push('/courier/login');
       return;
     }
     
     try {
-      const response = await fetch(`${API_URL}/api/courier/take-order/${orderId}`, {
+      const response = await fetch(`/api/courier/take-order/${orderId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -304,8 +518,6 @@ export default function CourierDashboard() {
       });
       
       const data = await response.json();
-      console.log('📥 Ответ:', data);
-      
       if (response.ok && data.success) {
         showNotification('✅ Заказ взят в работу!', 'success');
         await fetchStatus();
@@ -321,17 +533,16 @@ export default function CourierDashboard() {
     }
   };
 
+  // ✅ КУРЬЕР ПРИБЫЛ
   const courierArrived = async () => {
     if (!currentOrder) return;
     
     setArriving(true);
     const token = sessionStorage.getItem('courierToken');
     try {
-      const res = await fetch(`${API_URL}/api/courier/arrived/${currentOrder.id}`, {
+      const res = await fetch(`/api/courier/arrived/${currentOrder.id}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       
       const data = await res.json();
@@ -350,215 +561,7 @@ export default function CourierDashboard() {
     }
   };
 
-  const connectWebSocket = () => {
-    const token = sessionStorage.getItem('courierToken');
-    if (!token) {
-      console.log('❌ Нет токена для WebSocket');
-      return;
-    }
-    
-    const ws = new WebSocket(`${API_URL.replace('https', 'wss')}/ws/courier-tracking?token=${token}`);
-    wsRef.current = ws;
-    
-    ws.onopen = () => {
-      console.log('✅ WebSocket connected');
-      ws.send(JSON.stringify({ type: "ping" }));
-      
-      if (userLocation) {
-        ws.send(JSON.stringify({
-          type: "update_location",
-          lat: userLocation.lat,
-          lon: userLocation.lon
-        }));
-      }
-    };
-    
-   ws.onmessage = async (event) => {
-  try {
-    const data = JSON.parse(event.data);
-    console.log('📨 WebSocket message:', data);
-    
-    if (data.type === 'connected') {
-      console.log('✅ WebSocket подтвержден для курьера:', data.courier_id);
-    }
-    
-    if (data.type === 'new_order_for_courier') {
-      showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
-      
-      setAvailableOrders(prev => [{
-        order_id: data.data.order_id,
-        order_number: data.data.order_number,
-        supplier_name: data.data.supplier_name,
-        distance_km: 0,
-        estimated_time_minutes: 0,
-        amount: data.data.amount,
-        bag_name: data.data.bag_name,
-        customer_address: data.data.customer_address,
-        supplier_lat: data.data.supplier_lat,
-        supplier_lon: data.data.supplier_lon,
-        customer_lat: data.data.customer_lat,
-        customer_lon: data.data.customer_lon
-      }, ...prev]);
-    }
-    
-    if (data.type === 'proposed_order') {
-      setProposedOrder({
-        order_id: data.order_id,
-        distance_km: data.distance_km,
-        expires_in: data.expires_in_seconds
-      });
-      setShowProposalModal(true);
-    } 
-    
-    else if (data.type === 'order_assigned') {
-      await fetchStatus();
-      await fetchCurrentOrder(data.order_id);
-    } 
-    
-    else if (data.type === 'delivery_confirmed') {
-      showNotification('✅ Клиент подтвердил получение заказа!', 'success');
-      await fetchStatus();
-      await fetchCurrentOrder(data.data.order_id);
-    }
-    
-    else if (data.type === 'order_cancelled') {
-      const { order_id, order_number, reason, cancelled_by } = data.data;
-      
-      console.log(`❌ Заказ #${order_number} отменен. Причина: ${reason}, Кем: ${cancelled_by}`);
-      
-      showNotification(
-  `❌ Заказ #${order_number} отменен! Причина: ${reason}. ${cancelled_by === 'admin' ? 'Администратор' : 'Клиент'} отменил заказ.`,
-  'error'
-);
-      
-      if (currentOrder?.id === order_id || currentOrder?.order_id === order_id) {
-        setCurrentOrder(null);
-        setOrderStatus(null);
-        setCurrentProgress(0);
-        
-        // ✅ ИСПРАВЛЕНО: убрали async/await внутри setTimeout
-        setTimeout(() => {
-          alert(`❌ Заказ #${order_number} был отменен.\nПричина: ${reason}`);
-        }, 500);
-      }
-      
-      await fetchStatus();
-      await fetchAvailableOrders();
-    }
-    
-    else if (data.type === 'order_returned') {
-      const { order_id, order_number, reason } = data.data;
-      
-     showNotification(
-  `🔄 Заказ #${order_number} возвращен в список. ${reason || 'Заказ снова доступен для взятия'}`,
-  'info'
-);
-      await fetchAvailableOrders();
-    }
-    
-    if (data.type === 'pong') {
-      console.log('💓 Heartbeat received');
-    }
-    
-  } catch (error) {
-    console.error('Error parsing WebSocket message:', error);
-  }
-};
-    
-    ws.onclose = () => {
-      console.log('WebSocket disconnected, reconnecting...');
-      setTimeout(connectWebSocket, 3000);
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-  };
-
-  const startLocationTracking = () => {
-    if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-    
-    locationIntervalRef.current = setInterval(() => {
-      if (navigator.geolocation && isOnline) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            setUserLocation({ lat, lon });
-            
-            const token = sessionStorage.getItem('courierToken');
-            try {
-              await fetch(`${API_URL}/api/courier/update-location`, {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ lat, lon })
-              });
-            } catch (error) {
-              console.error('Error updating location:', error);
-            }
-            
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              wsRef.current.send(JSON.stringify({
-                type: "update_location",
-                lat: lat,
-                lon: lon
-              }));
-              console.log('📍 Позиция отправлена через WebSocket:', lat, lon);
-            }
-          },
-          (error) => console.error('Geolocation error:', error),
-          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-        );
-      }
-    }, 5000);
-  };
-  
-  const centerToMyLocation = () => {
-    console.log('📍 Нажата кнопка геолокации');
-    setLocating(true);
-    
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          console.log(`📍 Текущие координаты: ${latitude}, ${longitude}`);
-          
-          setUserLocation({ lat: latitude, lon: longitude });
-          
-          window.dispatchEvent(new CustomEvent('centerMap', { 
-            detail: { lat: latitude, lon: longitude, zoom: 16 }
-          }));
-          
-          setLocating(false);
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          let errorMessage = 'Не удалось определить местоположение. ';
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage += 'Разрешите доступ к геолокации.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage += 'Информация о местоположении недоступна.';
-              break;
-            case error.TIMEOUT:
-              errorMessage += 'Время ожидания истекло.';
-              break;
-          }
-          alert(errorMessage);
-          setLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      alert('Геолокация не поддерживается');
-      setLocating(false);
-    }
-  };
-
+  // ✅ ВКЛ/ВЫКЛ РЕЖИМА
   const toggleOnlineMode = async () => {
     if (switching) return;
     setSwitching(true);
@@ -575,7 +578,7 @@ export default function CourierDashboard() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
-            const res = await fetch(`${API_URL}/api/courier/go-online`, {
+            const res = await fetch(`/api/courier/go-online`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -590,9 +593,11 @@ export default function CourierDashboard() {
             const data = await res.json();
             if (data.success) {
               setIsOnline(true);
+              setWsReconnectAttempts(0);
+              setWsFailed(false);
               startLocationTracking();
               connectWebSocket();
-              fetchAvailableOrders();
+              await fetchAvailableOrders();
             } else {
               alert(data.message || 'Ошибка');
             }
@@ -609,22 +614,28 @@ export default function CourierDashboard() {
       );
     } else {
       try {
-        const res = await fetch(`${API_URL}/api/courier/go-offline`, {
+        const res = await fetch(`/api/courier/go-offline`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         
         const data = await res.json();
         if (data.success) {
           setIsOnline(false);
+          
           if (locationIntervalRef.current) {
             clearInterval(locationIntervalRef.current);
             locationIntervalRef.current = null;
           }
+          
+          if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current);
+            heartbeatIntervalRef.current = null;
+          }
+          
           if (wsRef.current) {
             wsRef.current.close();
+            wsRef.current = null;
           }
         } else {
           alert(data.message || 'Ошибка');
@@ -637,12 +648,12 @@ export default function CourierDashboard() {
     }
   };
 
+  // ✅ ПРИНЯТЬ ПРЕДЛОЖЕНИЕ
   const acceptProposal = async () => {
     if (!proposedOrder) return;
-    
     const token = sessionStorage.getItem('courierToken');
     try {
-      const res = await fetch(`${API_URL}/api/courier/respond-to-proposal`, {
+      const res = await fetch(`/api/courier/respond-to-proposal`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -650,7 +661,6 @@ export default function CourierDashboard() {
         },
         body: JSON.stringify({ response: 'accept' })
       });
-      
       const data = await res.json();
       if (data.success) {
         setShowProposalModal(false);
@@ -664,12 +674,12 @@ export default function CourierDashboard() {
     }
   };
 
+  // ✅ ОТКЛОНИТЬ ПРЕДЛОЖЕНИЕ
   const declineProposal = async () => {
     if (!proposedOrder) return;
-    
     const token = sessionStorage.getItem('courierToken');
     try {
-      const res = await fetch(`${API_URL}/api/courier/respond-to-proposal`, {
+      const res = await fetch(`/api/courier/respond-to-proposal`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -677,7 +687,6 @@ export default function CourierDashboard() {
         },
         body: JSON.stringify({ response: 'decline' })
       });
-      
       const data = await res.json();
       setShowProposalModal(false);
       setProposedOrder(null);
@@ -686,18 +695,15 @@ export default function CourierDashboard() {
     }
   };
 
+  // ✅ ЗАВЕРШИТЬ ДОСТАВКУ
   const completeDelivery = async () => {
     if (!currentOrder) return;
-    
     const token = sessionStorage.getItem('courierToken');
     try {
-      const res = await fetch(`${API_URL}/api/courier/complete-order/${currentOrder.id}`, {
+      const res = await fetch(`/api/courier/complete-order/${currentOrder.id}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       const data = await res.json();
       if (data.success) {
         setCurrentOrder(null);
@@ -793,7 +799,6 @@ export default function CourierDashboard() {
           onClick={centerToMyLocation}
           disabled={locating}
           className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95 disabled:opacity-50"
-          title="Мое местоположение"
         >
           {locating ? (
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
@@ -808,11 +813,8 @@ export default function CourierDashboard() {
         </button>
         
         <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('fitBoundsToCouriers'));
-          }}
+          onClick={() => window.dispatchEvent(new CustomEvent('fitBoundsToCouriers'))}
           className="absolute bottom-4 left-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95"
-          title="Показать всех курьеров"
         >
           <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -828,29 +830,18 @@ export default function CourierDashboard() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">{isOnline ? '🟢' : '⚫'}</span>
               <div>
-                <p className="font-semibold text-lg">
-                  {isOnline ? 'На линии' : 'Офлайн'}
-                </p>
+                <p className="font-semibold text-lg">{isOnline ? 'На линии' : 'Офлайн'}</p>
                 <p className="text-xs text-gray-500">
-                  {isOnline 
-                    ? 'Вы готовы принимать заказы' 
-                    : 'Включите режим чтобы получать заказы'}
+                  {isOnline ? 'Вы готовы принимать заказы' : 'Включите режим чтобы получать заказы'}
                 </p>
               </div>
             </div>
-            
             <button
               onClick={toggleOnlineMode}
               disabled={switching}
-              className={`relative w-16 h-8 rounded-full transition-all duration-300 ${
-                isOnline ? 'bg-emerald-600' : 'bg-gray-300'
-              } ${switching ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+              className={`relative w-16 h-8 rounded-full transition-all duration-300 ${isOnline ? 'bg-emerald-600' : 'bg-gray-300'} ${switching ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
             >
-              <span
-                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 flex items-center justify-center text-xs ${
-                  isOnline ? 'translate-x-8' : 'translate-x-0'
-                }`}
-              >
+              <span className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 flex items-center justify-center text-xs ${isOnline ? 'translate-x-8' : 'translate-x-0'}`}>
                 {isOnline ? '✓' : '○'}
               </span>
             </button>
@@ -876,9 +867,7 @@ export default function CourierDashboard() {
           
           {!isOnline && (
             <div className="mt-4 pt-4 border-t border-gray-100">
-              <p className="text-sm text-gray-400 text-center">
-                💤 Нажмите на ползунок чтобы выйти на линию
-              </p>
+              <p className="text-sm text-gray-400 text-center">💤 Нажмите на ползунок чтобы выйти на линию</p>
             </div>
           )}
         </div>
@@ -897,9 +886,7 @@ export default function CourierDashboard() {
               endLon={currentOrder.customer_lon || 0}
               supplierName={currentOrder.supplier?.business_name || 'Ресторан'}
               customerAddress={currentOrder.customer_address || 'Адрес клиента'}
-              onProgressUpdate={(progress) => {
-                console.log(`🚚 Прогресс доставки: ${progress}%`);
-              }}
+              onProgressUpdate={(progress) => console.log(`🚚 Прогресс доставки: ${progress}%`)}
             />
           </div>
         </div>
@@ -932,18 +919,8 @@ export default function CourierDashboard() {
                 <span className="font-semibold">{orderStatus === 'almost_done' ? '🔔 Почти закончил' : `${currentProgress}%`}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div 
-                  className="bg-emerald-600 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${currentProgress}%` }}
-                />
+                <div className="bg-emerald-600 h-3 rounded-full transition-all duration-500" style={{ width: `${currentProgress}%` }} />
               </div>
-              {currentProgress >= 50 && availableOrders.length > 0 && (
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg text-center border border-blue-200">
-                  <p className="text-xs text-blue-700 font-medium">
-                    💡 Вы выполнили {currentProgress}% заказа! Есть новые предложения выше.
-                  </p>
-                </div>
-              )}
             </div>
             
             {currentOrder.status === 'out_for_delivery' && (
@@ -953,14 +930,9 @@ export default function CourierDashboard() {
                 className="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold mt-2 flex items-center justify-center gap-2 text-lg"
               >
                 {arriving ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Отправка...
-                  </>
+                  <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Отправка...</>
                 ) : (
-                  <>
-                    {status?.courier_type === 'driver' ? '🚚 Я приехал' : '🚶 Я пришел'}
-                  </>
+                  <>{status?.courier_type === 'driver' ? '🚚 Я приехал' : '🚶 Я пришел'}</>
                 )}
               </button>
             )}
@@ -974,10 +946,7 @@ export default function CourierDashboard() {
             )}
             
             {orderStatus === 'almost_done' && (
-              <button
-                onClick={completeDelivery}
-                className="w-full bg-emerald-600 text-white py-4 rounded-xl font-semibold mt-4 text-lg shadow-lg"
-              >
+              <button onClick={completeDelivery} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-semibold mt-4 text-lg shadow-lg">
                 ✅ Завершить доставку
               </button>
             )}
@@ -988,13 +957,7 @@ export default function CourierDashboard() {
       {/* Доступные заказы */}
       {isOnline && !currentOrder && (
         <div className="px-4 mb-6 pb-32">
-          <button
-            onClick={() => {
-              fetchAvailableOrders();
-              setShowOrdersList(!showOrdersList);
-            }}
-            className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
-          >
+          <button onClick={() => { fetchAvailableOrders(); setShowOrdersList(!showOrdersList); }} className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
             📋 Список доступных заказов ({availableOrders.length})
           </button>
           
@@ -1009,20 +972,11 @@ export default function CourierDashboard() {
                     </div>
                     <span className="font-bold text-emerald-600">{order.amount} ₸</span>
                   </div>
-                  <button
-                    onClick={() => takeOrder(order.order_id)}
-                    className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm"
-                  >
+                  <button onClick={() => takeOrder(order.order_id)} className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm">
                     Взять заказ
                   </button>
                 </div>
               ))}
-            </div>
-          )}
-          
-          {showOrdersList && availableOrders.length === 0 && (
-            <div className="mt-3 bg-white rounded-xl p-6 text-center">
-              <p className="text-gray-500">Нет доступных заказов</p>
             </div>
           )}
         </div>
@@ -1035,32 +989,17 @@ export default function CourierDashboard() {
             <div className="text-center mb-4">
               <div className="text-5xl mb-3">📦</div>
               <h2 className="text-xl font-bold">Новый заказ!</h2>
-              <p className="text-gray-500 text-sm mt-1">
-                Расстояние до ресторана: {proposedOrder.distance_km} км
-              </p>
-              <p className="text-xs text-gray-400 mt-2">
-                Предложение действует {proposedOrder.expires_in} секунд
-              </p>
+              <p className="text-gray-500 text-sm mt-1">Расстояние до ресторана: {proposedOrder.distance_km} км</p>
+              <p className="text-xs text-gray-400 mt-2">Предложение действует {proposedOrder.expires_in} секунд</p>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={acceptProposal}
-                className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-semibold"
-              >
-                Принять
-              </button>
-              <button
-                onClick={declineProposal}
-                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold"
-              >
-                Отклонить
-              </button>
+              <button onClick={acceptProposal} className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-semibold">Принять</button>
+              <button onClick={declineProposal} className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold">Отклонить</button>
             </div>
           </div>
         </div>
       )}
       
-      {/* Дополнительный отступ внизу */}
       <div className="h-16" />
     </div>
   );
