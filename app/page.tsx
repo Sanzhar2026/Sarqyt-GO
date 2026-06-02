@@ -1,3 +1,4 @@
+// app/page.tsx - ПОЛНАЯ ФИНАЛЬНАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -12,6 +13,7 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { setGlobalHideBottomNav } from './layout';
 import { useLanguage } from './layout';
 
+// ✅ ДИНАМИЧЕСКИЙ ИМПОРТ КАРТЫ (без SSR)
 const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: false });
 
 type Tab = 'preferences' | 'discover';
@@ -41,28 +43,12 @@ export default function HomePage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showSupplierBags, setShowSupplierBags] = useState(false);
-  const [selectedSupplierBags, setSelectedSupplierBags] = useState<SurpriseBag[]>([]);
-  const [selectedSupplierName, setSelectedSupplierName] = useState('');
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  
+  const { isConnected, lastMessage } = useWebSocket('wss://toogood-2ncf.onrender.com/ws');
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
   const API_URL = 'https://toogood-2ncf.onrender.com';
-
-  // ✅ Получаем токен при загрузке
-  useEffect(() => {
-    const token = sessionStorage.getItem('authToken');
-    console.log('🔑 Токен на главной:', token ? 'Есть' : 'Нет');
-    setAuthToken(token);
-  }, []);
-
-  // ✅ WebSocket URL только если есть токен
-  const wsUrl = authToken 
-    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
-    : null;
-  
-  const { isConnected, lastMessage } = useWebSocket(wsUrl);
 
   const refreshAfterOrder = useCallback(async () => {
     console.log('🔄 Обновление данных после заказа...');
@@ -131,85 +117,74 @@ export default function HomePage() {
       new Notification(title, { body, icon: '/logo.png' });
     }
   };
-
-  const showCourierArrivedNotification = (data: any) => {
-    console.log('🔔 Показываем уведомление о прибытии курьера:', data);
-    
-    const { order_id, order_number, courier_name, courier_phone, message } = data;
-    
-    const toast = document.createElement('div');
-    toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
-    toast.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-l-4 border-emerald-500">
-        <div class="bg-emerald-50 px-4 py-3 flex items-center gap-3">
-          <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xl">🚚</div>
+const showCourierArrivedNotification = (data: any) => {
+  console.log('🔔 Показываем уведомление о прибытии курьера:', data);
+  
+  const { order_id, order_number, courier_name, courier_phone, message } = data;
+  
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
+  toast.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border-l-4 border-emerald-500">
+      <div class="p-4">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-xl">🚚</div>
           <div class="flex-1">
-            <h3 class="font-bold text-emerald-800 text-sm">Курьер прибыл!</h3>
+            <h3 class="font-bold text-gray-800 text-sm">Курьер прибыл!</h3>
             <p class="text-emerald-600 text-xs">Заказ #${order_number}</p>
           </div>
           <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
-        <div class="p-4">
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <p class="font-semibold text-gray-800 text-base">${courier_name}</p>
-              <p class="text-gray-500 text-xs flex items-center gap-1">📞 ${courier_phone}</p>
-            </div>
-            <div class="bg-emerald-100 px-3 py-1 rounded-full">
-              <span class="text-emerald-700 text-xs font-medium">🚶‍♂️ Курьер</span>
-            </div>
+        
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <p class="font-semibold text-gray-800 text-sm">${courier_name}</p>
+            <p class="text-gray-500 text-xs flex items-center gap-1">📞 ${courier_phone}</p>
           </div>
-          <p class="text-gray-600 text-sm mb-4">${message || `Курьер ожидает вас для передачи заказа #${order_number}`}</p>
-          <div class="flex gap-3">
-            <button id="go-to-order-btn" class="flex-1 bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition active:scale-95">📦 Перейти к заказу</button>
-            <button id="later-btn" class="px-4 bg-gray-100 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-200 transition active:scale-95">Позже</button>
+          <div class="bg-emerald-100 px-2 py-1 rounded-full">
+            <span class="text-emerald-700 text-xs font-medium">Курьер</span>
           </div>
         </div>
+        
+        <p class="text-gray-600 text-xs mb-4">${message || `Курьер ожидает вас для передачи заказа #${order_number}`}</p>
+        
+        <div class="flex gap-2">
+          <button id="go-to-order-btn" class="flex-1 bg-emerald-500 text-white py-2 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition active:scale-95">
+            📦 Перейти
+          </button>
+          <button id="later-btn" class="px-4 bg-gray-100 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-200 transition active:scale-95">
+            Позже
+          </button>
+        </div>
       </div>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    const goToOrder = () => {
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  const goToOrder = () => {
+    toast.classList.add('animate-fade-out');
+    setTimeout(() => {
       toast.remove();
       router.push(`/orders/${order_id}`);
-    };
-    
-    const closeNotification = () => {
-      toast.classList.add('animate-fade-out');
-      setTimeout(() => toast.remove(), 300);
-    };
-    
-    toast.querySelector('#go-to-order-btn')?.addEventListener('click', goToOrder);
-    toast.querySelector('#later-btn')?.addEventListener('click', closeNotification);
-    toast.querySelector('#close-notification-btn')?.addEventListener('click', closeNotification);
-    
-    setTimeout(() => {
-      if (document.body.contains(toast)) {
-        closeNotification();
-      }
-    }, 10000);
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('🚚 Курьер прибыл!', {
-        body: `${courier_name} ожидает вас. Нажмите чтобы подтвердить заказ #${order_number}`,
-        icon: '/logo.png'
-      });
+    }, 300);
+  };
+  
+  const closeNotification = () => {
+    toast.classList.add('animate-fade-out');
+    setTimeout(() => toast.remove(), 300);
+  };
+  
+  toast.querySelector('#go-to-order-btn')?.addEventListener('click', goToOrder);
+  toast.querySelector('#later-btn')?.addEventListener('click', closeNotification);
+  toast.querySelector('#close-notification-btn')?.addEventListener('click', closeNotification);
+  
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      closeNotification();
     }
-  };
-
-  const handleSupplierClick = (supplierId: number, supplierName: string) => {
-    const supplierBags = bags.filter(bag => bag.supplier_id === supplierId);
-    setSelectedSupplierBags(supplierBags);
-    setSelectedSupplierName(supplierName);
-    setShowSupplierBags(true);
-  };
-
-  const closeSupplierBags = () => {
-    setShowSupplierBags(false);
-    setSelectedSupplierBags([]);
-    setSelectedSupplierName('');
-  };
+  }, 8000);
+};
 
   useEffect(() => {
     if (!lastMessage) return;
@@ -253,6 +228,7 @@ export default function HomePage() {
         'info'
       );
     }
+    
   }, [lastMessage, fetchBags]);
 
   const handleManualRefresh = () => {
@@ -350,7 +326,6 @@ export default function HomePage() {
     await fetch(`${API_URL}/logout`, { method: 'GET', credentials: 'include' });
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('isLoggedIn');
-    sessionStorage.removeItem('authToken');
     setUser(null);
     window.location.href = '/';
   };
@@ -381,12 +356,7 @@ export default function HomePage() {
       lastUpdate: 'Соңғы жаңарту',
       connected: 'Қосылған',
       disconnected: 'Қосылым жоқ',
-      nearbyShops: 'Жақын маңдағы дүкендер мен кафелер',
-      viewSurprises: 'Тосын сыйларды көру',
-      close: 'Жабу',
-      available: 'Қолжетімді',
-      from: 'бастап',
-      order: 'Тапсырыс беру'
+      nearbyShops: 'Жақын маңдағы дүкендер мен кафелер'
     },
     ru: {
       greeting: 'Привет',
@@ -407,12 +377,7 @@ export default function HomePage() {
       lastUpdate: 'Последнее обновление',
       connected: 'Подключено',
       disconnected: 'Нет соединения',
-      nearbyShops: 'Ближайшие магазины и кафе',
-      viewSurprises: 'Посмотреть сюрпризы',
-      close: 'Закрыть',
-      available: 'Доступно',
-      from: 'от',
-      order: 'Заказать'
+      nearbyShops: 'Ближайшие магазины и кафе'
     }
   };
 
@@ -539,6 +504,7 @@ export default function HomePage() {
         <input type="text" placeholder={t[lang].search} className="w-full px-6 py-4 rounded-3xl bg-white shadow text-base focus:outline-none focus:ring-2 focus:ring-emerald-500" />
       </div>
 
+      {/* ✅ КАРТА С БЛИЖАЙШИМИ МАГАЗИНАМИ */}
       <div className="px-6 mt-6">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
@@ -547,56 +513,15 @@ export default function HomePage() {
             </h2>
             <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
           </div>
-          <div className="h-72">
+          <div className="h-64">
             <SuppliersMap 
               userLat={location.lat} 
               userLon={location.lon}
-              onSupplierClick={handleSupplierClick}
-              showUserLocation={true}
+              onSupplierClick={(id) => router.push(`/offers/${id}`)}
             />
           </div>
         </div>
       </div>
-
-      {showSupplierBags && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="font-bold text-lg">{selectedSupplierName}</h3>
-              <button onClick={closeSupplierBags} className="text-gray-400 text-2xl">&times;</button>
-            </div>
-            <div className="p-4 overflow-y-auto max-h-[60vh]">
-              {selectedSupplierBags.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">Нет доступных сюрпризов</p>
-              ) : (
-                <div className="space-y-4">
-                  {selectedSupplierBags.map((bag) => (
-                    <div key={bag.id} className="border rounded-xl p-3 hover:shadow-md transition">
-                      <div className="flex gap-3">
-                        {bag.image_url && (
-                          <img src={bag.image_url} alt={bag.name} className="w-20 h-20 object-cover rounded-lg" />
-                        )}
-                        <div className="flex-1">
-                          <h4 className="font-semibold">{bag.name}</h4>
-                          <p className="text-xs text-gray-500 line-through">{bag.original_price} ₸</p>
-                          <p className="text-emerald-600 font-bold">{bag.discounted_price} ₸</p>
-                          <p className="text-xs text-gray-400">Доступно: {bag.available_quantity} шт.</p>
-                          <button 
-                            onClick={() => router.push(`/offers/${bag.id}`)}
-                            className="mt-2 bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs"
-                          >
-                            {t[lang].order}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {user && (
         <div className="px-6 mt-4">
