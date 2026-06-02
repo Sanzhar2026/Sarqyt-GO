@@ -62,20 +62,64 @@ export default function OrderDetailPage() {
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ Функция для получения токена
-  const getAuthToken = () => sessionStorage.getItem('authToken');
+  // ✅ Функция для получения токена из разных источников
+  const getAuthToken = () => {
+    // Пробуем из sessionStorage
+    let token = sessionStorage.getItem('authToken');
+    
+    // Если нет, пробуем из localStorage
+    if (!token) {
+      token = localStorage.getItem('token');
+    }
+    
+    // Если нет, пробуем из sessionStorage с другим ключом
+    if (!token) {
+      token = sessionStorage.getItem('token');
+    }
+    
+    console.log('🔑 Токен получен:', !!token);
+    return token;
+  };
 
-  // ✅ Функция для авторизованных запросов
+  // ✅ Функция для авторизованных запросов с проверкой 403
   const authFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
-    return fetch(url, {
+    
+    console.log(`📡 Запрос к ${url}, токен: ${!!token}`);
+    
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        ...options.headers,
-      },
+      headers,
+      credentials: 'include',
     });
+    
+    // Если 401 или 403 - перенаправляем на логин
+    if (response.status === 401 || response.status === 403) {
+      console.error(`❌ Ошибка авторизации ${response.status}, перенаправление на логин...`);
+      
+      // Очищаем все токены
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('token');
+      localStorage.removeItem('token');
+      
+      // Сохраняем текущий URL для возврата
+      sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
+      
+      // Перенаправляем на логин
+      router.push('/login');
+      throw new Error('Unauthorized');
+    }
+    
+    return response;
   };
 
   // Получаем геолокацию
@@ -114,20 +158,21 @@ export default function OrderDetailPage() {
     try {
       const token = getAuthToken();
       console.log('🔑 Токен для запроса заказа:', !!token);
+      console.log('📦 Запрашиваем заказ:', orderId);
       
       const response = await authFetch(`${API_URL}/api/orders/${orderId}`);
       
-      if (response.status === 401) {
-        console.error('❌ Не авторизован. Перенаправление на логин...');
-        router.push('/login');
-        return;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Ошибка ответа:', response.status, errorText);
+        throw new Error(`Order not found: ${response.status}`);
       }
       
-      if (!response.ok) throw new Error('Order not found');
       const data = await response.json();
+      console.log('✅ Заказ получен:', data);
       setOrder(data);
     } catch (err) {
-      console.error(err);
+      console.error('❌ Ошибка загрузки заказа:', err);
       setError('Заказ не найден');
     } finally {
       setLoading(false);
@@ -148,6 +193,8 @@ export default function OrderDetailPage() {
       ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(token)}`
       : 'wss://toogood-2ncf.onrender.com/ws';
     
+    console.log('🔌 Подключение WebSocket для заказа:', wsUrl);
+    
     const ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
@@ -156,13 +203,26 @@ export default function OrderDetailPage() {
     };
     
     ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log('📨 Получено уведомление:', data);
-      
-      if (data.type === 'courier_arrived') {
-        showToast(`${data.data.message}! ${data.data.courier_name} ожидает вас.`, 'info');
-        fetchOrder();
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📨 Получено уведомление:', data);
+        
+        if (data.type === 'courier_arrived') {
+          showToast(`${data.data.message || 'Курьер прибыл!'} ${data.data.courier_name} ожидает вас.`, 'info');
+          fetchOrder();
+        }
+        
+        if (data.type === 'order_status_updated') {
+          showToast(`Статус заказа изменен на: ${data.data.status}`, 'info');
+          fetchOrder();
+        }
+      } catch (error) {
+        console.error('Ошибка парсинга сообщения:', error);
       }
+    };
+    
+    ws.onerror = (error) => {
+      console.error('🔌 WebSocket error:', error);
     };
     
     ws.onclose = () => {
@@ -292,30 +352,30 @@ export default function OrderDetailPage() {
   };
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-  const toast = document.createElement('div');
-  toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
-  
-  const bgColor = type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
-  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
-  
-  toast.innerHTML = `
-    <div class="${bgColor} rounded-2xl shadow-lg p-4 flex items-center gap-3">
-      <span class="text-white text-xl">${icon}</span>
-      <p class="flex-1 text-white text-sm font-medium">${message}</p>
-      <button class="close-toast text-white opacity-70 text-xl leading-none">✕</button>
-    </div>
-  `;
-  
-  document.body.appendChild(toast);
-  
-  const close = () => {
-    toast.classList.add('animate-fade-out');
-    setTimeout(() => toast.remove(), 300);
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
+    
+    const bgColor = type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    
+    toast.innerHTML = `
+      <div class="${bgColor} rounded-2xl shadow-lg p-4 flex items-center gap-3">
+        <span class="text-white text-xl">${icon}</span>
+        <p class="flex-1 text-white text-sm font-medium">${message}</p>
+        <button class="close-toast text-white opacity-70 text-xl leading-none">✕</button>
+      </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    const close = () => {
+      toast.classList.add('animate-fade-out');
+      setTimeout(() => toast.remove(), 300);
+    };
+    
+    toast.querySelector('.close-toast')?.addEventListener('click', close);
+    setTimeout(close, 3000);
   };
-  
-  toast.querySelector('.close-toast')?.addEventListener('click', close);
-  setTimeout(close, 3000);
-};
 
   if (loading) {
     return (
