@@ -60,29 +60,39 @@ export default function SuppliersMap({
 
   // Загрузка поставщиков
   const fetchNearbySuppliers = async (lat: number, lon: number) => {
-    try {
-      const response = await fetch(`/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`);
-      const data = await response.json();
-      
-      const validSuppliers = (data.suppliers || []).filter(
-        (supplier: Supplier) => 
-          supplier.lat && 
-          supplier.lon && 
-          typeof supplier.lat === 'number' && 
-          typeof supplier.lon === 'number' &&
-          !isNaN(supplier.lat) && 
-          !isNaN(supplier.lon)
-      );
-      
-      setSuppliers(validSuppliers);
-      console.log(`📍 Найдено поставщиков: ${validSuppliers.length}`);
-    } catch (error) {
-      console.error('Error fetching suppliers:', error);
+  try {
+    // ✅ ПРАВИЛЬНЫЙ URL - без supplier_id в пути
+    const response = await fetch(`/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`);
+    
+    if (!response.ok) {
+      console.error('Ошибка ответа:', response.status);
       setSuppliers([]);
-    } finally {
       setLoading(false);
+      return;
     }
-  };
+    
+    const data = await response.json();
+    console.log('✅ Получены поставщики:', data);
+    
+    const validSuppliers = (data.suppliers || []).filter(
+      (supplier: Supplier) => 
+        supplier.lat && 
+        supplier.lon && 
+        typeof supplier.lat === 'number' && 
+        typeof supplier.lon === 'number' &&
+        !isNaN(supplier.lat) && 
+        !isNaN(supplier.lon)
+    );
+    
+    setSuppliers(validSuppliers);
+    console.log(`📍 Найдено поставщиков: ${validSuppliers.length}`);
+  } catch (error) {
+    console.error('Error fetching suppliers:', error);
+    setSuppliers([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Получение геолокации
   useEffect(() => {
