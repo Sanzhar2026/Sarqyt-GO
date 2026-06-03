@@ -36,6 +36,7 @@ export default function CartPage() {
   const [showTimerWarning, setShowTimerWarning] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [customerAddress, setCustomerAddress] = useState('');
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
 
   const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
@@ -62,7 +63,11 @@ export default function CartPage() {
       deliveryAddress: 'Жеткізу мекенжайы',
       enterAddress: 'Мекенжайыңызды енгізіңіз',
       processing: 'Өңделуде',
-      redirecting: 'Төлем бетіне өту...'
+      redirecting: 'Төлем бетіне өту...',
+      deliveryType: 'Жеткізу түрі',
+      courier: 'Курьермен жеткізу',
+      pickup: 'Өзім алып кетемін',
+      pickupAddress: 'Алып кету мекенжайы'
     },
     ru: {
       cart: 'Корзина',
@@ -86,21 +91,44 @@ export default function CartPage() {
       deliveryAddress: 'Адрес доставки',
       enterAddress: 'Введите ваш адрес',
       processing: 'Обработка',
-      redirecting: 'Переход на страницу оплаты...'
+      redirecting: 'Переход на страницу оплаты...',
+      deliveryType: 'Способ получения',
+      courier: 'Доставка курьером',
+      pickup: 'Самовывоз',
+      pickupAddress: 'Адрес самовывоза'
     }
   };
 
-  // Защита страницы
+  const getAuthToken = () => sessionStorage.getItem('authToken');
+
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    
+    if (!token) {
+      console.error('❌ Нет токена');
+      router.push('/login');
+      throw new Error('No token');
+    }
+    
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+  };
+
   useEffect(() => {
-    const token = sessionStorage.getItem('authToken');
+    const token = getAuthToken();
     if (!token) {
       router.push('/login');
     }
   }, [router]);
 
-  // Получаем геолокацию при загрузке
   useEffect(() => {
-    if (navigator.geolocation) {
+    if (navigator.geolocation && deliveryType === 'delivery') {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const lat = position.coords.latitude;
@@ -123,30 +151,22 @@ export default function CartPage() {
         }
       );
     }
-  }, []);
+  }, [deliveryType]);
 
-  // Функция проверки резервации
-// Функция проверки резервации
-const checkReservation = async () => {
-  try {
-    const token = sessionStorage.getItem('authToken');
-    const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/reservation', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`  // ← ДОБАВИТЬ
-      },
-      credentials: 'include'
-    });
-    const data = await response.json();
-    if (data.reservation) {
-      setReservation(data.reservation);
+  const checkReservation = async () => {
+    try {
+      const response = await authFetch('https://toogood-2ncf.onrender.com/api/cart/reservation');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.reservation) {
+          setReservation(data.reservation);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking reservation:', error);
     }
-  } catch (error) {
-    console.error('Error checking reservation:', error);
-  }
-};
+  };
 
-  // Загрузка корзины и проверка резервации
   useEffect(() => {
     loadCart();
     checkReservation();
@@ -154,7 +174,6 @@ const checkReservation = async () => {
     return () => window.removeEventListener('cartUpdated', loadCart);
   }, []);
 
-  // Синхронизация резервации из товаров корзины
   useEffect(() => {
     const reservationFromCart = cartItems.find((item: any) => item.reservation_id && item.expires_at);
     if (reservationFromCart && !reservation) {
@@ -166,7 +185,6 @@ const checkReservation = async () => {
     }
   }, [cartItems, reservation]);
 
-  // Таймер обратного отсчета
   useEffect(() => {
     if (!reservation?.expires_at) return;
 
@@ -253,7 +271,7 @@ const checkReservation = async () => {
   };
 
   const handleCheckout = () => {
-    if (!customerAddress) {
+    if (deliveryType === 'delivery' && !customerAddress) {
       alert('Пожалуйста, укажите адрес доставки');
       return;
     }
@@ -261,88 +279,68 @@ const checkReservation = async () => {
     setShowPaymentModal(true);
   };
 
-  // Создание заказов перед оплатой
-// Создание заказов перед оплатой
-const createOrders = async () => {
-  const createdOrders = [];
-  
-  // ✅ ПОЛУЧАЕМ ТОКЕН
-  const token = sessionStorage.getItem('authToken');
-  console.log('🔑 Токен для запроса:', token ? `${token.substring(0, 30)}...` : 'НЕТ ТОКЕНА');
-  
-  for (const item of cartItems) {
-    const response = await fetch('https://toogood-2ncf.onrender.com/api/orders', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`  // ← ДОБАВИТЬ ЭТУ СТРОКУ
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        bag_id: item.id,
-        lat: userLocation?.lat || 43.238,
-        lon: userLocation?.lon || 76.945,
-        address: customerAddress
-      })
-    });
+  const createOrders = async () => {
+    const token = getAuthToken();
+    console.log('🔑 Токен для запроса:', token ? `${token.substring(0, 30)}...` : 'НЕТ ТОКЕНА');
     
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || `Ошибка создания заказа для ${item.name}`);
+    const createdOrders = [];
+    
+    for (const item of cartItems) {
+      const response = await authFetch('https://toogood-2ncf.onrender.com/api/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          bag_id: item.id,
+          lat: userLocation?.lat || 43.238,
+          lon: userLocation?.lon || 76.945,
+          address: deliveryType === 'delivery' ? customerAddress : 'Самовывоз',
+          delivery_type: deliveryType
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || `Ошибка создания заказа для ${item.name}`);
+      }
+      
+      const order = await response.json();
+      createdOrders.push(order);
     }
     
-    const order = await response.json();
-    createdOrders.push(order);
-  }
-  
-  return createdOrders;
-};
+    return createdOrders;
+  };
 
-const handleKaspiPayment = async () => {
-  // ✅ ПРОВЕРКА ТОКЕНА ПЕРЕД ОПЛАТОЙ
-  const token = sessionStorage.getItem('authToken');
-  if (!token) {
-    alert('Ошибка авторизации. Пожалуйста, войдите заново.');
-    router.push('/login');
-    return;
-  }
-  
-  setProcessingStep('processing');
-  
-  try {
-    const orders = await createOrders();
-    console.log('✅ Заказы созданы:', orders);
-    
-    // ✅ ПРАВИЛЬНО СОХРАНЯЕМ В sessionStorage
-    sessionStorage.setItem('pending_order', JSON.stringify({
-      orders: orders,
-      total: getTotalPrice(),
-      timestamp: Date.now()
-    }));
-    
-    // ✅ ДЛЯ ОТЛАДКИ - посмотри что сохраняется
-    console.log('💾 Сохранено в sessionStorage:', {
-      orders: orders,
-      total: getTotalPrice(),
-      timestamp: Date.now()
-    });
-    
-    // Переход на Kaspi QR
-    window.location.href = KASPI_QR_URL;
-    
-  } catch (error) {
-    console.error('Error creating orders:', error);
-    // ✅ ПРАВИЛЬНОЕ ОТОБРАЖЕНИЕ ОШИБКИ
-    let errorMessage = 'Ошибка при создании заказа';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'object') {
-      errorMessage = JSON.stringify(error);
+  const handleKaspiPayment = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Ошибка авторизации. Пожалуйста, войдите заново.');
+      router.push('/login');
+      return;
     }
-    alert(errorMessage);
-    setProcessingStep('form');
-  }
-};
+    
+    setProcessingStep('processing');
+    
+    try {
+      const orders = await createOrders();
+      console.log('✅ Заказы созданы:', orders);
+      
+      sessionStorage.setItem('pending_order', JSON.stringify({
+        orders: orders,
+        total: getTotalPrice(),
+        timestamp: Date.now()
+      }));
+      
+      window.location.href = KASPI_QR_URL;
+      
+    } catch (error) {
+      console.error('Error creating orders:', error);
+      let errorMessage = 'Ошибка при создании заказа';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      alert(errorMessage);
+      setProcessingStep('form');
+    }
+  };
 
   const formatTimeLeft = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -400,19 +398,59 @@ const handleKaspiPayment = async () => {
             </div>
           </div>
           
-          {/* Поле для ввода адреса */}
+          {/* Способ получения */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              📍 {t[lang].deliveryAddress}
+              📦 {t[lang].deliveryType}
             </label>
-            <input
-              type="text"
-              placeholder={t[lang].enterAddress}
-              value={customerAddress}
-              onChange={(e) => setCustomerAddress(e.target.value)}
-              className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeliveryType('delivery')}
+                className={`flex-1 py-3 rounded-xl font-semibold transition ${
+                  deliveryType === 'delivery'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                🚚 {t[lang].courier}
+              </button>
+              <button
+                onClick={() => setDeliveryType('pickup')}
+                className={`flex-1 py-3 rounded-xl font-semibold transition ${
+                  deliveryType === 'pickup'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                🏪 {t[lang].pickup}
+              </button>
+            </div>
           </div>
+          
+          {/* Адрес доставки (только для доставки) */}
+          {deliveryType === 'delivery' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                📍 {t[lang].deliveryAddress}
+              </label>
+              <input
+                type="text"
+                placeholder={t[lang].enterAddress}
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+              />
+            </div>
+          )}
+          
+          {/* Информация о самовывозе */}
+          {deliveryType === 'pickup' && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-xl">
+              <p className="text-sm text-blue-700">
+                🏪 {t[lang].pickupAddress}: Ресторан по адресу, указанному при оформлении
+              </p>
+            </div>
+          )}
           
           {timeLeft !== null && timeLeft > 0 && (
             <div className={`mb-4 p-4 rounded-2xl ${showTimerWarning ? 'bg-red-50 border border-red-200' : 'bg-yellow-50'}`}>
@@ -447,7 +485,7 @@ const handleKaspiPayment = async () => {
           
           <button
             onClick={handleCheckout}
-            disabled={timeLeft === 0 || !customerAddress}
+            disabled={timeLeft === 0 || (deliveryType === 'delivery' && !customerAddress)}
             className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span className="text-xl">💳</span>
@@ -501,7 +539,7 @@ const handleKaspiPayment = async () => {
         ))}
       </div>
 
-      {/* Payment Modal - ТОЛЬКО KASPI QR */}
+      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full">
@@ -519,7 +557,6 @@ const handleKaspiPayment = async () => {
                 )}
               </div>
               
-              {/* Kaspi QR Button */}
               <button
                 onClick={handleKaspiPayment}
                 disabled={processingStep === 'processing'}
