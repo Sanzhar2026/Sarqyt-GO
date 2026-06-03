@@ -192,10 +192,7 @@ const showCourierArrivedNotification = (data: any) => {
 };
 
   const handleSupplierClick = (supplierId: number, supplierName: string) => {
-    const supplierBags = bags.filter(bag => bag.supplier_id === supplierId);
-    setSelectedSupplierBags(supplierBags);
-    setSelectedSupplierName(supplierName);
-    setShowSupplierBags(true);
+    router.push(`/supplier/${supplierId}`);
   };
 
   const closeSupplierBags = () => {

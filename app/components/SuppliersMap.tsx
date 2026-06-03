@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Supplier {
   id: number;
@@ -26,6 +27,7 @@ export default function SuppliersMap({
   onSupplierClick, 
   showUserLocation = true
 }: SuppliersMapProps) {
+  const router = useRouter();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -34,6 +36,7 @@ export default function SuppliersMap({
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
+  // Загрузка Leaflet
   useEffect(() => {
     const loadLeaflet = async () => {
       if (typeof window === 'undefined') return;
@@ -55,9 +58,10 @@ export default function SuppliersMap({
     loadLeaflet();
   }, []);
 
+  // Загрузка поставщиков
   const fetchNearbySuppliers = async (lat: number, lon: number) => {
     try {
-      const response = await fetch(`${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`);
+      const response = await fetch(`/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`);
       const data = await response.json();
       
       const validSuppliers = (data.suppliers || []).filter(
@@ -80,6 +84,7 @@ export default function SuppliersMap({
     }
   };
 
+  // Получение геолокации
   useEffect(() => {
     if (userLat && userLon) {
       fetchNearbySuppliers(userLat, userLon);
@@ -98,6 +103,7 @@ export default function SuppliersMap({
     }
   }, [userLat, userLon]);
 
+  // Инициализация карты
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -118,6 +124,7 @@ export default function SuppliersMap({
     
     const bounds: any[] = [];
     
+    // Маркер пользователя
     if (showUserLocation && userLat && userLon) {
       const userIcon = window.L.divIcon({
         html: `<div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm shadow-lg border-2 border-white ring-2 ring-blue-300">📍</div>`,
@@ -132,6 +139,7 @@ export default function SuppliersMap({
       bounds.push([userLat, userLon]);
     }
     
+    // Маркеры магазинов
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
@@ -152,7 +160,7 @@ export default function SuppliersMap({
               <span>📦 ${supplier.surprise_bags_count || 0} сюрпризов</span>
               <span>📍 ${supplier.distance_km?.toFixed(1) || '?'} км</span>
             </div>
-            <button class="mt-2 bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm w-full view-offers-btn" data-id="${supplier.id}" data-name="${supplier.business_name}">
+            <button class="mt-2 bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm w-full view-supplier-btn" data-id="${supplier.id}" data-name="${supplier.business_name}">
               🎁 Посмотреть сюрпризы
             </button>
           </div>
@@ -161,13 +169,21 @@ export default function SuppliersMap({
       bounds.push([supplier.lat, supplier.lon]);
     });
     
+    // Обработчик кликов - переход на страницу магазина
     setTimeout(() => {
-      document.querySelectorAll('.view-offers-btn').forEach(btn => {
+      document.querySelectorAll('.view-supplier-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           const id = parseInt((e.target as HTMLElement).getAttribute('data-id') || '0');
           const name = (e.target as HTMLElement).getAttribute('data-name') || '';
-          if (id && onSupplierClick) {
+          
+          // ✅ РЕДИРЕКТ НА СТРАНИЦУ МАГАЗИНА
+          if (id) {
+            router.push(`/supplier/${id}`);
+          }
+          
+          // Если передан onSupplierClick - вызываем его
+          if (onSupplierClick && id) {
             onSupplierClick(id, name);
           }
         });
@@ -179,7 +195,7 @@ export default function SuppliersMap({
       mapInstanceRef.current.fitBounds(mapBounds, { padding: [50, 50] });
     }
     
-  }, [mapLoaded, loading, suppliers, userLat, userLon, onSupplierClick, showUserLocation]);
+  }, [mapLoaded, loading, suppliers, userLat, userLon, onSupplierClick, showUserLocation, router]);
 
   if (loading) {
     return (
