@@ -58,36 +58,38 @@ export default function SuppliersMap({
     loadLeaflet();
   }, []);
 
-  // Загрузка поставщиков
-  const fetchNearbySuppliers = async (lat: number, lon: number) => {
+ const fetchNearbySuppliers = async (lat: number, lon: number) => {
   try {
-    // ✅ ПРАВИЛЬНЫЙ URL - без supplier_id в пути
-    const response = await fetch(`/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`);
+    // ✅ Проверяем координаты
+    console.log('📡 Отправка запроса с координатами:', { lat, lon });
+    
+    if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
+      console.error('❌ Некорректные координаты:', lat, lon);
+      setSuppliers([]);
+      setLoading(false);
+      return;
+    }
+    
+    const url = `/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`;
+    console.log('🔗 Полный URL запроса:', url);
+    
+    const response = await fetch(url);
+    console.log('📡 Статус ответа:', response.status);
     
     if (!response.ok) {
-      console.error('Ошибка ответа:', response.status);
+      const errorText = await response.text();
+      console.error('❌ Тело ошибки:', errorText);
       setSuppliers([]);
       setLoading(false);
       return;
     }
     
     const data = await response.json();
-    console.log('✅ Получены поставщики:', data);
+    console.log('✅ Получены данные:', data);
     
-    const validSuppliers = (data.suppliers || []).filter(
-      (supplier: Supplier) => 
-        supplier.lat && 
-        supplier.lon && 
-        typeof supplier.lat === 'number' && 
-        typeof supplier.lon === 'number' &&
-        !isNaN(supplier.lat) && 
-        !isNaN(supplier.lon)
-    );
-    
-    setSuppliers(validSuppliers);
-    console.log(`📍 Найдено поставщиков: ${validSuppliers.length}`);
+    setSuppliers(data.suppliers || []);
   } catch (error) {
-    console.error('Error fetching suppliers:', error);
+    console.error('❌ Ошибка запроса:', error);
     setSuppliers([]);
   } finally {
     setLoading(false);
