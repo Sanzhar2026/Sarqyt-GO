@@ -1,9 +1,7 @@
-// app/supplier/[id]/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
 
 interface SurpriseBag {
@@ -15,8 +13,6 @@ interface SurpriseBag {
   discount_percentage: number;
   image_url: string;
   available_quantity: number;
-  supplier_name: string;
-  supplier_id: number;
   pickup_start_time?: string;
   pickup_end_time?: string;
 }
@@ -27,9 +23,7 @@ interface Supplier {
   description: string;
   address: string;
   phone: string;
-  email: string;
   rating: number;
-  city: string;
   cover_image?: string;
 }
 
@@ -39,42 +33,92 @@ export default function SupplierPage() {
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [addingToCart, setAddingToCart] = useState<number | null>(null);
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
   const supplierId = params?.id;
 
   useEffect(() => {
-    const fetchSupplierAndBags = async () => {
+    const fetchData = async () => {
       if (!supplierId) return;
       
       try {
-        // Загружаем информацию о магазине
-        const supplierRes = await fetch(`/api/suppliers/${supplierId}`);
-        if (!supplierRes.ok) throw new Error('Supplier not found');
-        const supplierData = await supplierRes.json();
-        setSupplier(supplierData);
+        const [supplierRes, bagsRes] = await Promise.all([
+          fetch(`/api/suppliers/${supplierId}`),
+          fetch(`/api/suppliers/${supplierId}/surprise-bags`)
+        ]);
         
-        // Загружаем сюрпризы магазина
-        const bagsRes = await fetch(`/api/suppliers/${supplierId}/surprise-bags`);
-        if (bagsRes.ok) {
-          const bagsData = await bagsRes.json();
-          setBags(bagsData.filter((bag: SurpriseBag) => bag.available_quantity > 0));
+        if (supplierRes.ok) {
+          const supplierData = await supplierRes.json();
+          setSupplier(supplierData);
         }
         
-      } catch (err) {
-        console.error('Error:', err);
-        setError('Не удалось загрузить информацию');
+        if (bagsRes.ok) {
+          const bagsData = await bagsRes.json();
+          setBags(bagsData);
+        }
+      } catch (error) {
+        console.error('Error:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchSupplierAndBags();
+    fetchData();
   }, [supplierId]);
 
-  const handleOrderClick = (bagId: number) => {
-    router.push(`/offers/${bagId}`);
+  // ✅ Функция добавления в корзину (как на главной)
+  const addToCart = async (bagId: number, bagName: string) => {
+    const token = sessionStorage.getItem('authToken');
+    
+    if (!token) {
+      alert('Пожалуйста, войдите в аккаунт');
+      router.push('/login');
+      return;
+    }
+    
+    setAddingToCart(bagId);
+    
+    try {
+      const response = await fetch('/api/cart/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ bag_id: bagId, quantity: 1 })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        showNotification(`✅ ${bagName} добавлен в корзину!`, 'success');
+        
+        // Обновляем количество товара
+        setBags(prev => prev.map(bag => 
+          bag.id === bagId 
+            ? { ...bag, available_quantity: bag.available_quantity - 1 }
+            : bag
+        ));
+      } else {
+        showNotification(data.detail || 'Ошибка при добавлении', 'error');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      showNotification('Ошибка при добавлении в корзину', 'error');
+    } finally {
+      setAddingToCart(null);
+    }
+  };
+  
+  // ✅ Уведомления
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-up ${
+      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+    }`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
   };
 
   if (loading) {
@@ -85,77 +129,34 @@ export default function SupplierPage() {
     );
   }
 
-  if (error || !supplier) {
+  if (!supplier) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
-        <div className="text-center">
-          <div className="text-6xl mb-4">😢</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Магазин не найден</h1>
-          <p className="text-gray-500 mb-6">{error || 'Проверьте адрес или вернитесь на главную'}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition"
-          >
-            На главную
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-500">Магазин не найден</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header с информацией о магазине */}
-      <div className="relative">
-        {supplier.cover_image ? (
-          <div className="h-48 w-full overflow-hidden">
-            <img 
-              src={supplier.cover_image} 
-              alt={supplier.business_name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <div className="h-32 bg-gradient-to-r from-emerald-600 to-green-600" />
-        )}
-        <button
-          onClick={() => router.back()}
-          className="absolute top-4 left-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition"
-        >
+      {/* Header */}
+      <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white p-6">
+        <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
         </button>
-      </div>
-
-      {/* Информация о магазине */}
-      <div className="bg-white rounded-2xl shadow-sm mx-4 -mt-8 relative z-10 p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center text-3xl">
-            🏪
+        <h1 className="text-2xl font-bold">{supplier.business_name}</h1>
+        <p className="text-sm opacity-90 mt-1">{supplier.address}</p>
+        {supplier.rating && (
+          <div className="flex items-center gap-1 mt-2">
+            <span className="text-yellow-300">★</span>
+            <span>{supplier.rating}</span>
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-800">{supplier.business_name}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-yellow-500">★</span>
-              <span className="text-sm text-gray-600">{supplier.rating || 4.5}</span>
-              <span className="text-gray-300">•</span>
-              <span className="text-sm text-gray-500">{supplier.city || 'Город не указан'}</span>
-            </div>
-            <p className="text-sm text-gray-500 mt-2">{supplier.address}</p>
-            {supplier.phone && (
-              <p className="text-sm text-gray-500 mt-1">📞 {supplier.phone}</p>
-            )}
-          </div>
-        </div>
-        {supplier.description && (
-          <p className="text-gray-600 text-sm mt-4 pt-3 border-t border-gray-100">
-            {supplier.description}
-          </p>
         )}
       </div>
 
       {/* Список сюрпризов */}
-      <div className="px-4 mt-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Сюрпризы</h2>
+      <div className="px-4 py-6">
+        <h2 className="text-xl font-bold mb-4">Сюрпризы</h2>
         
         {bags.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center">
@@ -165,56 +166,59 @@ export default function SupplierPage() {
         ) : (
           <div className="space-y-4">
             {bags.map((bag) => (
-              <div key={bag.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition">
-                <div className="flex">
+              <div key={bag.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition">
+                <div className="flex gap-4">
                   {/* Изображение */}
                   {bag.image_url && (
-                    <div className="w-32 h-32 flex-shrink-0">
+                    <div className="w-24 h-24 flex-shrink-0">
                       <img 
                         src={bag.image_url} 
                         alt={bag.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover rounded-xl"
                       />
                     </div>
                   )}
                   
                   {/* Информация */}
-                  <div className="flex-1 p-4">
-                    <h3 className="font-bold text-gray-800 text-lg">{bag.name}</h3>
-                    <p className="text-gray-500 text-sm mt-1 line-clamp-2">{bag.description}</p>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg">{bag.name}</h3>
+                    <p className="text-gray-500 text-sm line-clamp-2">{bag.description}</p>
                     
-                    {/* Что входит в сюрприз */}
+                    {/* Цена */}
                     <div className="mt-2">
-                      <p className="text-xs text-gray-400">Что внутри:</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">🍕 Пицца</span>
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">🥤 Напиток</span>
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">🍰 Десерт</span>
-                      </div>
+                      <span className="text-gray-400 line-through text-sm">{bag.original_price} ₸</span>
+                      <span className="text-emerald-600 font-bold text-xl ml-2">{bag.discounted_price} ₸</span>
+                      <span className="text-xs text-gray-400 ml-1">-{bag.discount_percentage}%</span>
                     </div>
                     
-                    {/* Цена и кнопка */}
-                    <div className="flex items-center justify-between mt-3">
-                      <div>
-                        <span className="text-gray-400 line-through text-sm">{bag.original_price} ₸</span>
-                        <span className="text-emerald-600 font-bold text-xl ml-2">{bag.discounted_price} ₸</span>
-                        <span className="text-xs text-gray-400 ml-1">скидка -{bag.discount_percentage}%</span>
-                      </div>
-                      <button
-                        onClick={() => handleOrderClick(bag.id)}
-                        className="bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700 transition"
-                      >
-                        Заказать
-                      </button>
-                    </div>
-                    
-                    {/* Информация о наличии */}
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-400">
+                    {/* Доступность */}
+                    <div className="mt-1">
+                      <span className="text-xs text-gray-400">
                         Доступно: {bag.available_quantity} шт.
-                        {bag.pickup_start_time && ` • Забрать: ${bag.pickup_start_time} - ${bag.pickup_end_time}`}
-                      </p>
+                      </span>
                     </div>
+                    
+                    {/* Кнопка добавления в корзину */}
+                    <button
+                      onClick={() => addToCart(bag.id, bag.name)}
+                      disabled={bag.available_quantity <= 0 || addingToCart === bag.id}
+                      className={`mt-3 w-full py-2 rounded-xl text-sm font-semibold transition ${
+                        bag.available_quantity > 0
+                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {addingToCart === bag.id ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Добавление...
+                        </span>
+                      ) : bag.available_quantity > 0 ? (
+                        '🛒 В корзину'
+                      ) : (
+                        '❌ Нет в наличии'
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
