@@ -270,15 +270,40 @@ export default function CartPage() {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   };
 
-  const handleCheckout = () => {
-    if (deliveryType === 'delivery' && !customerAddress) {
-      alert('Пожалуйста, укажите адрес доставки');
-      return;
-    }
-    setProcessingStep('form');
+  const handleCheckout = async () => {
+  if (deliveryType === 'delivery' && !customerAddress) {
+    alert('Пожалуйста, укажите адрес доставки');
+    return;
+  }
+  
+  setProcessingStep('processing');
+  
+  try {
+    // ✅ СОЗДАЕМ ЗАКАЗЫ СРАЗУ!
+    const orders = await createOrders();
+    console.log('✅ Заказы созданы, ожидают оплаты:', orders);
+    
+    // Сохраняем в sessionStorage
+    sessionStorage.setItem('pending_order', JSON.stringify({
+      orders: orders,
+      total: getTotalPrice(),
+      timestamp: Date.now()
+    }));
+    
+    // Очищаем корзину
+    sessionStorage.removeItem('cart');
+    window.dispatchEvent(new Event('cartUpdated'));
+    
+    // Показываем модалку с оплатой
     setShowPaymentModal(true);
-  };
-
+    setProcessingStep('form');
+    
+  } catch (error) {
+    console.error('Error creating orders:', error);
+    alert('Ошибка при создании заказа');
+    setProcessingStep('form');
+  }
+};
   const createOrders = async () => {
     const token = getAuthToken();
     console.log('🔑 Токен для запроса:', token ? `${token.substring(0, 30)}...` : 'НЕТ ТОКЕНА');
@@ -310,37 +335,31 @@ export default function CartPage() {
   };
 
   const handleKaspiPayment = async () => {
-    const token = getAuthToken();
-    if (!token) {
-      alert('Ошибка авторизации. Пожалуйста, войдите заново.');
-      router.push('/login');
-      return;
+  const token = getAuthToken();
+  if (!token) {
+    alert('Ошибка авторизации');
+    router.push('/login');
+    return;
+  }
+  
+  setProcessingStep('processing');
+  
+  try {
+    // Проверяем что заказы уже созданы
+    const pendingData = sessionStorage.getItem('pending_order');
+    if (!pendingData) {
+      throw new Error('Нет информации о заказах');
     }
     
-    setProcessingStep('processing');
+    // ✅ ТОЛЬКО РЕДИРЕКТ НА KASPI (заказы уже созданы)
+    window.location.href = KASPI_QR_URL;
     
-    try {
-      const orders = await createOrders();
-      console.log('✅ Заказы созданы:', orders);
-      
-      sessionStorage.setItem('pending_order', JSON.stringify({
-        orders: orders,
-        total: getTotalPrice(),
-        timestamp: Date.now()
-      }));
-      
-      window.location.href = KASPI_QR_URL;
-      
-    } catch (error) {
-      console.error('Error creating orders:', error);
-      let errorMessage = 'Ошибка при создании заказа';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      alert(errorMessage);
-      setProcessingStep('form');
-    }
-  };
+  } catch (error) {
+    console.error('Payment error:', error);
+    alert('Ошибка при оплате');
+    setProcessingStep('form');
+  }
+};
 
   const formatTimeLeft = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
