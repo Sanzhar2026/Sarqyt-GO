@@ -4,9 +4,42 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: false });
 const DeliveryMapWithRoute = dynamic(() => import('../../components/DeliveryMapWithRoute'), { ssr: false });
+
+// ИКОНКИ
+const CarIcon = ({ size = 24, className = "" }) => (
+  <div className={`inline-flex items-center justify-center ${className}`}>
+    <Image src="/car.jpg" alt="Car" width={size} height={size} className="object-contain" />
+  </div>
+);
+
+const PersonIcon = ({ size = 24, className = "" }) => (
+  <div className={`inline-flex items-center justify-center ${className}`}>
+    <Image src="/person.png" alt="Person" width={size} height={size} className="object-contain" />
+  </div>
+);
+
+const DeliveryIcon = ({ size = 24, className = "" }) => (
+  <div className={`inline-flex items-center justify-center ${className}`}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 7L12 3L4 7L12 11L20 7Z" />
+      <path d="M4 7V17L12 21L20 17V7" />
+      <path d="M12 11V21" />
+    </svg>
+  </div>
+);
+
+const LocationIcon = ({ size = 24, className = "" }) => (
+  <div className={`inline-flex items-center justify-center ${className}`}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  </div>
+);
 
 export default function CourierDashboard() {
   const router = useRouter();
@@ -72,7 +105,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ПЕРИОДИЧЕСКАЯ ПРОВЕРКА СТАТУСА ЗАКАЗА (КАЖДЫЕ 30 СЕКУНД)
   useEffect(() => {
     if (!currentOrder) return;
     
@@ -111,7 +143,6 @@ export default function CourierDashboard() {
     };
   }, [currentOrder]);
 
-  // ✅ АВТОРИЗАЦИЯ
   useEffect(() => {
     const checkAuth = async () => {
       const token = sessionStorage.getItem('courierToken');
@@ -199,7 +230,6 @@ export default function CourierDashboard() {
     };
   }, [router]);
 
-  // ✅ HEARTBEAT ДЛЯ WEBSOCKET (КАЖДЫЕ 25 СЕКУНД)
   useEffect(() => {
     const heartbeat = setInterval(() => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -211,7 +241,6 @@ export default function CourierDashboard() {
     return () => clearInterval(heartbeat);
   }, []);
 
-  // ✅ ГЕОЛОКАЦИЯ
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -228,17 +257,18 @@ export default function CourierDashboard() {
     }
   }, []);
 
-  // ✅ WEBSOCKET CONNECTION
-  const connectWebSocket = () => {
+// Найди функцию connectWebSocket и ЗАМЕНИ её на эту:
+
+const connectWebSocket = () => {
     const token = sessionStorage.getItem('courierToken');
     
     if (!token || wsFailed || wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
-      console.log('❌ WebSocket connection failed permanently');
-      return;
+        console.log('❌ WebSocket connection failed permanently');
+        return;
     }
     
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.close();
+        wsRef.current.close();
     }
     
     const encodedToken = encodeURIComponent(token);
@@ -248,135 +278,140 @@ export default function CourierDashboard() {
     wsRef.current = ws;
     
     let heartbeatInterval: NodeJS.Timeout | null = null;
+    let lastPongTime = Date.now();
+    
     const connectionTimeout = setTimeout(() => {
-      if (ws.readyState !== WebSocket.OPEN) {
-        console.log('⚠️ WebSocket connection timeout');
-        ws.close();
-      }
+        if (ws.readyState !== WebSocket.OPEN) {
+            console.log('⚠️ WebSocket connection timeout');
+            ws.close();
+        }
     }, 10000);
     
     ws.onopen = () => {
-      console.log('✅ WebSocket connected');
-      clearTimeout(connectionTimeout);
-      setWsReconnectAttempts(0);
-      setWsFailed(false);
-      
-      ws.send(JSON.stringify({ type: "ping" }));
-      
-      heartbeatInterval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "ping" }));
+        console.log('✅ WebSocket connected');
+        clearTimeout(connectionTimeout);
+        setWsReconnectAttempts(0);
+        setWsFailed(false);
+        lastPongTime = Date.now();
+        
+        // Отправляем ping
+        ws.send(JSON.stringify({ type: "ping" }));
+        
+        // Heartbeat интервал
+        heartbeatInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                // Проверяем когда последний раз был pong
+                if (Date.now() - lastPongTime > 45000) {
+                    console.log('⚠️ No pong received, reconnecting...');
+                    ws.close();
+                    return;
+                }
+                ws.send(JSON.stringify({ type: "ping" }));
+                console.log('💓 Heartbeat sent');
+            }
+        }, 25000);
+        
+        if (userLocation) {
+            ws.send(JSON.stringify({
+                type: "update_location",
+                lat: userLocation.lat,
+                lon: userLocation.lon
+            }));
         }
-      }, 20000);
-      
-      if (userLocation) {
-        ws.send(JSON.stringify({
-          type: "update_location",
-          lat: userLocation.lat,
-          lon: userLocation.lon
-        }));
-      }
     };
     
     ws.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('📨 WebSocket message:', data.type);
-        
-        switch(data.type) {
-          case 'connected':
-            console.log('✅ WebSocket confirmed for courier:', data.courier_id);
-            break;
-          case 'pong':
-            console.log('💓 Heartbeat received');
-            break;
-          case 'ping':
-            ws.send(JSON.stringify({ type: "pong" }));
-            break;
-          case 'new_order_for_courier':
-            showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
-            setAvailableOrders(prev => [{
-              order_id: data.data.order_id,
-              order_number: data.data.order_number,
-              supplier_name: data.data.supplier_name,
-              distance_km: 0,
-              estimated_time_minutes: 0,
-              amount: data.data.amount,
-              bag_name: data.data.bag_name,
-              customer_address: data.data.customer_address,
-              supplier_lat: data.data.supplier_lat,
-              supplier_lon: data.data.supplier_lon,
-              customer_lat: data.data.customer_lat,
-              customer_lon: data.data.customer_lon
-            }, ...prev]);
-            break;
-          case 'proposed_order':
-            setProposedOrder({
-              order_id: data.order_id,
-              distance_km: data.distance_km,
-              expires_in: data.expires_in_seconds
-            });
-            setShowProposalModal(true);
-            break;
-          case 'order_assigned':
-            showNotification('✅ Заказ назначен вам!', 'success');
-            await fetchStatus();
-            await fetchCurrentOrder(data.order_id);
-            break;
-          case 'delivery_confirmed':
-            showNotification('✅ Клиент подтвердил получение заказа!', 'success');
-            await fetchStatus();
-            await fetchCurrentOrder(data.data.order_id);
-            break;
-          case 'order_cancelled':
-            const { order_number, reason } = data.data;
-            showNotification(`❌ Заказ #${order_number} отменен! Причина: ${reason}`, 'error');
-            if (currentOrder?.order_number === order_number) {
-              setCurrentOrder(null);
-              setOrderStatus(null);
-              setCurrentProgress(0);
+        try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'pong') {
+                lastPongTime = Date.now();
+                console.log('💓 Heartbeat received');
+                return;
             }
-            await fetchStatus();
-            await fetchAvailableOrders();
-            break;
-          case 'order_returned':
-            const { order_number: orderNum, reason: returnReason } = data.data;
-            showNotification(`🔄 Заказ #${orderNum} возвращен в список. ${returnReason || ''}`, 'info');
-            await fetchAvailableOrders();
-            break;
+            
+            if (data.type === 'ping') {
+                ws.send(JSON.stringify({ type: "pong" }));
+                return;
+            }
+            
+            console.log('📨 WebSocket message:', data.type);
+            
+            switch(data.type) {
+                case 'connected':
+                    console.log('✅ WebSocket confirmed for courier:', data.courier_id);
+                    break;
+                case 'new_order_for_courier':
+                    showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
+                    setAvailableOrders(prev => [{
+                        order_id: data.data.order_id,
+                        order_number: data.data.order_number,
+                        supplier_name: data.data.supplier_name,
+                        distance_km: data.data.distance_km || 0,
+                        estimated_time_minutes: data.data.estimated_time_minutes || 0,
+                        amount: data.data.amount,
+                        bag_name: data.data.bag_name,
+                        customer_address: data.data.customer_address,
+                        supplier_lat: data.data.supplier_lat,
+                        supplier_lon: data.data.supplier_lon,
+                        customer_lat: data.data.customer_lat,
+                        customer_lon: data.data.customer_lon
+                    }, ...prev]);
+                    break;
+                case 'order_assigned':
+                    showNotification('✅ Заказ назначен вам!', 'success');
+                    await fetchStatus();
+                    if (data.order_id) await fetchCurrentOrder(data.order_id);
+                    break;
+                case 'delivery_confirmed':
+                    showNotification('✅ Клиент подтвердил получение заказа!', 'success');
+                    await fetchStatus();
+                    if (currentOrder) await fetchCurrentOrder(currentOrder.id);
+                    break;
+                case 'order_cancelled':
+                    showNotification(`❌ Заказ #${data.data.order_number} отменен!`, 'error');
+                    setCurrentOrder(null);
+                    setOrderStatus(null);
+                    setCurrentProgress(0);
+                    await fetchStatus();
+                    await fetchAvailableOrders();
+                    break;
+                default:
+                    console.log('Unknown message type:', data.type);
+            }
+        } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
         }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
     };
     
     ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+        console.error('WebSocket error:', error);
     };
     
     ws.onclose = (event) => {
-      console.log(`WebSocket closed - Code: ${event.code}`);
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
-      
-      if (event.code === 1008) {
-        console.log('Auth error, not reconnecting');
-        return;
-      }
-      
-      if (isOnline && !wsFailed && wsReconnectAttempts < MAX_WS_RECONNECT_ATTEMPTS) {
-        const newAttempts = wsReconnectAttempts + 1;
-        setWsReconnectAttempts(newAttempts);
-        wsReconnectTimeoutRef.current = setTimeout(() => {
-          if (isOnline) connectWebSocket();
-        }, 5000);
-      } else if (wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
-        setWsFailed(true);
-        showNotification('Не удалось подключиться к серверу. Обновите страницу.', 'error');
-      }
+        console.log(`WebSocket closed - Code: ${event.code}`);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        
+        if (event.code === 1008) {
+            console.log('Auth error, not reconnecting');
+            return;
+        }
+        
+        if (isOnline && !wsFailed && wsReconnectAttempts < MAX_WS_RECONNECT_ATTEMPTS) {
+            const newAttempts = wsReconnectAttempts + 1;
+            setWsReconnectAttempts(newAttempts);
+            const delay = Math.min(30000, 5000 * newAttempts); // Exponential backoff
+            console.log(`Reconnecting in ${delay}ms (attempt ${newAttempts}/${MAX_WS_RECONNECT_ATTEMPTS})`);
+            wsReconnectTimeoutRef.current = setTimeout(() => {
+                if (isOnline) connectWebSocket();
+            }, delay);
+        } else if (wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
+            setWsFailed(true);
+            showNotification('Не удалось подключиться к серверу. Обновите страницу.', 'error');
+        }
     };
-  };
+};
 
-  // ✅ ОБНОВЛЕНИЕ ЛОКАЦИИ
   const startLocationTracking = () => {
     if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
     
@@ -417,7 +452,6 @@ export default function CourierDashboard() {
     }, 5000);
   };
   
-  // ✅ ЦЕНТРИРОВАНИЕ КАРТЫ
   const centerToMyLocation = () => {
     setLocating(true);
     if (navigator.geolocation) {
@@ -443,7 +477,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ СТАТУС КУРЬЕРА
   const fetchStatus = async () => {
     const token = sessionStorage.getItem('courierToken');
     if (!token) return;
@@ -467,7 +500,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ТЕКУЩИЙ ЗАКАЗ
   const fetchCurrentOrder = async (orderId: number) => {
     const token = sessionStorage.getItem('courierToken');
     try {
@@ -482,7 +514,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ДОСТУПНЫЕ ЗАКАЗЫ
   const fetchAvailableOrders = async () => {
     const token = sessionStorage.getItem('courierToken');
     try {
@@ -498,7 +529,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ВЗЯТЬ ЗАКАЗ
   const takeOrder = async (orderId: number) => {
     const token = sessionStorage.getItem('courierToken');
     
@@ -533,7 +563,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ КУРЬЕР ПРИБЫЛ
   const courierArrived = async () => {
     if (!currentOrder) return;
     
@@ -561,7 +590,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ВКЛ/ВЫКЛ РЕЖИМА
   const toggleOnlineMode = async () => {
     if (switching) return;
     setSwitching(true);
@@ -648,7 +676,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ПРИНЯТЬ ПРЕДЛОЖЕНИЕ
   const acceptProposal = async () => {
     if (!proposedOrder) return;
     const token = sessionStorage.getItem('courierToken');
@@ -674,7 +701,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ОТКЛОНИТЬ ПРЕДЛОЖЕНИЕ
   const declineProposal = async () => {
     if (!proposedOrder) return;
     const token = sessionStorage.getItem('courierToken');
@@ -695,7 +721,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ ЗАВЕРШИТЬ ДОСТАВКУ
   const completeDelivery = async () => {
     if (!currentOrder) return;
     const token = sessionStorage.getItem('courierToken');
@@ -769,7 +794,10 @@ export default function CourierDashboard() {
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">🚚 Панель курьера</h1>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <CarIcon size={28} className="text-white" />
+              Панель курьера
+            </h1>
             <p className="text-emerald-100 text-sm mt-1">
               {status?.first_name} {status?.last_name}
             </p>
@@ -803,12 +831,7 @@ export default function CourierDashboard() {
           {locating ? (
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           ) : (
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <LocationIcon size={24} className="text-blue-600" />
           )}
         </button>
         
@@ -877,7 +900,10 @@ export default function CourierDashboard() {
       {currentOrder && currentOrder.status === 'out_for_delivery' && (
         <div className="px-4 mb-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <h2 className="font-bold text-lg mb-4">🗺️ Маршрут доставки</h2>
+            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <CarIcon size={20} className="text-gray-700" />
+              Маршрут доставки
+            </h2>
             <DeliveryMapWithRoute
               orderId={currentOrder.id}
               startLat={userLocation?.lat || currentOrder.supplier?.lat || 0}
@@ -916,7 +942,10 @@ export default function CourierDashboard() {
             <div className="mt-4 mb-4">
               <div className="flex justify-between text-xs text-gray-500 mb-1">
                 <span>Прогресс доставки</span>
-                <span className="font-semibold">{orderStatus === 'almost_done' ? '🔔 Почти закончил' : `${currentProgress}%`}</span>
+                <span className="font-semibold flex items-center gap-1">
+                  {orderStatus === 'almost_done' && <CarIcon size={14} className="text-orange-500" />}
+                  {orderStatus === 'almost_done' ? ' Почти закончил' : `${currentProgress}%`}
+                </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                 <div className="bg-emerald-600 h-3 rounded-full transition-all duration-500" style={{ width: `${currentProgress}%` }} />
@@ -932,22 +961,30 @@ export default function CourierDashboard() {
                 {arriving ? (
                   <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Отправка...</>
                 ) : (
-                  <>{status?.courier_type === 'driver' ? '🚚 Я приехал' : '🚶 Я пришел'}</>
+                  <>
+                    {status?.courier_type === 'driver' ? (
+                      <CarIcon size={20} className="text-white" />
+                    ) : (
+                      <PersonIcon size={20} className="text-white" />
+                    )}
+                    <span>{status?.courier_type === 'driver' ? 'Я приехал' : 'Я пришел'}</span>
+                  </>
                 )}
               </button>
             )}
             
             {currentOrder.status === 'nearby' && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-3 text-center">
-                <div className="text-3xl mb-1">⏳</div>
+                <CarIcon size={32} className="text-yellow-500 mx-auto mb-2" />
                 <p className="font-semibold text-yellow-700">Ожидаем подтверждения от клиента</p>
                 <p className="text-xs text-yellow-600 mt-1">Клиент получил уведомление о вашем прибытии</p>
               </div>
             )}
             
             {orderStatus === 'almost_done' && (
-              <button onClick={completeDelivery} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-semibold mt-4 text-lg shadow-lg">
-                ✅ Завершить доставку
+              <button onClick={completeDelivery} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-semibold mt-4 text-lg shadow-lg flex items-center justify-center gap-2">
+                <DeliveryIcon size={20} className="text-white" />
+                Завершить доставку
               </button>
             )}
           </div>
@@ -957,8 +994,12 @@ export default function CourierDashboard() {
       {/* Доступные заказы */}
       {isOnline && !currentOrder && (
         <div className="px-4 mb-6 pb-32">
-          <button onClick={() => { fetchAvailableOrders(); setShowOrdersList(!showOrdersList); }} className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
-            📋 Список доступных заказов ({availableOrders.length})
+          <button 
+            onClick={() => { fetchAvailableOrders(); setShowOrdersList(!showOrdersList); }} 
+            className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+          >
+            <DeliveryIcon size={20} className="text-white" />
+            Список доступных заказов ({availableOrders.length})
           </button>
           
           {showOrdersList && availableOrders.length > 0 && (
@@ -972,7 +1013,8 @@ export default function CourierDashboard() {
                     </div>
                     <span className="font-bold text-emerald-600">{order.amount} ₸</span>
                   </div>
-                  <button onClick={() => takeOrder(order.order_id)} className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm">
+                  <button onClick={() => takeOrder(order.order_id)} className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm flex items-center justify-center gap-2">
+                    <CarIcon size={16} className="text-white" />
                     Взять заказ
                   </button>
                 </div>
@@ -987,7 +1029,9 @@ export default function CourierDashboard() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6">
             <div className="text-center mb-4">
-              <div className="text-5xl mb-3">📦</div>
+              <div className="flex justify-center mb-3">
+                <DeliveryIcon size={48} className="text-emerald-500" />
+              </div>
               <h2 className="text-xl font-bold">Новый заказ!</h2>
               <p className="text-gray-500 text-sm mt-1">Расстояние до ресторана: {proposedOrder.distance_km} км</p>
               <p className="text-xs text-gray-400 mt-2">Предложение действует {proposedOrder.expires_in} секунд</p>
