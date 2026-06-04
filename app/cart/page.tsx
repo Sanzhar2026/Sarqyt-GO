@@ -270,7 +270,7 @@ export default function CartPage() {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   };
 
-  // ✅ 1. Кнопка "Оформить заказ" - СОЗДАЕТ ЗАКАЗЫ
+  // ✅ 1. Кнопка "Оформить заказ" - СОЗДАЕТ ЗАКАЗЫ, НО НЕ ОЧИЩАЕТ КОРЗИНУ
   const handleCheckout = async () => {
     if (deliveryType === 'delivery' && !customerAddress) {
       alert('Пожалуйста, укажите адрес доставки');
@@ -291,9 +291,8 @@ export default function CartPage() {
         timestamp: Date.now()
       }));
       
-      // Очищаем корзину
-      sessionStorage.removeItem('cart');
-      window.dispatchEvent(new Event('cartUpdated'));
+      // ❌ НЕ ОЧИЩАЕМ КОРЗИНУ!
+      // sessionStorage.removeItem('cart');
       
       // Показываем модалку с оплатой
       setShowPaymentModal(true);
@@ -354,7 +353,7 @@ export default function CartPage() {
         throw new Error('Нет информации о заказах');
       }
       
-      // ТОЛЬКО РЕДИРЕКТ НА KASPI
+      // ✅ ТОЛЬКО РЕДИРЕКТ НА KASPI
       window.location.href = KASPI_QR_URL;
       
     } catch (error) {
