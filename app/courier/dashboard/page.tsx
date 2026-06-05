@@ -1071,21 +1071,16 @@ export default function CourierDashboard() {
           
           {showOrdersList && availableOrders.length > 0 && (
             <div className="mt-3 space-y-3">
-              {availableOrders.map((order) => (
-                <div key={order.order_id} className="bg-white rounded-xl p-4 shadow-sm">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="font-semibold">{order.supplier_name}</p>
-                      <p className="text-xs text-gray-500">{order.amount} ₸</p>
-                    </div>
-                    <span className="font-bold text-emerald-600">{order.amount} ₸</span>
-                  </div>
-                  <button onClick={() => takeOrder(order.order_id)} className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm flex items-center justify-center gap-2">
-                    <CarIcon size={16} className="text-white" />
-                    Взять заказ
-                  </button>
-                </div>
-              ))}
+     {availableOrders.map((order) => (
+  <div key={order.order_id}>
+    {/* ✅ Показываем только delivery заказы */}
+    {order.delivery_type === 'delivery' && (
+      <button onClick={() => takeOrder(order.order_id)}>
+        Взять заказ
+      </button>
+    )}
+  </div>
+))}
             </div>
           )}
         </div>
