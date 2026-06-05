@@ -27,11 +27,33 @@ export default function OffersPage() {
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<number | null>(null);
 
+  // ✅ Получение токена
+  const getAuthToken = () => sessionStorage.getItem('authToken');
+
+  // ✅ Авторизованный fetch
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    
+    if (!token) {
+      console.error('❌ Нет токена');
+      router.push('/login');
+      throw new Error('No token');
+    }
+    
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+  };
+
   const fetchBags = async () => {
     try {
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags', {
-        credentials: 'include'
-      });
+      // ✅ Для получения сюрпризов токен не обязателен
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
       const data = await response.json();
       setBags(data);
     } catch (error) {
@@ -43,7 +65,7 @@ export default function OffersPage() {
 
   // Проверка авторизации
   useEffect(() => {
-    const token = sessionStorage.getItem('authToken');
+    const token = getAuthToken();
     if (!token) {
       router.push('/login');
     }
@@ -66,10 +88,9 @@ export default function OffersPage() {
     try {
       console.log('🛒 Добавление в корзину:', bag.id, bag.name);
       
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/add', {
+      // ✅ ИСПРАВЛЕНО: добавляем Authorization header!
+      const response = await authFetch('https://toogood-2ncf.onrender.com/api/cart/add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ bag_id: bag.id, quantity: 1 })
       });
 
@@ -77,13 +98,12 @@ export default function OffersPage() {
       console.log('📦 Ответ сервера:', data);
 
       if (response.ok && data.success) {
-        // ✅ ИСПОЛЬЗУЕМ sessionStorage вместо localStorage
+        // ✅ Используем sessionStorage
         const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === bag.id);
         
         if (existing) {
           existing.quantity += 1;
-          // Сохраняем информацию о резервации
           existing.reservation_id = data.reservation_id;
           existing.expires_at = data.expires_at;
         } else {

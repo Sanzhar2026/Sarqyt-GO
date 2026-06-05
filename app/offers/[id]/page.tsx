@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useLanguage } from '../../layout';
 
 interface SurpriseBag {
@@ -27,11 +26,32 @@ export default function OffersPage() {
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<number | null>(null);
 
+  // ✅ Получение токена
+  const getAuthToken = () => sessionStorage.getItem('authToken');
+
+  // ✅ Авторизованный fetch
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    
+    if (!token) {
+      console.error('❌ Нет токена');
+      router.push('/login');
+      throw new Error('No token');
+    }
+    
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+  };
+
   const fetchBags = async () => {
     try {
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags', {
-        credentials: 'include'
-      });
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
       const data = await response.json();
       setBags(data);
     } catch (error) {
@@ -40,6 +60,14 @@ export default function OffersPage() {
       setLoading(false);
     }
   };
+
+  // ✅ Проверка авторизации при загрузке
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.push('/login');
+    }
+  }, [router]);
 
   useEffect(() => {
     fetchBags();
@@ -58,10 +86,9 @@ export default function OffersPage() {
     try {
       console.log('🛒 Добавление в корзину:', bag.id, bag.name);
       
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/cart/add', {
+      // ✅ ИСПРАВЛЕНО: передаем Bearer токен!
+      const response = await authFetch('https://toogood-2ncf.onrender.com/api/cart/add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ bag_id: bag.id, quantity: 1 })
       });
 
@@ -69,12 +96,14 @@ export default function OffersPage() {
       console.log('📦 Ответ сервера:', data);
 
       if (response.ok && data.success) {
-        // Добавляем в localStorage
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        // ✅ ИСПРАВЛЕНО: используем sessionStorage вместо localStorage
+        const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === bag.id);
         
         if (existing) {
           existing.quantity += 1;
+          existing.reservation_id = data.reservation_id;
+          existing.expires_at = data.expires_at;
         } else {
           cart.push({
             id: bag.id,
@@ -84,14 +113,16 @@ export default function OffersPage() {
             originalPrice: bag.original_price,
             discount: bag.discount_percentage,
             imageUrl: bag.image_url,
-            quantity: 1
+            quantity: 1,
+            reservation_id: data.reservation_id,
+            expires_at: data.expires_at
           });
         }
         
-        localStorage.setItem('cart', JSON.stringify(cart));
+        sessionStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
         
-        alert(`✅ ${bag.name} добавлен в корзину!`);
+        alert(`✅ ${bag.name} добавлен в корзину! У вас 15 минут на оплату.`);
         router.push('/cart');
       } else {
         alert(data.detail || data.message || '❌ Ошибка при добавлении');
@@ -118,7 +149,6 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header с кнопками языка */}
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">
@@ -153,7 +183,6 @@ export default function OffersPage() {
         </p>
       </div>
 
-      {/* Bags Grid */}
       <div className="px-4 py-6">
         {bags.length === 0 ? (
           <div className="text-center py-12">
