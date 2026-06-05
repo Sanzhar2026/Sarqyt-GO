@@ -9,16 +9,30 @@ import Image from 'next/image';
 const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: false });
 const DeliveryMapWithRoute = dynamic(() => import('../../components/DeliveryMapWithRoute'), { ssr: false });
 
-// ИКОНКИ
+// ИКОНКИ С ПРОЗРАЧНЫМ ФОНОМ (как в Яндекс.Еда)
 const CarIcon = ({ size = 24, className = "" }) => (
-  <div className={`inline-flex items-center justify-center ${className}`}>
-    <Image src="/car.jpg" alt="Car" width={size} height={size} className="object-contain" />
+  <div className={`inline-flex items-center justify-center ${className}`} style={{ background: 'transparent' }}>
+    <Image 
+      src="/car.png" 
+      alt="Car" 
+      width={size} 
+      height={size} 
+      className="object-contain"
+      style={{ background: 'transparent' }}
+    />
   </div>
 );
 
 const PersonIcon = ({ size = 24, className = "" }) => (
-  <div className={`inline-flex items-center justify-center ${className}`}>
-    <Image src="/person.png" alt="Person" width={size} height={size} className="object-contain" />
+  <div className={`inline-flex items-center justify-center ${className}`} style={{ background: 'transparent' }}>
+    <Image 
+      src="/person.png" 
+      alt="Person" 
+      width={size} 
+      height={size} 
+      className="object-contain"
+      style={{ background: 'transparent' }}
+    />
   </div>
 );
 
@@ -57,6 +71,7 @@ export default function CourierDashboard() {
   const [switching, setSwitching] = useState(false);
   const [locating, setLocating] = useState(false);
   const [arriving, setArriving] = useState(false);
+  const [pickupLoading, setPickupLoading] = useState(false);
   
   const [currentProgress, setCurrentProgress] = useState(0);
   const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
@@ -257,18 +272,16 @@ export default function CourierDashboard() {
     }
   }, []);
 
-// Найди функцию connectWebSocket и ЗАМЕНИ её на эту:
-
-const connectWebSocket = () => {
+  const connectWebSocket = () => {
     const token = sessionStorage.getItem('courierToken');
     
     if (!token || wsFailed || wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
-        console.log('❌ WebSocket connection failed permanently');
-        return;
+      console.log('❌ WebSocket connection failed permanently');
+      return;
     }
     
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.close();
+      wsRef.current.close();
     }
     
     const encodedToken = encodeURIComponent(token);
@@ -281,136 +294,133 @@ const connectWebSocket = () => {
     let lastPongTime = Date.now();
     
     const connectionTimeout = setTimeout(() => {
-        if (ws.readyState !== WebSocket.OPEN) {
-            console.log('⚠️ WebSocket connection timeout');
-            ws.close();
-        }
+      if (ws.readyState !== WebSocket.OPEN) {
+        console.log('⚠️ WebSocket connection timeout');
+        ws.close();
+      }
     }, 10000);
     
     ws.onopen = () => {
-        console.log('✅ WebSocket connected');
-        clearTimeout(connectionTimeout);
-        setWsReconnectAttempts(0);
-        setWsFailed(false);
-        lastPongTime = Date.now();
-        
-        // Отправляем ping
-        ws.send(JSON.stringify({ type: "ping" }));
-        
-        // Heartbeat интервал
-        heartbeatInterval = setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) {
-                // Проверяем когда последний раз был pong
-                if (Date.now() - lastPongTime > 45000) {
-                    console.log('⚠️ No pong received, reconnecting...');
-                    ws.close();
-                    return;
-                }
-                ws.send(JSON.stringify({ type: "ping" }));
-                console.log('💓 Heartbeat sent');
-            }
-        }, 25000);
-        
-        if (userLocation) {
-            ws.send(JSON.stringify({
-                type: "update_location",
-                lat: userLocation.lat,
-                lon: userLocation.lon
-            }));
+      console.log('✅ WebSocket connected');
+      clearTimeout(connectionTimeout);
+      setWsReconnectAttempts(0);
+      setWsFailed(false);
+      lastPongTime = Date.now();
+      
+      ws.send(JSON.stringify({ type: "ping" }));
+      
+      heartbeatInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          if (Date.now() - lastPongTime > 45000) {
+            console.log('⚠️ No pong received, reconnecting...');
+            ws.close();
+            return;
+          }
+          ws.send(JSON.stringify({ type: "ping" }));
+          console.log('💓 Heartbeat sent');
         }
+      }, 25000);
+      
+      if (userLocation) {
+        ws.send(JSON.stringify({
+          type: "update_location",
+          lat: userLocation.lat,
+          lon: userLocation.lon
+        }));
+      }
     };
     
     ws.onmessage = async (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            
-            if (data.type === 'pong') {
-                lastPongTime = Date.now();
-                console.log('💓 Heartbeat received');
-                return;
-            }
-            
-            if (data.type === 'ping') {
-                ws.send(JSON.stringify({ type: "pong" }));
-                return;
-            }
-            
-            console.log('📨 WebSocket message:', data.type);
-            
-            switch(data.type) {
-                case 'connected':
-                    console.log('✅ WebSocket confirmed for courier:', data.courier_id);
-                    break;
-                case 'new_order_for_courier':
-                    showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
-                    setAvailableOrders(prev => [{
-                        order_id: data.data.order_id,
-                        order_number: data.data.order_number,
-                        supplier_name: data.data.supplier_name,
-                        distance_km: data.data.distance_km || 0,
-                        estimated_time_minutes: data.data.estimated_time_minutes || 0,
-                        amount: data.data.amount,
-                        bag_name: data.data.bag_name,
-                        customer_address: data.data.customer_address,
-                        supplier_lat: data.data.supplier_lat,
-                        supplier_lon: data.data.supplier_lon,
-                        customer_lat: data.data.customer_lat,
-                        customer_lon: data.data.customer_lon
-                    }, ...prev]);
-                    break;
-                case 'order_assigned':
-                    showNotification('✅ Заказ назначен вам!', 'success');
-                    await fetchStatus();
-                    if (data.order_id) await fetchCurrentOrder(data.order_id);
-                    break;
-                case 'delivery_confirmed':
-                    showNotification('✅ Клиент подтвердил получение заказа!', 'success');
-                    await fetchStatus();
-                    if (currentOrder) await fetchCurrentOrder(currentOrder.id);
-                    break;
-                case 'order_cancelled':
-                    showNotification(`❌ Заказ #${data.data.order_number} отменен!`, 'error');
-                    setCurrentOrder(null);
-                    setOrderStatus(null);
-                    setCurrentProgress(0);
-                    await fetchStatus();
-                    await fetchAvailableOrders();
-                    break;
-                default:
-                    console.log('Unknown message type:', data.type);
-            }
-        } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'pong') {
+          lastPongTime = Date.now();
+          console.log('💓 Heartbeat received');
+          return;
         }
+        
+        if (data.type === 'ping') {
+          ws.send(JSON.stringify({ type: "pong" }));
+          return;
+        }
+        
+        console.log('📨 WebSocket message:', data.type);
+        
+        switch(data.type) {
+          case 'connected':
+            console.log('✅ WebSocket confirmed for courier:', data.courier_id);
+            break;
+          case 'new_order_for_courier':
+            showNotification(`🆕 Новый заказ! ${data.data.bag_name} на ${data.data.amount} ₸`, 'info');
+            setAvailableOrders(prev => [{
+              order_id: data.data.order_id,
+              order_number: data.data.order_number,
+              supplier_name: data.data.supplier_name,
+              distance_km: data.data.distance_km || 0,
+              estimated_time_minutes: data.data.estimated_time_minutes || 0,
+              amount: data.data.amount,
+              bag_name: data.data.bag_name,
+              customer_address: data.data.customer_address,
+              supplier_lat: data.data.supplier_lat,
+              supplier_lon: data.data.supplier_lon,
+              customer_lat: data.data.customer_lat,
+              customer_lon: data.data.customer_lon
+            }, ...prev]);
+            break;
+          case 'order_assigned':
+            showNotification('✅ Заказ назначен вам!', 'success');
+            await fetchStatus();
+            if (data.order_id) await fetchCurrentOrder(data.order_id);
+            break;
+          case 'delivery_confirmed':
+            showNotification('✅ Клиент подтвердил получение заказа!', 'success');
+            await fetchStatus();
+            if (currentOrder) await fetchCurrentOrder(currentOrder.id);
+            break;
+          case 'order_cancelled':
+            showNotification(`❌ Заказ #${data.data.order_number} отменен!`, 'error');
+            setCurrentOrder(null);
+            setOrderStatus(null);
+            setCurrentProgress(0);
+            await fetchStatus();
+            await fetchAvailableOrders();
+            break;
+          default:
+            console.log('Unknown message type:', data.type);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
     };
     
     ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+      console.error('WebSocket error:', error);
     };
     
     ws.onclose = (event) => {
-        console.log(`WebSocket closed - Code: ${event.code}`);
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
-        
-        if (event.code === 1008) {
-            console.log('Auth error, not reconnecting');
-            return;
-        }
-        
-        if (isOnline && !wsFailed && wsReconnectAttempts < MAX_WS_RECONNECT_ATTEMPTS) {
-            const newAttempts = wsReconnectAttempts + 1;
-            setWsReconnectAttempts(newAttempts);
-            const delay = Math.min(30000, 5000 * newAttempts); // Exponential backoff
-            console.log(`Reconnecting in ${delay}ms (attempt ${newAttempts}/${MAX_WS_RECONNECT_ATTEMPTS})`);
-            wsReconnectTimeoutRef.current = setTimeout(() => {
-                if (isOnline) connectWebSocket();
-            }, delay);
-        } else if (wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
-            setWsFailed(true);
-            showNotification('Не удалось подключиться к серверу. Обновите страницу.', 'error');
-        }
+      console.log(`WebSocket closed - Code: ${event.code}`);
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      
+      if (event.code === 1008) {
+        console.log('Auth error, not reconnecting');
+        return;
+      }
+      
+      if (isOnline && !wsFailed && wsReconnectAttempts < MAX_WS_RECONNECT_ATTEMPTS) {
+        const newAttempts = wsReconnectAttempts + 1;
+        setWsReconnectAttempts(newAttempts);
+        const delay = Math.min(30000, 5000 * newAttempts);
+        console.log(`Reconnecting in ${delay}ms (attempt ${newAttempts}/${MAX_WS_RECONNECT_ATTEMPTS})`);
+        wsReconnectTimeoutRef.current = setTimeout(() => {
+          if (isOnline) connectWebSocket();
+        }, delay);
+      } else if (wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
+        setWsFailed(true);
+        showNotification('Не удалось подключиться к серверу. Обновите страницу.', 'error');
+      }
     };
-};
+  };
 
   const startLocationTracking = () => {
     if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
@@ -560,6 +570,35 @@ const connectWebSocket = () => {
     } catch (error) {
       console.error('Error taking order:', error);
       alert('Ошибка при взятии заказа');
+    }
+  };
+
+  // ✅ НОВАЯ ФУНКЦИЯ: Забрал заказ из ресторана
+  const pickupOrder = async () => {
+    if (!currentOrder) return;
+    
+    setPickupLoading(true);
+    const token = sessionStorage.getItem('courierToken');
+    
+    try {
+      const res = await fetch(`/api/courier/pickup-order/${currentOrder.id}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        showNotification('✅ Заказ забран из ресторана! Едем к клиенту.', 'success');
+        await fetchStatus();
+        await fetchCurrentOrder(currentOrder.id);
+      } else {
+        alert(data.message || 'Ошибка');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Ошибка при отметке получения заказа');
+    } finally {
+      setPickupLoading(false);
     }
   };
 
@@ -896,13 +935,35 @@ const connectWebSocket = () => {
         </div>
       </div>
 
-      {/* МАРШРУТ ДОСТАВКИ */}
-      {currentOrder && currentOrder.status === 'out_for_delivery' && (
+      {/* Маршрут ДО РЕСТОРАНА (когда заказ не забран) */}
+      {currentOrder && currentOrder.status === 'ready_for_pickup' && (
         <div className="px-4 mb-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <CarIcon size={20} className="text-gray-700" />
-              Маршрут доставки
+              <LocationIcon size={20} className="text-red-500" />
+              Маршрут до ресторана
+            </h2>
+            <DeliveryMapWithRoute
+              orderId={currentOrder.id}
+              startLat={userLocation?.lat || 0}
+              startLon={userLocation?.lon || 0}
+              endLat={currentOrder.supplier?.lat || 0}
+              endLon={currentOrder.supplier?.lon || 0}
+              supplierName={currentOrder.supplier?.business_name || 'Ресторан'}
+              customerAddress="Ресторан"
+              onProgressUpdate={(progress) => console.log(`🚚 Прогресс до ресторана: ${progress}%`)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Маршрут ДО КЛИЕНТА (когда заказ забран) */}
+      {currentOrder && currentOrder.status === 'picked_up' && (
+        <div className="px-4 mb-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <CarIcon size={20} className="text-blue-600" />
+              Маршрут до клиента
             </h2>
             <DeliveryMapWithRoute
               orderId={currentOrder.id}
@@ -939,20 +1000,26 @@ const connectWebSocket = () => {
               </div>
             </div>
             
-            <div className="mt-4 mb-4">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Прогресс доставки</span>
-                <span className="font-semibold flex items-center gap-1">
-                  {orderStatus === 'almost_done' && <CarIcon size={14} className="text-orange-500" />}
-                  {orderStatus === 'almost_done' ? ' Почти закончил' : `${currentProgress}%`}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                <div className="bg-emerald-600 h-3 rounded-full transition-all duration-500" style={{ width: `${currentProgress}%` }} />
-              </div>
-            </div>
+            {/* Кнопка "Забрал из ресторана" */}
+            {currentOrder.status === 'ready_for_pickup' && (
+              <button
+                onClick={pickupOrder}
+                disabled={pickupLoading}
+                className="w-full bg-orange-600 text-white py-4 rounded-xl font-semibold mt-2 flex items-center justify-center gap-2 text-lg"
+              >
+                {pickupLoading ? (
+                  <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Загрузка...</>
+                ) : (
+                  <>
+                    <DeliveryIcon size={20} className="text-white" />
+                    <span>📦 Забрал заказ из ресторана</span>
+                  </>
+                )}
+              </button>
+            )}
             
-            {currentOrder.status === 'out_for_delivery' && (
+            {/* Кнопка "Я приехал" */}
+            {currentOrder.status === 'picked_up' && (
               <button
                 onClick={courierArrived}
                 disabled={arriving}
