@@ -9,7 +9,7 @@ import Image from 'next/image';
 const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: false });
 const DeliveryMapWithRoute = dynamic(() => import('../../components/DeliveryMapWithRoute'), { ssr: false });
 
-// ИКОНКИ С ПРОЗРАЧНЫМ ФОНОМ (как в Яндекс.Еда)
+// ИКОНКИ
 const CarIcon = ({ size = 24, className = "" }) => (
   <div className={`inline-flex items-center justify-center ${className}`} style={{ background: 'transparent' }}>
     <Image 
@@ -573,7 +573,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ НОВАЯ ФУНКЦИЯ: Забрал заказ из ресторана
   const pickupOrder = async () => {
     if (!currentOrder) return;
     
@@ -935,8 +934,8 @@ export default function CourierDashboard() {
         </div>
       </div>
 
-      {/* Маршрут ДО РЕСТОРАНА (когда заказ не забран) */}
-      {currentOrder && currentOrder.status === 'ready_for_pickup' && (
+      {/* Маршрут ДО РЕСТОРАНА */}
+      {currentOrder && currentOrder.status === 'ready_for_pickup' && currentOrder.supplier?.lat && currentOrder.supplier?.lon && userLocation && (
         <div className="px-4 mb-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
@@ -945,20 +944,21 @@ export default function CourierDashboard() {
             </h2>
             <DeliveryMapWithRoute
               orderId={currentOrder.id}
-              startLat={userLocation?.lat || 0}
-              startLon={userLocation?.lon || 0}
-              endLat={currentOrder.supplier?.lat || 0}
-              endLon={currentOrder.supplier?.lon || 0}
-              supplierName={currentOrder.supplier?.business_name || 'Ресторан'}
+              startLat={userLocation.lat}
+              startLon={userLocation.lon}
+              endLat={currentOrder.supplier.lat}
+              endLon={currentOrder.supplier.lon}
+              supplierName={currentOrder.supplier.business_name || 'Ресторан'}
               customerAddress="Ресторан"
+              courierLocation={userLocation}
               onProgressUpdate={(progress) => console.log(`🚚 Прогресс до ресторана: ${progress}%`)}
             />
           </div>
         </div>
       )}
 
-      {/* Маршрут ДО КЛИЕНТА (когда заказ забран) */}
-      {currentOrder && currentOrder.status === 'picked_up' && (
+      {/* Маршрут ДО КЛИЕНТА */}
+      {currentOrder && currentOrder.status === 'picked_up' && currentOrder.customer_lat && currentOrder.customer_lon && userLocation && (
         <div className="px-4 mb-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
@@ -967,12 +967,13 @@ export default function CourierDashboard() {
             </h2>
             <DeliveryMapWithRoute
               orderId={currentOrder.id}
-              startLat={userLocation?.lat || currentOrder.supplier?.lat || 0}
-              startLon={userLocation?.lon || currentOrder.supplier?.lon || 0}
-              endLat={currentOrder.customer_lat || 0}
-              endLon={currentOrder.customer_lon || 0}
+              startLat={userLocation.lat}
+              startLon={userLocation.lon}
+              endLat={currentOrder.customer_lat}
+              endLon={currentOrder.customer_lon}
               supplierName={currentOrder.supplier?.business_name || 'Ресторан'}
               customerAddress={currentOrder.customer_address || 'Адрес клиента'}
+              courierLocation={userLocation}
               onProgressUpdate={(progress) => console.log(`🚚 Прогресс доставки: ${progress}%`)}
             />
           </div>
@@ -980,7 +981,7 @@ export default function CourierDashboard() {
       )}
 
       {/* Текущий заказ */}
-      {currentOrder && currentOrder.status !== 'delivered' && (
+      {currentOrder && currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
         <div className="px-4 mb-6 pb-40">
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h2 className="font-bold text-lg mb-4">📦 Текущий заказ #{currentOrder.order_number}</h2>
@@ -1071,16 +1072,21 @@ export default function CourierDashboard() {
           
           {showOrdersList && availableOrders.length > 0 && (
             <div className="mt-3 space-y-3">
-     {availableOrders.map((order) => (
-  <div key={order.order_id}>
-    {/* ✅ Показываем только delivery заказы */}
-    {order.delivery_type === 'delivery' && (
-      <button onClick={() => takeOrder(order.order_id)}>
-        Взять заказ
-      </button>
-    )}
-  </div>
-))}
+              {availableOrders.map((order) => (
+                <div key={order.order_id} className="bg-white rounded-xl p-4 shadow-sm">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-semibold">{order.supplier_name}</p>
+                      <p className="text-xs text-gray-500">{order.amount} ₸</p>
+                    </div>
+                    <span className="font-bold text-emerald-600">{order.amount} ₸</span>
+                  </div>
+                  <button onClick={() => takeOrder(order.order_id)} className="w-full bg-emerald-600 text-white py-2 rounded-xl text-sm flex items-center justify-center gap-2">
+                    <CarIcon size={16} className="text-white" />
+                    Взять заказ
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
