@@ -570,7 +570,7 @@ export default function CartPage() {
           {/* Логотип Kaspi */}
           <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-2 shadow-md">
             <Image 
-              src="/kaspi.png" 
+              src="/kasp.png" 
               alt="Kaspi" 
               width={48} 
               height={48}
@@ -598,7 +598,7 @@ export default function CartPage() {
           </p>
           {timeLeft && timeLeft > 0 && (
             <p className="text-xs text-gray-400 mt-2">
-              ⏰ Осталось: {formatTimeLeft(timeLeft)}
+              Осталось: {formatTimeLeft(timeLeft)}
             </p>
           )}
         </div>
