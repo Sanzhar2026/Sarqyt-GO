@@ -577,8 +577,7 @@ export default function CartPage() {
               className="object-contain"
             />
           </div>
-          <h2 className="text-xl font-bold text-white">Kaspi</h2>
-          <p className="text-emerald-100 text-xs">Kaspi.kz</p>
+        
         </div>
       </div>
       
@@ -616,7 +615,7 @@ export default function CartPage() {
             </>
           ) : (
             <>
-              <Image src="/kaspi.png" alt="Kaspi" width={24} height={24} className="brightness-0 invert" />
+              
               <span>Оплатить через Kaspi</span>
             </>
           )}
