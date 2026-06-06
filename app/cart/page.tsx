@@ -560,63 +560,80 @@ export default function CartPage() {
         ))}
       </div>
 
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full">
-            <div className="p-6">
-              <div className="text-center mb-6">
-                <div className="text-6xl mb-3">📱</div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].paymentMethod}</h2>
-                <p className="text-gray-500">
-                  {t[lang].amount}: <span className="font-bold text-emerald-600 text-xl">{getTotalPrice()} ₸</span>
-                </p>
-                {timeLeft && timeLeft > 0 && (
-                  <p className="text-sm text-orange-600 mt-2">
-                    ⏰ {t[lang].timeRemaining}: {formatTimeLeft(timeLeft)}
-                  </p>
-                )}
-              </div>
-              
-              <button
-                onClick={handleKaspiPayment}
-                disabled={processingStep === 'processing'}
-                className="w-full p-5 rounded-2xl border-2 border-[#EA0033] bg-[#EA0033]/5 mb-4 transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-50"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-[#EA0033] rounded-xl flex items-center justify-center">
-                    <span className="text-white font-bold text-xl">K</span>
-                  </div>
-                  <div className="flex-1 text-left">
-                    <h3 className="font-bold text-lg">Kaspi QR</h3>
-                    <p className="text-sm text-gray-500">
-                      {processingStep === 'processing' ? t[lang].redirecting : t[lang].pay}
-                    </p>
-                  </div>
-                  {processingStep === 'processing' ? (
-                    <div className="w-6 h-6 border-2 border-[#EA0033] border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <span className="text-2xl">→</span>
-                  )}
-                </div>
-              </button>
-
-              <div className="mt-6 p-3 bg-blue-50 rounded-xl">
-                <p className="text-xs text-blue-700 text-center">
-                  🔒 {lang === 'kz' ? 'Kaspi.kz төлем бетіне өтесіз' : 'Вы перейдете на страницу оплаты Kaspi.kz'}
-                </p>
-              </div>
-
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="w-full mt-4 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50"
-              >
-                {t[lang].back}
-              </button>
-            </div>
+ {/* Payment Modal - Sarqyn GO Style */}
+{showPaymentModal && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-slide-up">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-5">
+        <div className="flex items-center justify-center gap-3">
+          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Kaspi</h2>
+            <p className="text-emerald-100 text-sm">Оплата через Kaspi</p>
           </div>
         </div>
-      )}
+      </div>
+      
+      {/* Body */}
+      <div className="p-6">
+        {/* Сумма */}
+        <div className="text-center mb-6">
+          <p className="text-gray-500 text-sm mb-1">Сумма к оплате</p>
+          <p className="text-3xl font-bold text-emerald-600">
+            {getTotalPrice().toLocaleString()} ₸
+          </p>
+          {timeLeft && timeLeft > 0 && (
+            <p className="text-xs text-gray-400 mt-2">
+              ⏰ Осталось: {formatTimeLeft(timeLeft)}
+            </p>
+          )}
+        </div>
+        
+        {/* Кнопка Kaspi */}
+        <button
+          onClick={handleKaspiPayment}
+          disabled={processingStep === 'processing'}
+          className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+        >
+          {processingStep === 'processing' ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Перенаправление...</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <span>Оплатить Kaspi</span>
+            </>
+          )}
+        </button>
+        
+        {/* Защищенная оплата */}
+        <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-400">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <span>Безопасная оплата через Kaspi</span>
+        </div>
+        
+        {/* Кнопка назад */}
+        <button
+          onClick={() => setShowPaymentModal(false)}
+          className="w-full mt-4 py-3 rounded-xl border border-gray-200 text-gray-500 font-medium hover:bg-gray-50 transition"
+        >
+          Вернуться
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
