@@ -1,3 +1,4 @@
+// app/components/OfferCard.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,119 +6,184 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-interface OfferCardProps {
+interface SurpriseItem {
+  name: string;
+  quantity: number;
+  image: string;
+}
+
+interface SurprisePackage {
   id: number;
   name: string;
+  description: string;
+  image: string;
+  items: SurpriseItem[];
+  totalItems: number;
+  originalPrice: number;
+  discountedPrice: number;
+  discount: number;
+}
+
+// 🎁 СЮРПРИЗ-ПАКЕТЫ
+const surprisePackages: SurprisePackage[] = [
+  {
+    id: 1,
+    name: "🍕 Пицца-сет 'Итальянский ужин'",
+    description: "Две большие пиццы для большой компании",
+    image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop",
+    items: [
+      { name: "Маргарита пицца", quantity: 1, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=200&h=150&fit=crop" },
+      { name: "Пепперони пицца", quantity: 1, image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=200&h=150&fit=crop" },
+      { name: "Сырные палочки", quantity: 1, image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop" },
+      { name: "Кока-кола 0.5л", quantity: 2, image: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=200&h=150&fit=crop" }
+    ],
+    totalItems: 5,
+    originalPrice: 8900,
+    discountedPrice: 5900,
+    discount: 34
+  },
+  {
+    id: 2,
+    name: "🍣 Суши-сет 'Самурай'",
+    description: "Классический набор японской кухни",
+    image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop",
+    items: [
+      { name: "Филадельфия ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=200&h=150&fit=crop" },
+      { name: "Калифорния ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034184-42c7c2e5d9b8?w=200&h=150&fit=crop" },
+      { name: "Суши сет (24 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&h=150&fit=crop" },
+      { name: "Имбирь/Васаби/Соевый соус", quantity: 1, image: "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=200&h=150&fit=crop" }
+    ],
+    totalItems: 41,
+    originalPrice: 12500,
+    discountedPrice: 8900,
+    discount: 29
+  },
+  {
+    id: 3,
+    name: "🍔 Бургер-сет 'Американский'",
+    description: "Три вида бургеров с картошкой и напитками",
+    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
+    items: [
+      { name: "Гамбургер", quantity: 1, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&h=150&fit=crop" },
+      { name: "Чизбургер", quantity: 1, image: "https://images.unsplash.com/photo-1525059696034-4967a8e1dca2?w=200&h=150&fit=crop" },
+      { name: "Чикен бургер", quantity: 1, image: "https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=200&h=150&fit=crop" },
+      { name: "Картошка фри", quantity: 2, image: "https://images.unsplash.com/photo-1630384060421-cf20c0e0e2a1?w=200&h=150&fit=crop" },
+      { name: "Кока-кола 0.5л", quantity: 3, image: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=200&h=150&fit=crop" }
+    ],
+    totalItems: 8,
+    originalPrice: 7500,
+    discountedPrice: 4900,
+    discount: 35
+  },
+  {
+    id: 4,
+    name: "🍰 Десерт-сет 'Сладкоежка'",
+    description: "Для тех, кто любит сладкое",
+    image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=400&h=300&fit=crop",
+    items: [
+      { name: "Чизкейк", quantity: 1, image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop" },
+      { name: "Тирамису", quantity: 1, image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=200&h=150&fit=crop" },
+      { name: "Макаруны (6 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1569864358642-9d1684040f43?w=200&h=150&fit=crop" },
+      { name: "Лимонад", quantity: 2, image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=150&fit=crop" }
+    ],
+    totalItems: 10,
+    originalPrice: 5800,
+    discountedPrice: 3900,
+    discount: 33
+  },
+  {
+    id: 5,
+    name: "🥗 ЗОЖ-сет 'Фитнес'",
+    description: "Полезный набор для здорового питания",
+    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop",
+    items: [
+      { name: "Греческий салат", quantity: 1, image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop" },
+      { name: "Цезарь салат", quantity: 1, image: "https://images.unsplash.com/photo-1550304943-4f24f54dd8c9?w=200&h=150&fit=crop" },
+      { name: "Куриные крылья (4 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a3f58?w=200&h=150&fit=crop" },
+      { name: "Лимонад", quantity: 2, image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=150&fit=crop" }
+    ],
+    totalItems: 5,
+    originalPrice: 6800,
+    discountedPrice: 4500,
+    discount: 34
+  },
+  {
+    id: 6,
+    name: "🍕🍣 Микс-сет 'Азия & Италия'",
+    description: "Сочетание итальянской и японской кухни",
+    image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop",
+    items: [
+      { name: "Маргарита пицца", quantity: 1, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=200&h=150&fit=crop" },
+      { name: "Филадельфия ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=200&h=150&fit=crop" },
+      { name: "Калифорния ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034184-42c7c2e5d9b8?w=200&h=150&fit=crop" },
+      { name: "Картошка фри", quantity: 1, image: "https://images.unsplash.com/photo-1630384060421-cf20c0e0e2a1?w=200&h=150&fit=crop" }
+    ],
+    totalItems: 19,
+    originalPrice: 11200,
+    discountedPrice: 7900,
+    discount: 29
+  },
+  {
+    id: 7,
+    name: "🎉 Семейный сет 'Для компании'",
+    description: "Большой набор для вечеринки",
+    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
+    items: [
+      { name: "Маргарита пицца", quantity: 1, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=200&h=150&fit=crop" },
+      { name: "Пепперони пицца", quantity: 1, image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=200&h=150&fit=crop" },
+      { name: "Гамбургер", quantity: 2, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&h=150&fit=crop" },
+      { name: "Чизбургер", quantity: 2, image: "https://images.unsplash.com/photo-1525059696034-4967a8e1dca2?w=200&h=150&fit=crop" },
+      { name: "Картошка фри", quantity: 3, image: "https://images.unsplash.com/photo-1630384060421-cf20c0e0e2a1?w=200&h=150&fit=crop" },
+      { name: "Куриные крылья (6 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a3f58?w=200&h=150&fit=crop" },
+      { name: "Кока-кола 0.5л", quantity: 4, image: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=200&h=150&fit=crop" }
+    ],
+    totalItems: 15,
+    originalPrice: 15800,
+    discountedPrice: 9900,
+    discount: 37
+  },
+  {
+    id: 8,
+    name: "🍣🍰 Суши-десерт 'Азия & Сладкое'",
+    description: "Суши + десерты для сладкоежек",
+    image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop",
+    items: [
+      { name: "Филадельфия ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=200&h=150&fit=crop" },
+      { name: "Чизкейк", quantity: 1, image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop" },
+      { name: "Тирамису", quantity: 1, image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=200&h=150&fit=crop" },
+      { name: "Макаруны (4 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1569864358642-9d1684040f43?w=200&h=150&fit=crop" },
+      { name: "Лимонад", quantity: 2, image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=150&fit=crop" }
+    ],
+    totalItems: 14,
+    originalPrice: 8900,
+    discountedPrice: 5900,
+    discount: 34
+  }
+];
+
+interface OfferCardProps {
+  id: number;
   businessName: string;
   distance: string;
-  price: number;
-  originalPrice: number;
-  discount: number;
-  imageUrl: string;
-  description?: string;
   onOrderSuccess?: () => void;
 }
 
-// 🍽️ КАТЕГОРИИ БЛЮД С ИЗОБРАЖЕНИЯМИ
-const foodImages: Record<number, string> = {
-  // Пиццы
-  1: 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop', // Маргарита
-  2: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400&h=300&fit=crop', // Пепперони
-  3: 'https://images.unsplash.com/photo-1541748829015-2884d51eea6b?w=400&h=300&fit=crop', // Гавайская
-  4: 'https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=400&h=300&fit=crop', // Мясная
-  5: 'https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?w=400&h=300&fit=crop', // Вегетарианская
-  
-  // Бургеры
-  6: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop', // Гамбургер
-  7: 'https://images.unsplash.com/photo-1525059696034-4967a8e1dca2?w=400&h=300&fit=crop', // Чизбургер
-  8: 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=400&h=300&fit=crop', // Чикен бургер
-  
-  // Суши
-  9: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop', // Суши сет
-  10: 'https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=400&h=300&fit=crop', // Филадельфия
-  11: 'https://images.unsplash.com/photo-1617196034184-42c7c2e5d9b8?w=400&h=300&fit=crop', // Калифорния
-  
-  // Салаты
-  12: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop', // Греческий
-  13: 'https://images.unsplash.com/photo-1550304943-4f24f54dd8c9?w=400&h=300&fit=crop', // Цезарь
-  
-  // Напитки
-  14: 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=400&h=300&fit=crop', // Кока-кола
-  15: 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&h=300&fit=crop', // Лимонад
-  
-  // Десерты
-  16: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop', // Чизкейк
-  17: 'https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=400&h=300&fit=crop', // Тирамису
-  
-  // Закуски
-  18: 'https://images.unsplash.com/photo-1630384060421-cf20c0e0e2a1?w=400&h=300&fit=crop', // Картошка фри
-  19: 'https://images.unsplash.com/photo-1626645738196-c2a7c87a3f58?w=400&h=300&fit=crop', // Куриные крылья
-  20: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop', // Сырные палочки
-};
-
-// 🏷️ НАЗВАНИЯ БЛЮД (для отображения)
-const foodNames: Record<number, string> = {
-  1: 'Маргарита пицца',
-  2: 'Пепперони пицца',
-  3: 'Гавайская пицца',
-  4: 'Мясная пицца',
-  5: 'Вегетарианская пицца',
-  6: 'Гамбургер',
-  7: 'Чизбургер',
-  8: 'Чикен бургер',
-  9: 'Суши сет',
-  10: 'Филадельфия ролл',
-  11: 'Калифорния ролл',
-  12: 'Греческий салат',
-  13: 'Цезарь салат',
-  14: 'Кока-кола',
-  15: 'Лимонад',
-  16: 'Чизкейк',
-  17: 'Тирамису',
-  18: 'Картошка фри',
-  19: 'Куриные крылья',
-  20: 'Сырные палочки',
-};
-
-// 💰 ЦЕНЫ
-const foodPrices: Record<number, number> = {
-  1: 2500, 2: 3200, 3: 3000, 4: 3800, 5: 2800,
-  6: 1800, 7: 2100, 8: 1900,
-  9: 3000, 10: 4200, 11: 3800,
-  12: 1500, 13: 2200,
-  14: 500, 15: 800,
-  16: 1200, 17: 1400,
-  18: 800, 19: 1800, 20: 1500,
-};
-
 export default function OfferCard({
   id,
-  name,
   businessName,
   distance,
-  price,
-  originalPrice,
-  discount,
-  imageUrl,
-  description,
   onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
   const [addingToCart, setAddingToCart] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [localImageUrl, setLocalImageUrl] = useState<string>('');
+  const [showDetails, setShowDetails] = useState(false);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Установка изображения на основе ID
-  useEffect(() => {
-    if (id && foodImages[id]) {
-      setLocalImageUrl(foodImages[id]);
-    } else {
-      setLocalImageUrl(imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop');
-    }
-  }, [id, imageUrl]);
+  // Получаем данные сюрприз-пакета
+  const surprise = surprisePackages.find(p => p.id === id) || surprisePackages[0];
 
   // Проверка авторизации
   useEffect(() => {
@@ -164,29 +230,6 @@ export default function OfferCard({
     checkAuth();
   }, [API_URL]);
 
-  const getCategoryImage = () => {
-    if (localImageUrl) return localImageUrl;
-    
-    const lowerName = (name || foodNames[id] || '').toLowerCase();
-    if (lowerName.includes('бургер')) return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
-    if (lowerName.includes('пицца')) return 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop';
-    if (lowerName.includes('суши')) return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
-  };
-
-  const getDisplayName = () => {
-    return name || foodNames[id] || 'Блюдо';
-  };
-
-  const getDisplayPrice = () => {
-    return price || foodPrices[id] || 0;
-  };
-
-  const getDisplayOriginalPrice = () => {
-    return originalPrice > price ? originalPrice : 0;
-  };
-
-  // Добавление в корзину с бронированием
   const addToCart = async () => {
     if (!isAuthenticated) {
       alert('Пожалуйста, войдите в аккаунт');
@@ -214,32 +257,35 @@ export default function OfferCard({
         const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === id);
         
+        const cartItem = {
+          id: surprise.id,
+          name: surprise.name,
+          businessName,
+          price: surprise.discountedPrice,
+          originalPrice: surprise.originalPrice,
+          discount: surprise.discount,
+          imageUrl: surprise.image,
+          quantity: 1,
+          description: surprise.description,
+          surpriseItems: surprise.items,
+          totalItems: surprise.totalItems,
+          reservation_id: data.reservation_id,
+          expires_at: data.expires_at
+        };
+        
         if (existing) {
           existing.quantity += 1;
           existing.reservation_id = data.reservation_id;
           existing.expires_at = data.expires_at;
         } else {
-          cart.push({
-            id,
-            name: getDisplayName(),
-            businessName,
-            price: getDisplayPrice(),
-            originalPrice: getDisplayOriginalPrice(),
-            discount: discount || Math.round(((getDisplayOriginalPrice() - getDisplayPrice()) / getDisplayOriginalPrice()) * 100) || 0,
-            imageUrl: getCategoryImage(),
-            quantity: 1,
-            description: description || getDisplayName(),
-            reservation_id: data.reservation_id,
-            expires_at: data.expires_at
-          });
+          cart.push(cartItem);
         }
         
         sessionStorage.setItem('cart', JSON.stringify(cart));
-        alert(`✅ ${getDisplayName()} забронирован на 15 минут! Перейдите в корзину для оплаты.`);
+        alert(`✅ ${surprise.name} забронирован на 15 минут!`);
         
         window.dispatchEvent(new Event('cartUpdated'));
         if (onOrderSuccess) onOrderSuccess();
-        window.dispatchEvent(new CustomEvent('refreshOffers'));
         
       } else {
         alert(data.detail || '❌ Товар временно недоступен');
@@ -264,63 +310,114 @@ export default function OfferCard({
     );
   }
 
-  const displayName = getDisplayName();
-  const displayPrice = getDisplayPrice();
-  const displayOriginalPrice = getDisplayOriginalPrice();
-  const displayDiscount = discount || (displayOriginalPrice > 0 ? Math.round(((displayOriginalPrice - displayPrice) / displayOriginalPrice) * 100) : 0);
-  const displayImage = getCategoryImage();
-
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-shadow">
-      <Link href={`/offers/${id}`}>
-        <div className="relative h-48">
-          <Image 
-            src={displayImage} 
-            alt={displayName} 
-            fill 
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          />
-          {displayDiscount > 0 && (
-            <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-              -{displayDiscount}%
-            </div>
-          )}
+    <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
+      {/* Изображение с бейджами */}
+      <div className="relative h-52 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
+        <Image 
+          src={surprise.image} 
+          alt={surprise.name} 
+          fill 
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
+        <div className="absolute top-3 left-3 flex gap-2">
+          <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+            -{surprise.discount}%
+          </div>
+          <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+            🎁 {surprise.totalItems} предметов
+          </div>
         </div>
-      </Link>
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white transition"
+        >
+          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </div>
       
       <div className="p-4">
+        {/* Название и ресторан */}
         <Link href={`/offers/${id}`}>
-          <h3 className="font-bold text-lg mb-1 hover:text-emerald-600">{displayName}</h3>
+          <h3 className="font-bold text-lg mb-1 hover:text-emerald-600 transition line-clamp-1">
+            {surprise.name}
+          </h3>
         </Link>
-        <p className="text-gray-500 text-sm mb-2">{businessName} • {distance}</p>
-        {description && <p className="text-gray-600 text-sm mb-3 line-clamp-2">{description}</p>}
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-gray-500 text-sm">{businessName}</p>
+          <p className="text-gray-400 text-xs">📍 {distance}</p>
+        </div>
         
+        {/* Краткое описание */}
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{surprise.description}</p>
+        
+        {/* Детальный состав сюрприза */}
+        {showDetails && (
+          <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
+            <h4 className="font-semibold text-sm mb-2 flex items-center gap-1">
+              <span>🎁</span> В состав сюрприза входит:
+            </h4>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {surprise.items.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-gray-500">Количество: {item.quantity} шт.</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 pt-2 border-t border-gray-200">
+              <p className="text-xs text-emerald-600 font-medium">
+                ✨ При отдельном заказе: {surprise.originalPrice.toLocaleString()} ₸
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                💰 Экономия: {surprise.discount}% ({Math.round(surprise.originalPrice - surprise.discountedPrice).toLocaleString()} ₸)
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-2">
           <div>
-            <span className="text-2xl font-bold text-emerald-600">{displayPrice} ₸</span>
-            {displayOriginalPrice > displayPrice && (
-              <span className="text-gray-400 line-through text-sm ml-2">{displayOriginalPrice} ₸</span>
-            )}
+            <span className="text-2xl font-bold text-emerald-600">{surprise.discountedPrice.toLocaleString()} ₸</span>
+            <span className="text-gray-400 line-through text-sm ml-2">{surprise.originalPrice.toLocaleString()} ₸</span>
+            <p className="text-xs text-gray-400 mt-1">за весь набор</p>
           </div>
           
-          <button
-            onClick={addToCart}
-            disabled={addingToCart}
-            className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50 transition flex items-center gap-2"
-          >
-            {addingToCart ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Бронирование...</span>
-              </>
-            ) : (
-              <>
-                <span>🛒</span>
-                <span>В корзину</span>
-              </>
-            )}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition text-sm"
+            >
+              {showDetails ? 'Скрыть' : 'Состав'}
+            </button>
+            
+            <button
+              onClick={addToCart}
+              disabled={addingToCart}
+              className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50 transition flex items-center gap-2"
+            >
+              {addingToCart ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Бронирование...</span>
+                </>
+              ) : (
+                <>
+                  <span>🛒</span>
+                  <span>В корзину</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
