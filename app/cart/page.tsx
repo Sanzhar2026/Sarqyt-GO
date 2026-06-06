@@ -564,17 +564,16 @@ export default function CartPage() {
 {showPaymentModal && (
   <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
     <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-slide-up">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-5">
+      {/* Header - Красный как Kaspi */}
+      <div className="bg-[#EA0033] px-6 py-5">
         <div className="flex items-center justify-center gap-3">
-          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          {/* Логотип Kaspi */}
+          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-md">
+            <span className="text-[#EA0033] font-bold text-2xl">K</span>
           </div>
           <div>
             <h2 className="text-xl font-bold text-white">Kaspi</h2>
-            <p className="text-emerald-100 text-sm">Оплата через Kaspi</p>
+            <p className="text-white/80 text-sm">Оплата через Kaspi.kz</p>
           </div>
         </div>
       </div>
@@ -584,7 +583,7 @@ export default function CartPage() {
         {/* Сумма */}
         <div className="text-center mb-6">
           <p className="text-gray-500 text-sm mb-1">Сумма к оплате</p>
-          <p className="text-3xl font-bold text-emerald-600">
+          <p className="text-3xl font-bold text-[#EA0033]">
             {getTotalPrice().toLocaleString()} ₸
           </p>
           {timeLeft && timeLeft > 0 && (
@@ -594,11 +593,11 @@ export default function CartPage() {
           )}
         </div>
         
-        {/* Кнопка Kaspi */}
+        {/* Кнопка Kaspi - Красная как у Kaspi */}
         <button
           onClick={handleKaspiPayment}
           disabled={processingStep === 'processing'}
-          className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+          className="w-full bg-[#EA0033] text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all hover:bg-[#d1002e] hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
         >
           {processingStep === 'processing' ? (
             <>
@@ -610,17 +609,17 @@ export default function CartPage() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
               </svg>
-              <span>Оплатить Kaspi</span>
+              <span>Оплатить через Kaspi</span>
             </>
           )}
         </button>
         
-        {/* Защищенная оплата */}
+        {/* Kaspi QR текст */}
         <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-400">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-[#EA0033]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
-          <span>Безопасная оплата через Kaspi</span>
+          <span>Защищено Kaspi.kz</span>
         </div>
         
         {/* Кнопка назад */}
