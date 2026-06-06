@@ -572,8 +572,8 @@ export default function CartPage() {
             <Image 
               src="/kasp.png" 
               alt="Kaspi" 
-              width={48} 
-              height={48}
+              width={248} 
+              height={248}
               className="object-contain"
             />
           </div>
