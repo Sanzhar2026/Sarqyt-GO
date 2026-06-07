@@ -9,48 +9,16 @@ interface NavItem {
   labelKz: string;
   labelRu: string;
   icon: string;
-  activeIcon?: string;
   href: string;
   isCenter?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { 
-    labelKz: 'Басты', 
-    labelRu: 'Главная',
-    icon: '🏠', 
-    activeIcon: '🏠',
-    href: '/'
-  },
-  { 
-    labelKz: 'Іздеу', 
-    labelRu: 'Поиск',
-    icon: '🔍', 
-    activeIcon: '🔍',
-    href: '/search'
-  },
-  { 
-    labelKz: '', 
-    labelRu: '',
-    icon: '💚', 
-    activeIcon: '❤️',
-    href: '/',
-    isCenter: true 
-  },
-  { 
-    labelKz: 'Себет', 
-    labelRu: 'Корзина',
-    icon: '🛒', 
-    activeIcon: '🛒',
-    href: '/cart'
-  },
-  { 
-    labelKz: 'Профиль', 
-    labelRu: 'Профиль',
-    icon: '👤', 
-    activeIcon: '👤',
-    href: '/profile'
-  },
+  { labelKz: 'Басты', labelRu: 'Главная', icon: '🏠', href: '/' },
+  { labelKz: 'Іздеу', labelRu: 'Поиск', icon: '🔍', href: '/search' },
+  { labelKz: '', labelRu: '', icon: '💚', href: '/', isCenter: true },
+  { labelKz: 'Себет', labelRu: 'Корзина', icon: '🛒', href: '/cart' },
+  { labelKz: 'Профиль', labelRu: 'Профиль', icon: '👤', href: '/profile' },
 ];
 
 export default function BottomNav() {
@@ -63,14 +31,8 @@ export default function BottomNav() {
     return lang === 'kz' ? item.labelKz : item.labelRu;
   };
 
-  const handleNavigation = (href: string) => {
-    router.push(href);
-  };
-
   const isActive = (href: string) => {
-    if (href === '/') {
-      return pathname === '/';
-    }
+    if (href === '/') return pathname === '/';
     return pathname?.startsWith(href);
   };
 
@@ -84,8 +46,8 @@ export default function BottomNav() {
             return (
               <div key={index} className="flex flex-col items-center -mt-8">
                 <div 
-                  onClick={() => handleNavigation(item.href)}
-                  className="w-16 h-16 bg-brand rounded-full flex items-center justify-center shadow-xl border-4 border-white cursor-pointer active:scale-95 transition-transform duration-200"
+                  onClick={() => router.push(item.href)}
+                  className="w-16 h-16 bg-[#367666] rounded-full flex items-center justify-center shadow-xl border-4 border-white cursor-pointer active:scale-95 transition-transform duration-200"
                 >
                   <span className="text-3xl">{item.icon}</span>
                 </div>
@@ -97,18 +59,15 @@ export default function BottomNav() {
             <Link 
               href={item.href} 
               key={index}
-              className="flex flex-col items-center py-2 px-4 rounded-xl transition-all duration-200 group"
+              className="flex flex-col items-center py-2 px-4 rounded-xl transition-all duration-200"
             >
-              {/* Иконка - серая в неактивном, зеленая в активном */}
               <span className={`text-2xl mb-1 transition-colors duration-200 ${
-                active ? 'text-brand' : 'text-gray-400 group-hover:text-brand/70'
+                active ? 'text-[#367666]' : 'text-gray-400'
               }`}>
-                {active ? (item.activeIcon || item.icon) : item.icon}
+                {item.icon}
               </span>
-              
-              {/* Текст - серый в неактивном, зеленый в активном */}
               <span className={`text-xs font-medium transition-colors duration-200 ${
-                active ? 'text-brand font-semibold' : 'text-gray-400 group-hover:text-brand/70'
+                active ? 'text-[#367666] font-semibold' : 'text-gray-400'
               }`}>
                 {getLabel(item)}
               </span>
