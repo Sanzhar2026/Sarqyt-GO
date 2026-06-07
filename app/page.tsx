@@ -522,7 +522,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* WHITE CARD CONTAINER */}
+      {/* WHITE CARD CONTAINER - same for both list and map */}
       <div className="px-6 mt-6">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
@@ -532,7 +532,6 @@ export default function HomePage() {
             <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
           </div>
           
-          {/* Content changes based on viewMode */}
           {viewMode === 'list' ? (
             <div className="p-4">
               {/* My Orders Button inside card for list mode */}
@@ -594,7 +593,7 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            // MAP VIEW - full width and height 500px inside white card
+            // MAP VIEW - inside white card, full width of card
             <div className="w-full h-[500px]">
               <SuppliersMap 
                 userLat={location.lat} 
