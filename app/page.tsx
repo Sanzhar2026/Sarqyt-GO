@@ -417,14 +417,14 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-dvh flex items-center justify-center bg-gray-50">
         <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-dvh bg-gray-50 pb-28">
       {/* WebSocket Status */}
       <div className={`fixed top-0 right-0 z-50 m-2 px-2 py-1 rounded-full text-xs ${
         isConnected ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
@@ -490,7 +490,7 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Toggle Buttons: List (left) / Map (right) - с правильными цветами */}
+      {/* Toggle Buttons: List (left) / Map (right) */}
       <div className="px-6 mt-4">
         <div className="bg-gray-100 p-1 rounded-2xl flex gap-1">
           <button
@@ -561,7 +561,8 @@ export default function HomePage() {
                 {isConnected && <span className="ml-2 text-green-500">● Live</span>}
               </div>
               
-              <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {/* УБРАЛ max-h-[400px] overflow-y-auto - теперь вся страница скроллится */}
+              <div className="space-y-4">
                 {bags.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">😢</div>
