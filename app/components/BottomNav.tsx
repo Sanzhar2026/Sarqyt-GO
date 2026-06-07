@@ -68,6 +68,7 @@ const navItems: NavItem[] = [
 ];
 
 export default function BottomNav() {
+  const pathname = usePathname();
   const router = useRouter();
   const { lang } = useLanguage();
 
@@ -76,18 +77,30 @@ export default function BottomNav() {
     return lang === 'kz' ? item.labelKz : item.labelRu;
   };
 
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/';
+    if (href === '/offers') return pathname === '/offers' || pathname === '/';
+    return pathname?.startsWith(href);
+  };
+
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-lg rounded-t-2xl max-w-md mx-auto">
       <div className="flex items-center justify-around py-2 px-4">
         {navItems.map((item, index) => {
+          const active = isActive(item.href);
+          
           if (item.isCenter) {
             return (
               <div key={index} className="flex flex-col items-center -mt-8">
                 <div 
                   onClick={() => router.push(item.href)}
-                  className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-md hover:bg-gray-200"
+                  className={`w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-md ${
+                    active ? 'bg-[#367666]' : 'bg-gray-100 hover:bg-gray-200'
+                  }`}
                 >
-                  <span className="text-gray-600">{item.icon}</span>
+                  <span className={`${active ? 'text-white' : 'text-gray-600'}`}>
+                    {item.icon}
+                  </span>
                 </div>
               </div>
             );
@@ -99,10 +112,14 @@ export default function BottomNav() {
               key={index}
               className="flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 hover:bg-gray-50 group"
             >
-              <span className="text-gray-400 mb-1 group-hover:text-gray-600 transition-colors">
+              <span className={`mb-1 transition-colors duration-200 ${
+                active ? 'text-[#367666]' : 'text-gray-400 group-hover:text-gray-600'
+              }`}>
                 {item.icon}
               </span>
-              <span className="text-xs font-medium text-gray-400 group-hover:text-gray-600 transition-colors">
+              <span className={`text-xs font-medium transition-colors duration-200 ${
+                active ? 'text-[#367666]' : 'text-gray-400 group-hover:text-gray-600'
+              }`}>
                 {getLabel(item)}
               </span>
             </Link>
