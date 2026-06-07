@@ -47,7 +47,7 @@ export default function BottomNav() {
               <div key={index} className="flex flex-col items-center -mt-8">
                 <div 
                   onClick={() => router.push(item.href)}
-                  className="w-16 h-16 bg-[#367666] rounded-full flex items-center justify-center shadow-xl border-4 border-white cursor-pointer active:scale-95 transition-transform duration-200"
+                  className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center shadow-xl border-4 border-white cursor-pointer transition-all duration-200 hover:bg-[#367666] hover:scale-105 active:scale-95"
                 >
                   <span className="text-3xl">{item.icon}</span>
                 </div>
@@ -59,15 +59,15 @@ export default function BottomNav() {
             <Link 
               href={item.href} 
               key={index}
-              className="flex flex-col items-center py-2 px-4 rounded-xl transition-all duration-200"
+              className="flex flex-col items-center py-2 px-4 rounded-xl transition-all duration-200 hover:bg-gray-50 group"
             >
               <span className={`text-2xl mb-1 transition-colors duration-200 ${
-                active ? 'text-[#367666]' : 'text-gray-400'
+                active ? 'text-[#367666]' : 'text-gray-400 group-hover:text-[#367666]'
               }`}>
                 {item.icon}
               </span>
               <span className={`text-xs font-medium transition-colors duration-200 ${
-                active ? 'text-[#367666] font-semibold' : 'text-gray-400'
+                active ? 'text-[#367666] font-semibold' : 'text-gray-400 group-hover:text-[#367666]'
               }`}>
                 {getLabel(item)}
               </span>

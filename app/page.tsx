@@ -101,7 +101,7 @@ export default function HomePage() {
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
     const toast = document.createElement('div');
     toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
-      type === 'success' ? 'bg-emerald-600' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
+      type === 'success' ? 'bg-[#367666]' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
     }`;
     toast.innerHTML = `
       <div class="flex items-center gap-3">
@@ -130,21 +130,21 @@ export default function HomePage() {
     const toast = document.createElement('div');
     toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
     toast.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-l-4 border-emerald-500">
+      <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-l-4 border-[#367666]">
         <div class="p-3">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-lg">🚚</div>
+            <div class="w-10 h-10 bg-[#367666]/10 rounded-full flex items-center justify-center text-lg">🚚</div>
             <div class="flex-1">
               <div class="flex items-center justify-between">
                 <h3 class="font-bold text-gray-800 text-sm">Курьер прибыл!</h3>
                 <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-lg leading-none ml-2">✕</button>
               </div>
-              <p class="text-emerald-600 text-xs">Заказ #${order_number} • ${courier_name}</p>
+              <p class="text-[#367666] text-xs">Заказ #${order_number} • ${courier_name}</p>
             </div>
           </div>
           
           <div class="flex gap-2 mt-3">
-            <button id="go-to-order-btn" class="flex-1 bg-emerald-500 text-white py-1.5 rounded-xl text-xs font-semibold hover:bg-emerald-600 transition">
+            <button id="go-to-order-btn" class="flex-1 bg-[#367666] text-white py-1.5 rounded-xl text-xs font-semibold hover:bg-[#2a5a4d] transition">
               📦 Перейти
             </button>
             <button id="later-btn" class="px-3 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium hover:bg-gray-200 transition">
@@ -405,7 +405,7 @@ export default function HomePage() {
 
   if (showSplash) {
     return (
-      <div className="fixed inset-0 bg-emerald-600 flex flex-col items-center justify-center z-50">
+      <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
         <div className="text-center">
           <LogoCircle />
           <h1 className="text-4xl font-bold text-white mb-2">Sarqyn Food</h1>
@@ -418,7 +418,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
+        <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full"></div>
       </div>
     );
   }
@@ -433,7 +433,7 @@ export default function HomePage() {
       </div>
 
       {/* Header */}
-      <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-[28px] leading-none font-black tracking-[-1px] text-white">
@@ -452,7 +452,7 @@ export default function HomePage() {
               <button
                 onClick={() => setLang('kz')}
                 className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'kz' ? 'bg-white text-emerald-600' : 'bg-white/20 text-white hover:bg-white/30'
+                  lang === 'kz' ? 'bg-white text-[#367666]' : 'bg-white/20 text-white hover:bg-white/30'
                 }`}
               >
                 Қаз
@@ -460,7 +460,7 @@ export default function HomePage() {
               <button
                 onClick={() => setLang('ru')}
                 className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'ru' ? 'bg-white text-emerald-600' : 'bg-white/20 text-white hover:bg-white/30'
+                  lang === 'ru' ? 'bg-white text-[#367666]' : 'bg-white/20 text-white hover:bg-white/30'
                 }`}
               >
                 Рус
@@ -486,19 +486,19 @@ export default function HomePage() {
         <input 
           type="text" 
           placeholder={t[lang].search} 
-          className="w-full px-6 py-4 rounded-2xl bg-white shadow-md text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-gray-400"
+          className="w-full px-6 py-4 rounded-2xl bg-white shadow-md text-base focus:outline-none focus:ring-2 focus:ring-[#367666] placeholder:text-gray-400"
         />
       </div>
 
-      {/* Toggle Buttons: List (left) / Map (right) */}
+      {/* Toggle Buttons: List (left) / Map (right) - с правильными цветами */}
       <div className="px-6 mt-4">
         <div className="bg-gray-100 p-1 rounded-2xl flex gap-1">
           <button
             onClick={() => setViewMode('list')}
-            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
               viewMode === 'list' 
-                ? 'bg-white shadow text-emerald-600' 
-                : 'text-gray-500'
+                ? 'bg-white shadow text-[#367666]' 
+                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -508,10 +508,10 @@ export default function HomePage() {
           </button>
           <button
             onClick={() => setViewMode('map')}
-            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
               viewMode === 'map' 
-                ? 'bg-white shadow text-emerald-600' 
-                : 'text-gray-500'
+                ? 'bg-white shadow text-[#367666]' 
+                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -537,7 +537,7 @@ export default function HomePage() {
               {/* My Orders Button inside card for list mode */}
               {user && (
                 <Link href="/orders">
-                  <button className="w-full bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-100 transition flex items-center justify-center gap-2 mb-4">
+                  <button className="w-full bg-emerald-50 text-[#367666] py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-100 transition flex items-center justify-center gap-2 mb-4">
                     <span>📋</span>
                     <span>{t[lang].myOrders}</span>
                   </button>
@@ -550,7 +550,7 @@ export default function HomePage() {
                 <button 
                   onClick={handleManualRefresh}
                   disabled={isRefreshing}
-                  className="bg-emerald-600 text-white px-3 py-1 rounded-full text-xs hover:bg-emerald-700 transition flex items-center gap-1 disabled:opacity-50"
+                  className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs hover:bg-[#2a5a4d] transition flex items-center gap-1 disabled:opacity-50"
                 >
                   {isRefreshing ? '🔄 ...' : '🔄 ' + t[lang].refresh}
                 </button>
@@ -568,7 +568,7 @@ export default function HomePage() {
                     <p className="text-gray-500">{t[lang].noOffers}</p>
                     <button 
                       onClick={handleManualRefresh}
-                      className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm"
+                      className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl text-sm"
                     >
                       🔄 Обновить
                     </button>
