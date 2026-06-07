@@ -40,37 +40,20 @@ export default function BottomNav() {
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-lg rounded-t-2xl max-w-md mx-auto">
       <div className="flex items-center justify-around py-2 px-4">
         {navItems.map((item, index) => {
-          const active = isActive(item.href);
-
-          if (item.isCenter) {
-            return (
-              <div key={index} className="flex flex-col items-center -mt-8">
-                <div 
-                  onClick={() => router.push(item.href)}
-                  className="w-16 h-16 bg-gray-400 rounded-full flex items-center justify-center shadow-xl border-4 border-white cursor-pointer transition-all duration-200 hover:bg-[#367666] hover:scale-105 active:scale-95"
-                >
-                  <span className="text-3xl">{item.icon}</span>
-                </div>
-              </div>
-            );
-          }
-
           return (
             <Link 
               href={item.href} 
               key={index}
               className="flex flex-col items-center py-2 px-4 rounded-xl transition-all duration-200 hover:bg-gray-50 group"
             >
-              <span className={`text-2xl mb-1 transition-colors duration-200 ${
-                active ? 'text-[#367666]' : 'text-gray-400 group-hover:text-[#367666]'
-              }`}>
+              <span className="text-2xl mb-1 text-gray-400 transition-colors duration-200">
                 {item.icon}
               </span>
-              <span className={`text-xs font-medium transition-colors duration-200 ${
-                active ? 'text-[#367666] font-semibold' : 'text-gray-400 group-hover:text-[#367666]'
-              }`}>
-                {getLabel(item)}
-              </span>
+              {!item.isCenter && (
+                <span className="text-xs font-medium text-gray-400 transition-colors duration-200">
+                  {getLabel(item)}
+                </span>
+              )}
             </Link>
           );
         })}
