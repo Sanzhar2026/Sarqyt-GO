@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import CategoryCard from './components/CategoryCard';
 import OfferCard from './components/OfferCard';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -342,23 +341,14 @@ export default function HomePage() {
       login: 'Кіру',
       register: 'Тіркелу',
       search: 'Мейрамхана немесе тағам іздеу...',
-      preferences: 'Қалауларыңыз',
-      discover: 'Жақын ұсыныстар',
-      filter: 'Фильтр',
       nearbyOffers: 'Жақын маңдағы ұсыныстар',
       noOffers: 'Қазір жақын маңда ұсыныс жоқ',
-      iLike: 'Маған ұнайды',
       myOrders: 'Менің тапсырыстарым',
       refresh: 'Жаңарту',
       lastUpdate: 'Соңғы жаңарту',
       connected: 'Қосылған',
       disconnected: 'Қосылым жоқ',
       nearbyShops: 'Жақын маңдағы дүкендер мен кафелер',
-      viewSurprises: 'Тосын сыйларды көру',
-      close: 'Жабу',
-      available: 'Қолжетімді',
-      from: 'бастап',
-      order: 'Тапсырыс беру',
       list: 'Тізім',
       map: 'Карта'
     },
@@ -370,23 +360,14 @@ export default function HomePage() {
       login: 'Войти',
       register: 'Регистрация',
       search: 'Поиск ресторана или блюда...',
-      preferences: 'Предпочтения',
-      discover: 'Ближайшие предложения',
-      filter: 'Фильтр',
       nearbyOffers: 'Предложения рядом',
       noOffers: 'Рядом нет предложений',
-      iLike: 'Мне нравится',
       myOrders: 'Мои заказы',
       refresh: 'Обновить',
       lastUpdate: 'Последнее обновление',
       connected: 'Подключено',
       disconnected: 'Нет соединения',
       nearbyShops: 'Ближайшие магазины и кафе',
-      viewSurprises: 'Посмотреть сюрпризы',
-      close: 'Закрыть',
-      available: 'Доступно',
-      from: 'от',
-      order: 'Заказать',
       list: 'Список',
       map: 'Карта'
     }
@@ -541,37 +522,32 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* My Orders Button (only shown in list mode) */}
-      {viewMode === 'list' && user && (
-        <div className="px-6 mt-4">
-          <Link href="/orders">
-            <button className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-2xl text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2">
-              <span>📋</span>
-              <span>{t[lang].myOrders}</span>
-            </button>
-          </Link>
-        </div>
-      )}
-
-      {/* Content: List or Map */}
-      {viewMode === 'list' ? (
-        <>
-          {/* Tabs for list view */}
-          <div className="px-6 mt-6">
-            <div className="bg-gray-100 p-1 rounded-3xl flex">
-              <button className="flex-1 py-3 rounded-3xl font-semibold text-sm bg-white shadow text-emerald-600">
-                {t[lang].discover}
-              </button>
-              <button className="flex-1 py-3 rounded-3xl font-semibold text-sm text-gray-500">
-                {t[lang].preferences}
-              </button>
-            </div>
+      {/* WHITE CARD CONTAINER */}
+      <div className="px-6 mt-6">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-gray-100">
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <span>🏪</span> {t[lang].nearbyShops}
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
           </div>
-
-          <div className="px-6 mt-6 pb-24">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="font-bold text-xl">🔥 {t[lang].nearbyOffers}</h2>
-              <div className="flex items-center gap-3">
+          
+          {/* Content changes based on viewMode */}
+          {viewMode === 'list' ? (
+            <div className="p-4">
+              {/* My Orders Button inside card for list mode */}
+              {user && (
+                <Link href="/orders">
+                  <button className="w-full bg-emerald-50 text-emerald-700 py-2.5 rounded-xl text-sm font-medium hover:bg-emerald-100 transition flex items-center justify-center gap-2 mb-4">
+                    <span>📋</span>
+                    <span>{t[lang].myOrders}</span>
+                  </button>
+                </Link>
+              )}
+              
+              {/* Refresh and offers */}
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold">🔥 {t[lang].nearbyOffers}</h3>
                 <button 
                   onClick={handleManualRefresh}
                   disabled={isRefreshing}
@@ -580,56 +556,56 @@ export default function HomePage() {
                   {isRefreshing ? '🔄 ...' : '🔄 ' + t[lang].refresh}
                 </button>
               </div>
+              
+              <div className="text-right text-xs text-gray-400 mb-3">
+                {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
+                {isConnected && <span className="ml-2 text-green-500">● Live</span>}
+              </div>
+              
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                {bags.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">😢</div>
+                    <p className="text-gray-500">{t[lang].noOffers}</p>
+                    <button 
+                      onClick={handleManualRefresh}
+                      className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm"
+                    >
+                      🔄 Обновить
+                    </button>
+                  </div>
+                ) : (
+                  bags.map((bag, bagIdx) => (
+                    <OfferCard
+                      key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
+                      id={bag.id}
+                      name={bag.name}
+                      businessName={bag.supplier_name}
+                      distance={`${(Math.random() * 5 + 1).toFixed(1)} км`}
+                      price={bag.discounted_price}
+                      originalPrice={bag.original_price}
+                      discount={bag.discount_percentage}
+                      imageUrl={bag.image_url}
+                      description={bag.description}
+                      onOrderSuccess={refreshAfterOrder}
+                    />
+                  ))
+                )}
+              </div>
             </div>
-            
-            <div className="text-right text-xs text-gray-400 mb-3">
-              {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
-              {isConnected && <span className="ml-2 text-green-500">● Live</span>}
+          ) : (
+            // MAP VIEW - full width and height 500px inside white card
+            <div className="w-full h-[500px]">
+              <SuppliersMap 
+                userLat={location.lat} 
+                userLon={location.lon}
+                onSupplierClick={handleSupplierClick}
+                showUserLocation={true}
+              />
             </div>
-            
-            <div className="space-y-6">
-              {bags.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-3xl">
-                  <div className="text-6xl mb-4">😢</div>
-                  <p className="text-gray-500">{t[lang].noOffers}</p>
-                  <button 
-                    onClick={handleManualRefresh}
-                    className="mt-4 bg-emerald-600 text-white px-6 py-2 rounded-xl text-sm"
-                  >
-                    🔄 Обновить
-                  </button>
-                </div>
-              ) : (
-                bags.map((bag, bagIdx) => (
-                  <OfferCard
-                    key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
-                    id={bag.id}
-                    name={bag.name}
-                    businessName={bag.supplier_name}
-                    distance={`${(Math.random() * 5 + 1).toFixed(1)} км`}
-                    price={bag.discounted_price}
-                    originalPrice={bag.original_price}
-                    discount={bag.discount_percentage}
-                    imageUrl={bag.image_url}
-                    description={bag.description}
-                    onOrderSuccess={refreshAfterOrder}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        </>
-      ) : (
-        // MAP VIEW - full area between header and bottom nav
-        <div className="fixed inset-x-0 z-40" style={{ top: '195px', bottom: '70px' }}>
-          <SuppliersMap 
-            userLat={location.lat} 
-            userLon={location.lon}
-            onSupplierClick={handleSupplierClick}
-            showUserLocation={true}
-          />
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
