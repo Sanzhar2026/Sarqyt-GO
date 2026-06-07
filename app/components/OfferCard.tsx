@@ -30,22 +30,28 @@ interface SurpriseBagData {
 }
 
 interface OfferCardProps {
- id: number;
-  name: string;           // ← ДОБАВИТЬ
-  businessName: string;
-  distance: string;
-  price: number;          // ← ДОБАВИТЬ
-  originalPrice: number;  // ← ДОБАВИТЬ
-  discount: number;       // ← ДОБАВИТЬ
-  imageUrl: string;       // ← ДОБАВИТЬ
-  description?: string;   // ← ДОБАВИТЬ
+  id: number;
+  name: string;           // ← из пропсов
+  businessName: string;   // ← из пропсов
+  distance: string;       // ← из пропсов
+  price: number;          // ← из пропсов
+  originalPrice: number;  // ← из пропсов
+  discount: number;       // ← из пропсов
+  imageUrl: string;       // ← из пропсов
+  description?: string;   // ← из пропсов
   onOrderSuccess?: () => void;
 }
 
 export default function OfferCard({
   id,
+  name: propName,              // ← переименовали чтобы не путать
   businessName,
   distance,
+  price: propPrice,
+  originalPrice: propOriginalPrice,
+  discount: propDiscount,
+  imageUrl: propImageUrl,
+  description: propDescription,
   onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
@@ -53,28 +59,28 @@ export default function OfferCard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [bag, setBag] = useState<SurpriseBagData | null>(null);
+  const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ ЗАГРУЗКА ДАННЫХ СЮРПРИЗА ИЗ БД
+  // ✅ Загружаем ТОЛЬКО состав (items) из БД
   useEffect(() => {
-    const fetchBag = async () => {
+    const fetchBagItems = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
+        const response = await fetch(`${API_URL}/api/surprise-bags/${id}/items`);
         if (response.ok) {
           const data = await response.json();
-          setBag(data);
+          setBagItems(data.items || []);
         }
       } catch (error) {
-        console.error('Error fetching bag:', error);
+        console.error('Error fetching bag items:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchBag();
+    fetchBagItems();
   }, [id, API_URL]);
 
   // Проверка авторизации
@@ -129,11 +135,6 @@ export default function OfferCard({
       return;
     }
 
-    if (!bag || bag.available_quantity <= 0) {
-      alert('Товар временно недоступен');
-      return;
-    }
-
     setAddingToCart(true);
     const token = sessionStorage.getItem('authToken');
 
@@ -155,16 +156,16 @@ export default function OfferCard({
         const existing = cart.find((item: any) => item.id === id);
         
         const cartItem = {
-          id: bag.id,
-          name: bag.name,
+          id: id,
+          name: propName,
           businessName,
-          price: bag.discounted_price,
-          originalPrice: bag.original_price,
-          discount: bag.discount_percentage,
-          imageUrl: bag.image_url,
+          price: propPrice,
+          originalPrice: propOriginalPrice,
+          discount: propDiscount,
+          imageUrl: propImageUrl,
           quantity: 1,
-          description: bag.description,
-          totalItems: bag.items?.length || 1,
+          description: propDescription,
+          totalItems: bagItems.length || 1,
           reservation_id: data.reservation_id,
           expires_at: data.expires_at
         };
@@ -178,7 +179,7 @@ export default function OfferCard({
         }
         
         sessionStorage.setItem('cart', JSON.stringify(cart));
-        alert(`✅ ${bag.name} забронирован на 15 минут!`);
+        alert(`✅ ${propName} забронирован на 15 минут!`);
         
         window.dispatchEvent(new Event('cartUpdated'));
         if (onOrderSuccess) onOrderSuccess();
@@ -206,28 +207,23 @@ export default function OfferCard({
     );
   }
 
-  if (!bag) {
-    return null;
-  }
-
-  const totalItems = bag.items?.reduce((sum, item) => sum + item.quantity, 0) || 1;
-  const discount = bag.discount_percentage || 0;
+  const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
-      {/* Изображение с бейджами */}
+      {/* Изображение */}
       <div className="relative h-52 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
         <Image 
-          src={bag.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'} 
-          alt={bag.name} 
+          src={propImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'} 
+          alt={propName} 
           fill 
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         <div className="absolute top-3 left-3 flex gap-2">
-          {discount > 0 && (
+          {propDiscount > 0 && (
             <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-              -{discount}%
+              -{propDiscount}%
             </div>
           )}
           <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-bold">
@@ -245,28 +241,30 @@ export default function OfferCard({
       </div>
       
       <div className="p-4">
-        {/* Название и ресторан */}
+        {/* Название */}
         <Link href={`/offers/${id}`}>
           <h3 className="font-bold text-lg mb-1 hover:text-emerald-600 transition line-clamp-1">
-            {bag.name}
+            {propName}
           </h3>
         </Link>
+        
+        {/* Ресторан и расстояние */}
         <div className="flex items-center justify-between mb-2">
           <p className="text-gray-500 text-sm">{businessName}</p>
           <p className="text-gray-400 text-xs">📍 {distance}</p>
         </div>
         
-        {/* Краткое описание */}
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{bag.description}</p>
+        {/* Описание */}
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{propDescription}</p>
         
-        {/* Детальный состав сюрприза */}
-        {showDetails && bag.items && bag.items.length > 0 && (
+        {/* Состав сюрприза */}
+        {showDetails && bagItems.length > 0 && (
           <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
             <h4 className="font-semibold text-sm mb-2 flex items-center gap-1">
-              <span>🎁</span> В состав сюрприза входит:
+              <span>🎁</span> В состав входит:
             </h4>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {bag.items.map((item, idx) => (
+              {bagItems.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3">
                   <div className="flex-1">
                     <p className="text-sm font-medium">{item.name}</p>
@@ -279,21 +277,21 @@ export default function OfferCard({
             </div>
             <div className="mt-3 pt-2 border-t border-gray-200">
               <p className="text-xs text-emerald-600 font-medium">
-                ✨ При отдельном заказе: {bag.original_price.toLocaleString()} ₸
+                ✨ При отдельном заказе: {propOriginalPrice.toLocaleString()} ₸
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                💰 Экономия: {discount}% ({Math.round(bag.original_price - bag.discounted_price).toLocaleString()} ₸)
+                💰 Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸)
               </p>
             </div>
           </div>
         )}
         
-        {/* Цена и кнопка */}
+        {/* Цена и кнопки */}
         <div className="flex items-center justify-between mt-2">
           <div>
-            <span className="text-2xl font-bold text-emerald-600">{bag.discounted_price.toLocaleString()} ₸</span>
-            {bag.original_price > bag.discounted_price && (
-              <span className="text-gray-400 line-through text-sm ml-2">{bag.original_price.toLocaleString()} ₸</span>
+            <span className="text-2xl font-bold text-emerald-600">{propPrice.toLocaleString()} ₸</span>
+            {propOriginalPrice > propPrice && (
+              <span className="text-gray-400 line-through text-sm ml-2">{propOriginalPrice.toLocaleString()} ₸</span>
             )}
             <p className="text-xs text-gray-400 mt-1">за весь набор</p>
           </div>
@@ -308,17 +306,13 @@ export default function OfferCard({
             
             <button
               onClick={addToCart}
-              disabled={addingToCart || bag.available_quantity <= 0}
-              className={`px-5 py-2 rounded-full transition flex items-center gap-2 ${
-                addingToCart || bag.available_quantity <= 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
-              }`}
+              disabled={addingToCart}
+              className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50 transition flex items-center gap-2"
             >
               {addingToCart ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Бронирование...</span>
+                  <span>...</span>
                 </>
               ) : (
                 <>
@@ -329,18 +323,6 @@ export default function OfferCard({
             </button>
           </div>
         </div>
-        
-        {/* Индикатор количества */}
-        {bag.available_quantity <= 3 && bag.available_quantity > 0 && (
-          <p className="text-xs text-orange-500 mt-2">
-            ⚡ Осталось всего {bag.available_quantity} шт.
-          </p>
-        )}
-        {bag.available_quantity === 0 && (
-          <p className="text-xs text-red-500 mt-2">
-            ❌ Распродано
-          </p>
-        )}
       </div>
     </div>
   );
