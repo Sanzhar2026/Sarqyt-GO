@@ -7,183 +7,45 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 interface SurpriseItem {
+  product_id: number;
   name: string;
+  price: number;
   quantity: number;
-  image: string;
 }
 
-interface SurprisePackage {
+interface SurpriseBagData {
   id: number;
   name: string;
   description: string;
-  image: string;
+  original_price: number;
+  discounted_price: number;
+  discount_percentage: number;
+  image_url: string;
+  available_quantity: number;
+  is_active: boolean;
+  supplier_name: string;
+  supplier_id: number;
   items: SurpriseItem[];
-  totalItems: number;
-  originalPrice: number;
-  discountedPrice: number;
-  discount: number;
+  totalItems?: number;
 }
 
-// 🎁 СЮРПРИЗ-ПАКЕТЫ
-const surprisePackages: SurprisePackage[] = [
-  {
-    id: 1,
-    name: "🍕 Пицца-сет 'Итальянский ужин'",
-    description: "Две большие пиццы для большой компании",
-    image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop",
-    items: [
-      { name: "Маргарита пицца", quantity: 1, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=200&h=150&fit=crop" },
-      { name: "Пепперони пицца", quantity: 1, image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=200&h=150&fit=crop" },
-      { name: "Сырные палочки", quantity: 1, image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop" },
-      { name: "Кока-кола 0.5л", quantity: 2, image: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=200&h=150&fit=crop" }
-    ],
-    totalItems: 5,
-    originalPrice: 8900,
-    discountedPrice: 5900,
-    discount: 34
-  },
-  {
-    id: 2,
-    name: "🍣 Суши-сет 'Самурай'",
-    description: "Классический набор японской кухни",
-    image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop",
-    items: [
-      { name: "Филадельфия ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=200&h=150&fit=crop" },
-      { name: "Калифорния ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034184-42c7c2e5d9b8?w=200&h=150&fit=crop" },
-      { name: "Суши сет (24 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=200&h=150&fit=crop" },
-      { name: "Имбирь/Васаби/Соевый соус", quantity: 1, image: "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=200&h=150&fit=crop" }
-    ],
-    totalItems: 41,
-    originalPrice: 12500,
-    discountedPrice: 8900,
-    discount: 29
-  },
-  {
-    id: 3,
-    name: "🍔 Бургер-сет 'Американский'",
-    description: "Три вида бургеров с картошкой и напитками",
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
-    items: [
-      { name: "Гамбургер", quantity: 1, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&h=150&fit=crop" },
-      { name: "Чизбургер", quantity: 1, image: "https://images.unsplash.com/photo-1525059696034-4967a8e1dca2?w=200&h=150&fit=crop" },
-      { name: "Чикен бургер", quantity: 1, image: "https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=200&h=150&fit=crop" },
-      { name: "Картошка фри", quantity: 2, image: "https://images.unsplash.com/photo-1630384060421-cf20c0e0e2a1?w=200&h=150&fit=crop" },
-      { name: "Кока-кола 0.5л", quantity: 3, image: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=200&h=150&fit=crop" }
-    ],
-    totalItems: 8,
-    originalPrice: 7500,
-    discountedPrice: 4900,
-    discount: 35
-  },
-  {
-    id: 4,
-    name: "🍰 Десерт-сет 'Сладкоежка'",
-    description: "Для тех, кто любит сладкое",
-    image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=400&h=300&fit=crop",
-    items: [
-      { name: "Чизкейк", quantity: 1, image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop" },
-      { name: "Тирамису", quantity: 1, image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=200&h=150&fit=crop" },
-      { name: "Макаруны (6 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1569864358642-9d1684040f43?w=200&h=150&fit=crop" },
-      { name: "Лимонад", quantity: 2, image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=150&fit=crop" }
-    ],
-    totalItems: 10,
-    originalPrice: 5800,
-    discountedPrice: 3900,
-    discount: 33
-  },
-  {
-    id: 5,
-    name: "🥗 ЗОЖ-сет 'Фитнес'",
-    description: "Полезный набор для здорового питания",
-    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop",
-    items: [
-      { name: "Греческий салат", quantity: 1, image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop" },
-      { name: "Цезарь салат", quantity: 1, image: "https://images.unsplash.com/photo-1550304943-4f24f54dd8c9?w=200&h=150&fit=crop" },
-      { name: "Куриные крылья (4 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a3f58?w=200&h=150&fit=crop" },
-      { name: "Лимонад", quantity: 2, image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=150&fit=crop" }
-    ],
-    totalItems: 5,
-    originalPrice: 6800,
-    discountedPrice: 4500,
-    discount: 34
-  },
-  {
-    id: 6,
-    name: "🍕🍣 Микс-сет 'Азия & Италия'",
-    description: "Сочетание итальянской и японской кухни",
-    image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop",
-    items: [
-      { name: "Маргарита пицца", quantity: 1, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=200&h=150&fit=crop" },
-      { name: "Филадельфия ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=200&h=150&fit=crop" },
-      { name: "Калифорния ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034184-42c7c2e5d9b8?w=200&h=150&fit=crop" },
-      { name: "Картошка фри", quantity: 1, image: "https://images.unsplash.com/photo-1630384060421-cf20c0e0e2a1?w=200&h=150&fit=crop" }
-    ],
-    totalItems: 19,
-    originalPrice: 11200,
-    discountedPrice: 7900,
-    discount: 29
-  },
-  {
-    id: 7,
-    name: "🎉 Семейный сет 'Для компании'",
-    description: "Большой набор для вечеринки",
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop",
-    items: [
-      { name: "Маргарита пицца", quantity: 1, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=200&h=150&fit=crop" },
-      { name: "Пепперони пицца", quantity: 1, image: "https://images.unsplash.com/photo-1628840042765-356cda07504e?w=200&h=150&fit=crop" },
-      { name: "Гамбургер", quantity: 2, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200&h=150&fit=crop" },
-      { name: "Чизбургер", quantity: 2, image: "https://images.unsplash.com/photo-1525059696034-4967a8e1dca2?w=200&h=150&fit=crop" },
-      { name: "Картошка фри", quantity: 3, image: "https://images.unsplash.com/photo-1630384060421-cf20c0e0e2a1?w=200&h=150&fit=crop" },
-      { name: "Куриные крылья (6 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1626645738196-c2a7c87a3f58?w=200&h=150&fit=crop" },
-      { name: "Кока-кола 0.5л", quantity: 4, image: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=200&h=150&fit=crop" }
-    ],
-    totalItems: 15,
-    originalPrice: 15800,
-    discountedPrice: 9900,
-    discount: 37
-  },
-  {
-    id: 8,
-    name: "🍣🍰 Суши-десерт 'Азия & Сладкое'",
-    description: "Суши + десерты для сладкоежек",
-    image: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop",
-    items: [
-      { name: "Филадельфия ролл (8 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd2c?w=200&h=150&fit=crop" },
-      { name: "Чизкейк", quantity: 1, image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=150&fit=crop" },
-      { name: "Тирамису", quantity: 1, image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=200&h=150&fit=crop" },
-      { name: "Макаруны (4 шт)", quantity: 1, image: "https://images.unsplash.com/photo-1569864358642-9d1684040f43?w=200&h=150&fit=crop" },
-      { name: "Лимонад", quantity: 2, image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=200&h=150&fit=crop" }
-    ],
-    totalItems: 14,
-    originalPrice: 8900,
-    discountedPrice: 5900,
-    discount: 34
-  }
-];
-
 interface OfferCardProps {
-  id: number;
-  name: string;           // ← ДОБАВЛЕНО
+ id: number;
+  name: string;           // ← ДОБАВИТЬ
   businessName: string;
   distance: string;
-  price: number;          // ← ДОБАВЛЕНО (или можно убрать, если используешь из surprise)
-  originalPrice: number;  // ← ДОБАВЛЕНО
-  discount: number;       // ← ДОБАВЛЕНО
-  imageUrl: string;       // ← ДОБАВЛЕНО
-  description?: string;   // ← ДОБАВЛЕНО
+  price: number;          // ← ДОБАВИТЬ
+  originalPrice: number;  // ← ДОБАВИТЬ
+  discount: number;       // ← ДОБАВИТЬ
+  imageUrl: string;       // ← ДОБАВИТЬ
+  description?: string;   // ← ДОБАВИТЬ
   onOrderSuccess?: () => void;
 }
 
 export default function OfferCard({
   id,
-  name,              // ← ДОБАВЛЕНО
   businessName,
   distance,
-  price,             // ← ДОБАВЛЕНО
-  originalPrice,     // ← ДОБАВЛЕНО
-  discount,          // ← ДОБАВЛЕНО
-  imageUrl,          // ← ДОБАВЛЕНО
-  description,       // ← ДОБАВЛЕНО
   onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
@@ -191,11 +53,29 @@ export default function OfferCard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [bag, setBag] = useState<SurpriseBagData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Получаем данные сюрприз-пакета
-  const surprise = surprisePackages.find(p => p.id === id) || surprisePackages[0];
+  // ✅ ЗАГРУЗКА ДАННЫХ СЮРПРИЗА ИЗ БД
+  useEffect(() => {
+    const fetchBag = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setBag(data);
+        }
+      } catch (error) {
+        console.error('Error fetching bag:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchBag();
+  }, [id, API_URL]);
 
   // Проверка авторизации
   useEffect(() => {
@@ -249,6 +129,11 @@ export default function OfferCard({
       return;
     }
 
+    if (!bag || bag.available_quantity <= 0) {
+      alert('Товар временно недоступен');
+      return;
+    }
+
     setAddingToCart(true);
     const token = sessionStorage.getItem('authToken');
 
@@ -270,17 +155,16 @@ export default function OfferCard({
         const existing = cart.find((item: any) => item.id === id);
         
         const cartItem = {
-          id: surprise.id,
-          name: surprise.name,
+          id: bag.id,
+          name: bag.name,
           businessName,
-          price: surprise.discountedPrice,
-          originalPrice: surprise.originalPrice,
-          discount: surprise.discount,
-          imageUrl: surprise.image,
+          price: bag.discounted_price,
+          originalPrice: bag.original_price,
+          discount: bag.discount_percentage,
+          imageUrl: bag.image_url,
           quantity: 1,
-          description: surprise.description,
-          surpriseItems: surprise.items,
-          totalItems: surprise.totalItems,
+          description: bag.description,
+          totalItems: bag.items?.length || 1,
           reservation_id: data.reservation_id,
           expires_at: data.expires_at
         };
@@ -294,7 +178,7 @@ export default function OfferCard({
         }
         
         sessionStorage.setItem('cart', JSON.stringify(cart));
-        alert(`✅ ${surprise.name} забронирован на 15 минут!`);
+        alert(`✅ ${bag.name} забронирован на 15 минут!`);
         
         window.dispatchEvent(new Event('cartUpdated'));
         if (onOrderSuccess) onOrderSuccess();
@@ -310,7 +194,7 @@ export default function OfferCard({
     }
   };
 
-  if (!authChecked) {
+  if (!authChecked || loading) {
     return (
       <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
         <div className="h-48 bg-gray-200"></div>
@@ -322,23 +206,32 @@ export default function OfferCard({
     );
   }
 
+  if (!bag) {
+    return null;
+  }
+
+  const totalItems = bag.items?.reduce((sum, item) => sum + item.quantity, 0) || 1;
+  const discount = bag.discount_percentage || 0;
+
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
       {/* Изображение с бейджами */}
       <div className="relative h-52 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
         <Image 
-          src={surprise.image} 
-          alt={surprise.name} 
+          src={bag.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'} 
+          alt={bag.name} 
           fill 
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         <div className="absolute top-3 left-3 flex gap-2">
-          <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-            -{surprise.discount}%
-          </div>
+          {discount > 0 && (
+            <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+              -{discount}%
+            </div>
+          )}
           <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-            🎁 {surprise.totalItems} предметов
+            🎁 {totalItems} предметов
           </div>
         </div>
         <button
@@ -355,7 +248,7 @@ export default function OfferCard({
         {/* Название и ресторан */}
         <Link href={`/offers/${id}`}>
           <h3 className="font-bold text-lg mb-1 hover:text-emerald-600 transition line-clamp-1">
-            {surprise.name}
+            {bag.name}
           </h3>
         </Link>
         <div className="flex items-center justify-between mb-2">
@@ -364,33 +257,32 @@ export default function OfferCard({
         </div>
         
         {/* Краткое описание */}
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{surprise.description}</p>
+        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{bag.description}</p>
         
         {/* Детальный состав сюрприза */}
-        {showDetails && (
+        {showDetails && bag.items && bag.items.length > 0 && (
           <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
             <h4 className="font-semibold text-sm mb-2 flex items-center gap-1">
               <span>🎁</span> В состав сюрприза входит:
             </h4>
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {surprise.items.map((item, idx) => (
+              {bag.items.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3">
-                  <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                    <Image src={item.image} alt={item.name} fill className="object-cover" />
-                  </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium">{item.name}</p>
-                    <p className="text-xs text-gray-500">Количество: {item.quantity} шт.</p>
+                    <p className="text-xs text-gray-500">
+                      {item.quantity} шт. × {item.price} ₸ = {(item.price * item.quantity).toLocaleString()} ₸
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
             <div className="mt-3 pt-2 border-t border-gray-200">
               <p className="text-xs text-emerald-600 font-medium">
-                ✨ При отдельном заказе: {surprise.originalPrice.toLocaleString()} ₸
+                ✨ При отдельном заказе: {bag.original_price.toLocaleString()} ₸
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                💰 Экономия: {surprise.discount}% ({Math.round(surprise.originalPrice - surprise.discountedPrice).toLocaleString()} ₸)
+                💰 Экономия: {discount}% ({Math.round(bag.original_price - bag.discounted_price).toLocaleString()} ₸)
               </p>
             </div>
           </div>
@@ -399,8 +291,10 @@ export default function OfferCard({
         {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-2">
           <div>
-            <span className="text-2xl font-bold text-emerald-600">{surprise.discountedPrice.toLocaleString()} ₸</span>
-            <span className="text-gray-400 line-through text-sm ml-2">{surprise.originalPrice.toLocaleString()} ₸</span>
+            <span className="text-2xl font-bold text-emerald-600">{bag.discounted_price.toLocaleString()} ₸</span>
+            {bag.original_price > bag.discounted_price && (
+              <span className="text-gray-400 line-through text-sm ml-2">{bag.original_price.toLocaleString()} ₸</span>
+            )}
             <p className="text-xs text-gray-400 mt-1">за весь набор</p>
           </div>
           
@@ -414,8 +308,12 @@ export default function OfferCard({
             
             <button
               onClick={addToCart}
-              disabled={addingToCart}
-              className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50 transition flex items-center gap-2"
+              disabled={addingToCart || bag.available_quantity <= 0}
+              className={`px-5 py-2 rounded-full transition flex items-center gap-2 ${
+                addingToCart || bag.available_quantity <= 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
             >
               {addingToCart ? (
                 <>
@@ -431,6 +329,18 @@ export default function OfferCard({
             </button>
           </div>
         </div>
+        
+        {/* Индикатор количества */}
+        {bag.available_quantity <= 3 && bag.available_quantity > 0 && (
+          <p className="text-xs text-orange-500 mt-2">
+            ⚡ Осталось всего {bag.available_quantity} шт.
+          </p>
+        )}
+        {bag.available_quantity === 0 && (
+          <p className="text-xs text-red-500 mt-2">
+            ❌ Распродано
+          </p>
+        )}
       </div>
     </div>
   );
