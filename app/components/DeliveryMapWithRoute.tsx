@@ -121,12 +121,10 @@ export default function DeliveryMapWithRoute({
     if (!driverMarkerRef.current || !courierLocation) return;
     driverMarkerRef.current.setLatLng([courierLocation.lat, courierLocation.lon]);
     
-    // Центрируем карту на курьере
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setView([courierLocation.lat, courierLocation.lon], 14);
     }
     
-    // Рассчитываем прогресс
     if (waypoints.length > 0 && onProgressUpdate) {
       let minDist = Infinity;
       let bestProgress = 0;
@@ -173,47 +171,61 @@ export default function DeliveryMapWithRoute({
     
     mapInstanceRef.current = window.L.map(mapRef.current).setView([centerLat, centerLon], 13);
     
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
+    // ✅ Используем светлый стиль CartoDB Light (как на скриншоте)
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CartoDB',
+      subdomains: 'abcd',
+      maxZoom: 19,
+      minZoom: 3
     }).addTo(mapInstanceRef.current);
     
-    // Маркер ресторана
+    // ✅ Маркер ресторана (в брендовом цвете #367666)
     const restaurantIcon = window.L.divIcon({
-      html: '<div style="background:#dc2626; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; border:3px solid white; box-shadow:0 2px 10px rgba(0,0,0,0.2);">🏪</div>',
-      iconSize: [40, 40]
+      html: '<div style="background:#367666; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; border:3px solid white; box-shadow:0 2px 10px rgba(54,118,102,0.3);">🏪</div>',
+      iconSize: [42, 42],
+      className: 'custom-marker'
     });
     window.L.marker([endLat, endLon], { icon: restaurantIcon })
       .addTo(mapInstanceRef.current)
       .bindPopup(`<b>🏪 ${supplierName}</b><br>📍 Ресторан`);
     
-    // Маркер старта/клиента
+    // ✅ Маркер старта/клиента
     const isRestaurantRoute = customerAddress === 'Ресторан';
     const startIcon = window.L.divIcon({
-      html: `<div style="background:${isRestaurantRoute ? '#f59e0b' : '#22c55e'}; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; border:3px solid white; box-shadow:0 2px 10px rgba(0,0,0,0.2);">${isRestaurantRoute ? '🏪' : '🏠'}</div>`,
-      iconSize: [40, 40]
+      html: `<div style="background:${isRestaurantRoute ? '#f59e0b' : '#367666'}; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; border:3px solid white; box-shadow:0 2px 10px rgba(0,0,0,0.15);">${isRestaurantRoute ? '🏪' : '🏠'}</div>`,
+      iconSize: [42, 42],
+      className: 'custom-marker'
     });
     window.L.marker([startLat, startLon], { icon: startIcon })
       .addTo(mapInstanceRef.current)
       .bindPopup(`<b>${isRestaurantRoute ? '🏪 Ресторан' : '📍 Клиент'}</b><br>${customerAddress}`);
     
-    // Маршрут
+    // ✅ Маршрут (брендовый цвет #367666)
     if (routeData.waypoints && routeData.waypoints.length > 0) {
       const latlngs = routeData.waypoints.map((p: any) => [p.lat, p.lon]);
-      routePolylineRef.current = window.L.polyline(latlngs, { color: '#fbbf24', weight: 5, opacity: 0.9 })
-        .addTo(mapInstanceRef.current);
+      routePolylineRef.current = window.L.polyline(latlngs, { 
+        color: '#367666',  // ← новый брендовый цвет
+        weight: 5,
+        opacity: 0.9,
+        lineJoin: 'round'
+      }).addTo(mapInstanceRef.current);
       
       const bounds = window.L.latLngBounds(latlngs);
       mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
     
-    // Машина курьера
+    // ✅ Машина курьера (брендовый цвет #367666)
     const carIcon = window.L.divIcon({
-      html: '<div style="background:#3b82f6; width:45px; height:45px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; border:3px solid white; box-shadow:0 2px 10px rgba(59,130,246,0.4);">🚚</div>',
-      iconSize: [45, 45]
+      html: '<div style="background:#367666; width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:26px; border:3px solid white; box-shadow:0 2px 15px rgba(54,118,102,0.4);">🚚</div>',
+      iconSize: [48, 48],
+      className: 'custom-marker'
     });
     driverMarkerRef.current = window.L.marker([startLat, startLon], { icon: carIcon })
       .addTo(mapInstanceRef.current)
       .bindPopup('🚚 Курьер');
+    
+    // ✅ Добавляем зум контрол в правый нижний угол
+    window.L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
     
     console.log('✅ Карта инициализирована');
   };
@@ -221,18 +233,24 @@ export default function DeliveryMapWithRoute({
   if (!mapLoaded || loading) {
     return (
       <div className="w-full h-[400px] bg-gray-100 rounded-xl flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-b-2 border-emerald-600 rounded-full"></div>
+        <div className="animate-spin h-8 w-8 border-b-2 border-[#367666] rounded-full"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="bg-blue-50 rounded-xl p-3 text-sm text-blue-700 flex justify-between">
-        <span>🗺️ Маршрут построен</span>
-        <span>📏 Расстояние: {totalDistance.toFixed(1)} км</span>
+      <div className="bg-[#e8f3f0] rounded-xl p-3 text-sm text-[#367666] flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🗺️</span>
+          <span>Маршрут построен</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>📏</span>
+          <span className="font-medium">{totalDistance.toFixed(1)} км</span>
+        </div>
       </div>
-      <div ref={mapRef} className="w-full h-[400px] rounded-xl overflow-hidden bg-gray-100" />
+      <div ref={mapRef} className="w-full h-[400px] rounded-xl overflow-hidden bg-gray-100 shadow-md" />
     </div>
   );
 }

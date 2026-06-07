@@ -163,15 +163,27 @@ const surprisePackages: SurprisePackage[] = [
 
 interface OfferCardProps {
   id: number;
+  name: string;           // ← ДОБАВЛЕНО
   businessName: string;
   distance: string;
+  price: number;          // ← ДОБАВЛЕНО (или можно убрать, если используешь из surprise)
+  originalPrice: number;  // ← ДОБАВЛЕНО
+  discount: number;       // ← ДОБАВЛЕНО
+  imageUrl: string;       // ← ДОБАВЛЕНО
+  description?: string;   // ← ДОБАВЛЕНО
   onOrderSuccess?: () => void;
 }
 
 export default function OfferCard({
   id,
+  name,              // ← ДОБАВЛЕНО
   businessName,
   distance,
+  price,             // ← ДОБАВЛЕНО
+  originalPrice,     // ← ДОБАВЛЕНО
+  discount,          // ← ДОБАВЛЕНО
+  imageUrl,          // ← ДОБАВЛЕНО
+  description,       // ← ДОБАВЛЕНО
   onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
