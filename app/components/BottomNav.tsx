@@ -10,7 +10,6 @@ interface NavItem {
   labelRu: string;
   icon: React.ReactNode;
   href: string;
-  isCenter?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -22,7 +21,7 @@ const navItems: NavItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
       </svg>
     ), 
-    href: '/' 
+    href: '/offers'  // ← дом ведет на страницу с офферами (где карта и список)
   },
   { 
     labelKz: 'Іздеу', 
@@ -32,25 +31,24 @@ const navItems: NavItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
     ), 
-    href: '/offers' 
+    href: '/'  // ← лупа ведет на главную
   },
   { 
     labelKz: '', 
     labelRu: '', 
     icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
       </svg>
     ), 
-    href: '/', 
-    isCenter: true 
+    href: '/favorites' 
   },
   { 
     labelKz: 'Себет', 
     labelRu: 'Корзина', 
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 21v-6" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
       </svg>
     ), 
     href: '/cart' 
@@ -73,7 +71,6 @@ export default function BottomNav() {
   const { lang } = useLanguage();
 
   const getLabel = (item: NavItem) => {
-    if (item.isCenter) return '';
     return lang === 'kz' ? item.labelKz : item.labelRu;
   };
 
@@ -89,39 +86,28 @@ export default function BottomNav() {
         {navItems.map((item, index) => {
           const active = isActive(item.href);
           
-          if (item.isCenter) {
-            return (
-              <div key={index} className="flex flex-col items-center -mt-8">
-                <div 
-                  onClick={() => router.push(item.href)}
-                  className={`w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-md ${
-                    active ? 'bg-[#367666]' : 'bg-gray-100 hover:bg-gray-200'
-                  }`}
-                >
-                  <span className={`${active ? 'text-white' : 'text-gray-600'}`}>
-                    {item.icon}
-                  </span>
-                </div>
-              </div>
-            );
-          }
-
           return (
             <Link 
               href={item.href} 
               key={index}
-              className="flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 hover:bg-gray-50 group"
+              onClick={(e) => {
+                e.preventDefault();
+                router.push(item.href);
+              }}
+              className="flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 hover:bg-gray-50 group cursor-pointer"
             >
-              <span className={`mb-1 transition-colors duration-200 ${
-                active ? 'text-[#367666]' : 'text-gray-400 group-hover:text-gray-600'
+              <span className={`mb-1 transition-all duration-200 ${
+                active ? 'text-[#367666]' : 'text-gray-400 group-hover:text-[#367666]'
               }`}>
                 {item.icon}
               </span>
-              <span className={`text-xs font-medium transition-colors duration-200 ${
-                active ? 'text-[#367666]' : 'text-gray-400 group-hover:text-gray-600'
-              }`}>
-                {getLabel(item)}
-              </span>
+              {item.labelKz && (
+                <span className={`text-xs font-medium transition-all duration-200 ${
+                  active ? 'text-[#367666]' : 'text-gray-400 group-hover:text-[#367666]'
+                }`}>
+                  {getLabel(item)}
+                </span>
+              )}
             </Link>
           );
         })}
