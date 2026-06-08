@@ -65,23 +65,25 @@ export default function OfferCard({
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
   // ✅ Загружаем ТОЛЬКО состав (items) из БД
-  useEffect(() => {
-    const fetchBagItems = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/surprise-bags/${id}/items`);
-        if (response.ok) {
-          const data = await response.json();
-          setBagItems(data.items || []);
-        }
-      } catch (error) {
-        console.error('Error fetching bag items:', error);
-      } finally {
-        setLoading(false);
+ // ✅ Загружаем состав сюрприза из правильного эндпоинта
+useEffect(() => {
+  const fetchBagItems = async () => {
+    try {
+      // ✅ ИСПРАВЛЕНО: убрал /items
+      const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBagItems(data.items || []);
       }
-    };
-    
-    fetchBagItems();
-  }, [id, API_URL]);
+    } catch (error) {
+      console.error('Error fetching bag items:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchBagItems();
+}, [id, API_URL]);
 
   // Проверка авторизации
   useEffect(() => {
