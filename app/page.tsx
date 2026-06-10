@@ -425,12 +425,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* WebSocket Status */}
-      <div className="bg-gray-800 text-white px-3 py-1 text-center text-xs">
-        {isConnected ? '🟢 ' + t[lang].connected : '🔴 ' + t[lang].disconnected}
-      </div>
-
-      {/* Header */}
+      {/* Header - без WebSocket статуса сверху */}
       <div className="bg-[#367666] text-white px-6 pt-4 pb-5">
         <div className="flex justify-between items-start">
           <div>
@@ -446,25 +441,6 @@ export default function HomePage() {
           </div>
           
           <div className="flex gap-2">
-            <div className="flex gap-1 mr-2">
-              <button
-                onClick={() => setLang('kz')}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'kz' ? 'bg-white text-[#367666]' : 'bg-white/20 text-white hover:bg-white/30'
-                }`}
-              >
-                Қаз
-              </button>
-              <button
-                onClick={() => setLang('ru')}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'ru' ? 'bg-white text-[#367666]' : 'bg-white/20 text-white hover:bg-white/30'
-                }`}
-              >
-                Рус
-              </button>
-            </div>
-            
             {user ? (
               <button onClick={handleLogout} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition flex items-center gap-2">
                 <span>🚪</span><span>{t[lang].logout}</span>

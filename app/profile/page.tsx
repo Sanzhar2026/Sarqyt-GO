@@ -1,4 +1,3 @@
-// app/profile/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,7 +20,8 @@ export default function ProfilePage() {
       myOrders: 'Менің тапсырыстарым',
       phone: 'Телефон',
       logout: 'Шығу',
-      courierPanel: 'Курьер панелі'
+      courierPanel: 'Курьер панелі',
+      language: 'Тіл'
     },
     ru: {
       profile: 'Профиль',
@@ -31,16 +31,18 @@ export default function ProfilePage() {
       myOrders: 'Мои заказы',
       phone: 'Телефон',
       logout: 'Выйти',
-      courierPanel: 'Панель курьера'
+      courierPanel: 'Панель курьера',
+      language: 'Язык'
     }
   };
-// Добавить защиту
-useEffect(() => {
-  const token = sessionStorage.getItem('authToken');
-  if (!token) {
-    router.push('/login');
-  }
-}, []);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem('authToken');
+    if (!token) {
+      router.push('/login');
+    }
+  }, []);
+
   useEffect(() => {
     const loadUserData = async () => {
       const storedUser = sessionStorage.getItem('user');
