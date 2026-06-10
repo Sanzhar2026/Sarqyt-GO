@@ -120,10 +120,10 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-white">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#367666]/10 to-white">
       <div className="w-full max-w-md px-6">
         <div className="bg-white rounded-3xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-center text-gray-800 mb-8">Регистрация</h1>
+          <h1 className="text-3xl font-bold text-center text-[#367666] mb-8">Регистрация</h1>
           
           {error && <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">{error}</div>}
           {isDemoMode && step === 'verify' && <div className="mb-4 p-3 bg-yellow-50 text-yellow-700 rounded-xl text-sm border border-yellow-200">Демо режим: Код 123456</div>}
@@ -137,13 +137,13 @@ export default function SignupPage() {
                   value={phone} 
                   onChange={(e) => setPhone(e.target.value)} 
                   placeholder="+77071234567" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 />
               </div>
               <button 
                 onClick={sendVerification} 
                 disabled={loading} 
-                className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg hover:bg-emerald-700 transition disabled:opacity-70 shadow-md"
+                className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg hover:bg-[#2a5a4d] transition disabled:opacity-70 shadow-md"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -163,7 +163,7 @@ export default function SignupPage() {
                     value={verificationCode} 
                     onChange={(e) => setVerificationCode(e.target.value)} 
                     placeholder="123456" 
-                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                   />
                 </div>
               )}
@@ -174,7 +174,7 @@ export default function SignupPage() {
                   value={firstName} 
                   onChange={(e) => setFirstName(e.target.value)} 
                   placeholder="Ваше имя" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 />
               </div>
               <div>
@@ -184,7 +184,7 @@ export default function SignupPage() {
                   value={lastName} 
                   onChange={(e) => setLastName(e.target.value)} 
                   placeholder="Ваша фамилия" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 />
               </div>
               <div>
@@ -194,7 +194,7 @@ export default function SignupPage() {
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                   placeholder="••••••••" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 />
               </div>
               <div>
@@ -204,13 +204,13 @@ export default function SignupPage() {
                   value={confirmPassword} 
                   onChange={(e) => setConfirmPassword(e.target.value)} 
                   placeholder="••••••••" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 />
               </div>
               <button 
                 onClick={handleSignup} 
                 disabled={loading} 
-                className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg mt-4 hover:bg-emerald-700 transition disabled:opacity-70 shadow-md"
+                className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg mt-4 hover:bg-[#2a5a4d] transition disabled:opacity-70 shadow-md"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -223,7 +223,7 @@ export default function SignupPage() {
           )}
 
           <p className="text-center text-gray-500 mt-8">
-            Уже есть аккаунт? <Link href="/login" className="text-emerald-600 font-semibold hover:underline">Войти</Link>
+            Уже есть аккаунт? <Link href="/login" className="text-[#367666] font-semibold hover:underline">Войти</Link>
           </p>
         </div>
       </div>

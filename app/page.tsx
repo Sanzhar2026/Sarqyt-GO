@@ -145,7 +145,7 @@ export default function HomePage() {
           
           <div class="flex gap-2 mt-3">
             <button id="go-to-order-btn" class="flex-1 bg-[#367666] text-white py-1.5 rounded-xl text-xs font-semibold hover:bg-[#2a5a4d] transition">
-              📦 Перейти
+              Перейти
             </button>
             <button id="later-btn" class="px-3 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium hover:bg-gray-200 transition">
               Позже
@@ -192,7 +192,7 @@ export default function HomePage() {
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
       fetchBags(false, false);
       if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Новый сюрприз! 🎁', {
+        new Notification('Новый сюрприз!', {
           body: 'Появился новый сюрприз рядом с вами!',
           icon: '/logo.png'
         });
@@ -369,21 +369,21 @@ export default function HomePage() {
     
     if (imgError) {
       return (
-        <div className="w-64 h-64 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
+        <div className="w-44 h-44 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
           <div className="text-center">
-            <div className="text-8xl mb-4">🍽️</div>
+            <div className="text-7xl mb-2">🍽️</div>
           </div>
         </div>
       );
     }
     
     return (
-      <div className="w-64 h-64 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+      <div className="w-44 h-44 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
         <Image 
           src="/ico.jpg" 
           alt="SARQYT GO" 
-          width={256} 
-          height={256} 
+          width={176} 
+          height={176} 
           className="object-cover w-full h-full"
           priority
           onError={() => setImgError(true)}
@@ -397,10 +397,11 @@ export default function HomePage() {
       <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
         <div className="text-center">
           <LogoCircle />
-          <h1 className="text-5xl font-bold tracking-tight">
+          <h1 className="text-4xl font-bold tracking-tight">
             <span className="text-black">SARQYT</span>{' '}
             <span className="text-[#FF9500]">GO</span>
           </h1>
+          <p className="text-white text-lg mt-2 font-medium">Спасая еду - спасаем мир!</p>
         </div>
       </div>
     );
@@ -416,11 +417,10 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header - только логотип, без кнопок */}
+      {/* Header */}
       <div className="bg-[#367666] text-white px-6 pt-4 pb-5">
         <div className="flex justify-between items-start">
           <div>
-            
             {user && user.phone && (
               <div className="mt-2 flex items-center gap-2 text-xs bg-white/10 rounded-xl px-3 py-1.5 w-fit">
                 <span>📞</span>
@@ -428,8 +428,6 @@ export default function HomePage() {
               </div>
             )}
           </div>
-          
-          {/* Пустой div для баланса - без кнопок */}
           <div></div>
         </div>
       </div>
@@ -443,7 +441,7 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Toggle Buttons: List (left) / Map (right) */}
+      {/* Toggle Buttons: List / Map */}
       <div className="px-6 mt-4">
         <div className="bg-gray-100 p-1 rounded-2xl flex gap-1">
           <button
@@ -475,7 +473,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* WHITE CARD CONTAINER */}
+      {/* White Card Container */}
       <div className="px-6 mt-6 pb-32">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
@@ -497,13 +495,13 @@ export default function HomePage() {
               )}
               
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold">🔥 {t[lang].nearbyOffers}</h3>
+                <h3 className="font-bold">{t[lang].nearbyOffers}</h3>
                 <button 
                   onClick={handleManualRefresh}
                   disabled={isRefreshing}
                   className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs hover:bg-[#2a5a4d] transition flex items-center gap-1 disabled:opacity-50"
                 >
-                  {isRefreshing ? '🔄 ...' : '🔄 ' + t[lang].refresh}
+                  {isRefreshing ? '...' : t[lang].refresh}
                 </button>
               </div>
               
@@ -521,7 +519,7 @@ export default function HomePage() {
                       onClick={handleManualRefresh}
                       className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl text-sm"
                     >
-                      🔄 Обновить
+                      Обновить
                     </button>
                   </div>
                 ) : (
