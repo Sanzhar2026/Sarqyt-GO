@@ -323,15 +323,6 @@ export default function HomePage() {
     return () => window.removeEventListener('refreshOffers', handleRefreshOffers);
   }, [fetchBags]);
 
-  const handleLogout = async () => {
-    await fetch(`/api/logout`, { method: 'GET', credentials: 'include' });
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('isLoggedIn');
-    sessionStorage.removeItem('authToken');
-    setUser(null);
-    window.location.href = '/';
-  };
-
   const t = {
     kz: {
       greeting: 'Сәлем',
@@ -389,7 +380,7 @@ export default function HomePage() {
     return (
       <div className="w-64 h-64 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
         <Image 
-          src="/ic.jpeg" 
+          src="/ico.jpg" 
           alt="SARQYT GO" 
           width={256} 
           height={256} 
@@ -425,7 +416,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header - без WebSocket статуса сверху */}
+      {/* Header - только логотип, без кнопок */}
       <div className="bg-[#367666] text-white px-6 pt-4 pb-5">
         <div className="flex justify-between items-start">
           <div>
@@ -440,18 +431,8 @@ export default function HomePage() {
             )}
           </div>
           
-          <div className="flex gap-2">
-            {user ? (
-              <button onClick={handleLogout} className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition flex items-center gap-2">
-                <span>🚪</span><span>{t[lang].logout}</span>
-              </button>
-            ) : (
-              <div className="flex gap-2">
-                <Link href="/login"><button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-2xl text-sm transition">{t[lang].login}</button></Link>
-                <Link href="/signup"><button className="bg-white/30 hover:bg-white/40 px-4 py-2 rounded-2xl text-sm transition">{t[lang].register}</button></Link>
-              </div>
-            )}
-          </div>
+          {/* Пустой div для баланса - без кнопок */}
+          <div></div>
         </div>
       </div>
 
