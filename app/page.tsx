@@ -378,23 +378,21 @@ export default function HomePage() {
     
     if (imgError) {
       return (
-        <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
+        <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
           <div className="text-center">
             <div className="text-8xl mb-4">🍽️</div>
-            <p className="text-white text-xl font-bold">SARQYT GO</p>
           </div>
         </div>
       );
     }
     
     return (
-      <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+      <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
         <Image 
-          src="/logotype.jpeg" 
+          src="/icon.png" 
           alt="SARQYT GO" 
-          sizes="(max-width: 768px) 100vw, 320px"
-          width={800} 
-          height={800} 
+          width={128} 
+          height={128} 
           className="object-cover w-full h-full"
           priority
           onError={() => setImgError(true)}
@@ -405,10 +403,13 @@ export default function HomePage() {
 
   if (showSplash) {
     return (
-      <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
+      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-50">
         <div className="text-center">
           <LogoCircle />
-          <h1 className="text-4xl font-bold text-white mb-2">SARQYT GO</h1>
+          <h1 className="text-5xl font-bold tracking-tight">
+            <span className="text-black">SARQYT</span>{' '}
+            <span className="text-[#FF9500]">GO</span>
+          </h1>
         </div>
       </div>
     );
