@@ -478,7 +478,7 @@ export default function HomePage() {
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
             <h2 className="font-bold text-lg flex items-center gap-2">
-              <span>🏪</span> {t[lang].nearbyShops}
+              {t[lang].nearbyShops}
             </h2>
             <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
           </div>
