@@ -381,7 +381,7 @@ export default function HomePage() {
         <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
           <div className="text-center">
             <div className="text-8xl mb-4">🍽️</div>
-            <p className="text-white text-xl font-bold">Sarqyn Food</p>
+            <p className="text-white text-xl font-bold">SARQYT GO</p>
           </div>
         </div>
       );
@@ -391,7 +391,7 @@ export default function HomePage() {
       <div className="w-80 h-80 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
         <Image 
           src="/logotype.jpeg" 
-          alt="Sarqyt GO" 
+          alt="SARQYT GO" 
           sizes="(max-width: 768px) 100vw, 320px"
           width={800} 
           height={800} 
@@ -408,8 +408,7 @@ export default function HomePage() {
       <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
         <div className="text-center">
           <LogoCircle />
-          <h1 className="text-4xl font-bold text-white mb-2">Sarqyn Food</h1>
-          <p className="text-emerald-100 text-sm">Дәмді тағамдар дүниені құтқарады</p>
+          <h1 className="text-4xl font-bold text-white mb-2">SARQYT GO</h1>
         </div>
       </div>
     );
@@ -425,7 +424,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* WebSocket Status - убрал fixed, сделал обычным блоком */}
+      {/* WebSocket Status */}
       <div className="bg-gray-800 text-white px-3 py-1 text-center text-xs">
         {isConnected ? '🟢 ' + t[lang].connected : '🔴 ' + t[lang].disconnected}
       </div>
