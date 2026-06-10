@@ -10,10 +10,9 @@ export default function FavoritesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <h1 className="text-2xl font-bold">{t.favorites}</h1>
-        
         </div>
       </div>
 
