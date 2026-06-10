@@ -420,9 +420,7 @@ export default function HomePage() {
       <div className="bg-[#367666] text-white px-6 pt-4 pb-5">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-[28px] leading-none font-black tracking-[-1px] text-white">
-              SARQYT <span className="text-[#FF9500]">GO</span>
-            </h1>
+            
             {user && user.phone && (
               <div className="mt-2 flex items-center gap-2 text-xs bg-white/10 rounded-xl px-3 py-1.5 w-fit">
                 <span>📞</span>
