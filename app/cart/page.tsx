@@ -76,7 +76,7 @@ export default function CartPage() {
       orElse: 'Иначе товар вернется в продажу',
       total: 'Итого',
       items: 'товаров',
-      checkout: 'Оформить заказ',
+      checkout: 'Заказать',
       timeExpired: 'Время истекло',
       paymentMethod: 'Оплата через Kaspi QR',
       amount: 'Сумма',
@@ -270,7 +270,6 @@ export default function CartPage() {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   };
 
-  // ✅ 1. Кнопка "Оформить заказ" - СОЗДАЕТ ЗАКАЗЫ, НО НЕ ОЧИЩАЕТ КОРЗИНУ
   const handleCheckout = async () => {
     if (deliveryType === 'delivery' && !customerAddress) {
       alert('Пожалуйста, укажите адрес доставки');
@@ -280,21 +279,15 @@ export default function CartPage() {
     setProcessingStep('processing');
     
     try {
-      // СОЗДАЕМ ЗАКАЗЫ
       const orders = await createOrders();
       console.log('✅ Заказы созданы, ожидают оплаты:', orders);
       
-      // Сохраняем в sessionStorage
       sessionStorage.setItem('pending_order', JSON.stringify({
         orders: orders,
         total: getTotalPrice(),
         timestamp: Date.now()
       }));
       
-      // ❌ НЕ ОЧИЩАЕМ КОРЗИНУ!
-      // sessionStorage.removeItem('cart');
-      
-      // Показываем модалку с оплатой
       setShowPaymentModal(true);
       setProcessingStep('form');
       
@@ -335,7 +328,6 @@ export default function CartPage() {
     return createdOrders;
   };
 
-  // ✅ 2. Кнопка оплаты - ТОЛЬКО РЕДИРЕКТ НА KASPI
   const handleKaspiPayment = async () => {
     const token = getAuthToken();
     if (!token) {
@@ -347,13 +339,11 @@ export default function CartPage() {
     setProcessingStep('processing');
     
     try {
-      // Проверяем что заказы уже созданы
       const pendingData = sessionStorage.getItem('pending_order');
       if (!pendingData) {
         throw new Error('Нет информации о заказах');
       }
       
-      // ✅ ТОЛЬКО РЕДИРЕКТ НА KASPI
       window.location.href = KASPI_QR_URL;
       
     } catch (error) {
@@ -373,11 +363,10 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
         <div className="text-center">
-          <div className="text-8xl mb-6">🛒</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].emptyCart}</h1>
           <p className="text-gray-500 mb-6">{t[lang].addItems}</p>
           <Link href="/offers">
-            <button className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition">
+            <button className="bg-[#367666] text-white px-6 py-3 rounded-xl hover:bg-[#2a5a4d] transition">
               {t[lang].shop}
             </button>
           </Link>
@@ -403,7 +392,7 @@ export default function CartPage() {
               <button
                 onClick={() => setLang('kz')}
                 className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'kz' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
+                  lang === 'kz' ? 'bg-[#367666] text-white' : 'bg-gray-100 text-gray-600'
                 }`}
               >
                 Қаз
@@ -411,7 +400,7 @@ export default function CartPage() {
               <button
                 onClick={() => setLang('ru')}
                 className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'ru' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
+                  lang === 'ru' ? 'bg-[#367666] text-white' : 'bg-gray-100 text-gray-600'
                 }`}
               >
                 Рус
@@ -422,28 +411,28 @@ export default function CartPage() {
           {/* Способ получения */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              📦 {t[lang].deliveryType}
+              {t[lang].deliveryType}
             </label>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeliveryType('delivery')}
                 className={`flex-1 py-3 rounded-xl font-semibold transition ${
                   deliveryType === 'delivery'
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-[#367666] text-white'
                     : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                🚚 {t[lang].courier}
+                {t[lang].courier}
               </button>
               <button
                 onClick={() => setDeliveryType('pickup')}
                 className={`flex-1 py-3 rounded-xl font-semibold transition ${
                   deliveryType === 'pickup'
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-[#367666] text-white'
                     : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                🏪 {t[lang].pickup}
+                {t[lang].pickup}
               </button>
             </div>
           </div>
@@ -452,14 +441,14 @@ export default function CartPage() {
           {deliveryType === 'delivery' && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                📍 {t[lang].deliveryAddress}
+                {t[lang].deliveryAddress}
               </label>
               <input
                 type="text"
                 placeholder={t[lang].enterAddress}
                 value={customerAddress}
                 onChange={(e) => setCustomerAddress(e.target.value)}
-                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#367666] text-sm"
               />
             </div>
           )}
@@ -468,7 +457,7 @@ export default function CartPage() {
           {deliveryType === 'pickup' && (
             <div className="mb-4 p-3 bg-blue-50 rounded-xl">
               <p className="text-sm text-blue-700">
-                🏪 {t[lang].pickupAddress}: Ресторан по адресу, указанному при оформлении
+                {t[lang].pickupAddress}: Ресторан по адресу, указанному при оформлении
               </p>
             </div>
           )}
@@ -477,7 +466,6 @@ export default function CartPage() {
             <div className={`mb-4 p-4 rounded-2xl ${showTimerWarning ? 'bg-red-50 border border-red-200' : 'bg-yellow-50'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">⏰</span>
                   <div>
                     <p className={`text-sm font-semibold ${showTimerWarning ? 'text-red-600' : 'text-yellow-700'}`}>
                       {t[lang].timeLeft}
@@ -496,7 +484,7 @@ export default function CartPage() {
           )}
           
           <div className="mb-4">
-            <div className="text-2xl font-bold text-emerald-600">
+            <div className="text-2xl font-bold text-[#367666]">
               {getTotalPrice().toLocaleString()} ₸
             </div>
             <div className="text-sm text-gray-500 mt-1">
@@ -507,9 +495,8 @@ export default function CartPage() {
           <button
             onClick={handleCheckout}
             disabled={timeLeft === 0 || (deliveryType === 'delivery' && !customerAddress)}
-            className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="text-xl">💳</span>
             <span>{timeLeft === 0 ? t[lang].timeExpired : t[lang].checkout}</span>
           </button>
         </div>
@@ -533,7 +520,7 @@ export default function CartPage() {
               <p className="text-gray-500 text-xs">{item.businessName}</p>
               <div className="flex items-center justify-between mt-2">
                 <div>
-                  <span className="text-lg font-bold text-emerald-600">{item.price} ₸</span>
+                  <span className="text-lg font-bold text-[#367666]">{item.price} ₸</span>
                   {item.originalPrice > item.price && (
                     <span className="text-gray-400 line-through text-xs ml-2">{item.originalPrice} ₸</span>
                   )}
@@ -552,7 +539,7 @@ export default function CartPage() {
                   <button
                     onClick={() => removeItem(item.id)}
                     className="ml-1 text-red-500 hover:text-red-700 text-sm"
-                  >🗑️</button>
+                  >✕</button>
                 </div>
               </div>
             </div>
@@ -560,87 +547,69 @@ export default function CartPage() {
         ))}
       </div>
 
- {/* Payment Modal - Sarqyt GO Style with Kaspi Logo */}
-{showPaymentModal && (
-  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-slide-up">
-      {/* Header - Sarqyt GO Style (Зеленый градиент) */}
-      <div className="bg-gradient-to-r from-emerald-600 to-green-600 px-6 py-5">
-        <div className="flex flex-col items-center">
-          {/* Логотип Kaspi */}
-          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-2 shadow-md">
-            <Image 
-              src="/kasp.png" 
-              alt="Kaspi" 
-              width={248} 
-              height={248}
-              className="object-contain"
-            />
-          </div>
-        
-        </div>
-      </div>
-      
-      {/* Body */}
-      <div className="p-6">
-        {/* Sarqyt GO Title */}
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-emerald-600 font-bold text-lg">Sarqyt GO</span>
-          </div>
-          <p className="text-gray-500 text-sm mb-1">Сумма к оплате</p>
-          <p className="text-3xl font-bold text-emerald-600">
-            {getTotalPrice().toLocaleString()} ₸
-          </p>
-          {timeLeft && timeLeft > 0 && (
-            <p className="text-xs text-gray-400 mt-2">
-              Осталось: {formatTimeLeft(timeLeft)}
-            </p>
-          )}
-        </div>
-        
-        {/* Кнопка оплаты - Sarqyt GO Style */}
-        <button
-          onClick={handleKaspiPayment}
-          disabled={processingStep === 'processing'}
-          className="w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
-        >
-          {processingStep === 'processing' ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>Перенаправление...</span>
-            </>
-          ) : (
-            <>
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-slide-up">
+            <div className="bg-gradient-to-r from-[#367666] to-[#367666] px-6 py-5">
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-2 shadow-md">
+                  <Image 
+                    src="/kasp.png" 
+                    alt="Kaspi" 
+                    width={248} 
+                    height={248}
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <p className="text-gray-500 text-sm mb-1">Сумма к оплате</p>
+                <p className="text-3xl font-bold text-[#367666]">
+                  {getTotalPrice().toLocaleString()} ₸
+                </p>
+                {timeLeft && timeLeft > 0 && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Осталось: {formatTimeLeft(timeLeft)}
+                  </p>
+                )}
+              </div>
               
-              <span>Оплатить через Kaspi</span>
-            </>
-          )}
-        </button>
-        
-        {/* Безопасная оплата */}
-        <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-400">
-          <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-          <span>Безопасная оплата через Kaspi.kz</span>
-          <span className="text-emerald-500 font-medium ml-1">Sarqyt GO</span>
+              <button
+                onClick={handleKaspiPayment}
+                disabled={processingStep === 'processing'}
+                className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all hover:bg-[#2a5a4d] active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+              >
+                {processingStep === 'processing' ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Перенаправление...</span>
+                  </>
+                ) : (
+                  <span>Оплатить через Kaspi</span>
+                )}
+              </button>
+              
+              <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-400">
+                <svg className="w-4 h-4 text-[#367666]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Безопасная оплата через Kaspi.kz</span>
+              </div>
+              
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="w-full mt-4 py-3 rounded-xl border border-gray-200 text-gray-500 font-medium hover:bg-gray-50 transition"
+              >
+                Вернуться
+              </button>
+            </div>
+          </div>
         </div>
-        
-        {/* Кнопка назад */}
-        <button
-          onClick={() => setShowPaymentModal(false)}
-          className="w-full mt-4 py-3 rounded-xl border border-gray-200 text-gray-500 font-medium hover:bg-gray-50 transition"
-        >
-          Вернуться
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }
