@@ -138,6 +138,13 @@ export default function OffersPage() {
     return price.toLocaleString('ru-KZ') + ' ₸';
   };
 
+  // Иконка сюрприза (подарок)
+  const SurpriseIcon = () => (
+    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+    </svg>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -151,9 +158,13 @@ export default function OffersPage() {
       {/* Header */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">
-            {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
-          </h1>
+          <div className="flex items-center gap-2">
+            
+            <h1 className="text-2xl font-bold">
+              {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
+            </h1>
+            <SurpriseIcon />
+          </div>
           <div className="w-16"></div>
         </div>
         <p className="text-emerald-100 text-sm mt-1">
@@ -165,7 +176,9 @@ export default function OffersPage() {
       <div className="px-4 py-6">
         {bags.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4"></div>
+            <div className="flex justify-center mb-4">
+              <SurpriseIcon />
+            </div>
             <p className="text-gray-500">
               {lang === 'kz' ? 'Барлық пакеттер уақытша броньдалған' : 'Все пакеты временно забронированы'}
             </p>
