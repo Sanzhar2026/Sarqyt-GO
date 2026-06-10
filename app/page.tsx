@@ -369,21 +369,21 @@ export default function HomePage() {
     
     if (imgError) {
       return (
-        <div className="w-44 h-44 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
+        <div className="w-72 h-72 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
           <div className="text-center">
-            <div className="text-7xl mb-2">🍽️</div>
+            <div className="text-9xl mb-2">🍽️</div>
           </div>
         </div>
       );
     }
     
     return (
-      <div className="w-44 h-44 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+      <div className="w-72 h-72 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
         <Image 
           src="/ready.png" 
           alt="SARQYT GO" 
-          width={376} 
-          height={376} 
+          width={288} 
+          height={288} 
           className="object-cover w-full h-full"
           priority
           onError={() => setImgError(true)}
@@ -398,7 +398,6 @@ export default function HomePage() {
       <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
         <div className="text-center">
           <LogoCircle />
-      
         </div>
       </div>
     );
