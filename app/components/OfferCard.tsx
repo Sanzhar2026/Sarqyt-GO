@@ -185,11 +185,11 @@ export default function OfferCard({
         if (onOrderSuccess) onOrderSuccess();
         
       } else {
-        alert(data.detail || '❌ Товар временно недоступен');
+        alert(data.detail || 'Товар временно недоступен');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('❌ Ошибка соединения');
+      alert('Ошибка соединения');
     } finally {
       setAddingToCart(false);
     }
@@ -226,24 +226,17 @@ export default function OfferCard({
               -{propDiscount}%
             </div>
           )}
-          <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+          <div className="bg-[#367666] text-white px-3 py-1 rounded-full text-sm font-bold">
             {totalItems} предметов
           </div>
         </div>
-        <button
-          onClick={() => setShowDetails(!showDetails)}
-          className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white transition"
-        >
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
+        {/* Убрана кнопка с фото */}
       </div>
       
       <div className="p-4">
         {/* Название */}
         <Link href={`/offers/${id}`}>
-          <h3 className="font-bold text-lg mb-1 hover:text-emerald-600 transition line-clamp-1">
+          <h3 className="font-bold text-lg mb-1 hover:text-[#367666] transition line-clamp-1">
             {propName}
           </h3>
         </Link>
@@ -276,7 +269,7 @@ export default function OfferCard({
               ))}
             </div>
             <div className="mt-3 pt-2 border-t border-gray-200">
-              <p className="text-xs text-emerald-600 font-medium">
+              <p className="text-xs text-[#367666] font-medium">
                 При отдельном заказе: {propOriginalPrice.toLocaleString()} ₸
               </p>
               <p className="text-xs text-gray-500 mt-1">
@@ -289,7 +282,7 @@ export default function OfferCard({
         {/* Цена и кнопки */}
         <div className="flex items-center justify-between mt-2">
           <div>
-            <span className="text-2xl font-bold text-emerald-600">{propPrice.toLocaleString()} ₸</span>
+            <span className="text-2xl font-bold text-[#367666]">{propPrice.toLocaleString()} ₸</span>
             {propOriginalPrice > propPrice && (
               <span className="text-gray-400 line-through text-sm ml-2">{propOriginalPrice.toLocaleString()} ₸</span>
             )}
@@ -298,16 +291,9 @@ export default function OfferCard({
           
           <div className="flex gap-2">
             <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition text-sm"
-            >
-              {showDetails ? 'Скрыть' : 'Состав'}
-            </button>
-            
-            <button
               onClick={addToCart}
               disabled={addingToCart}
-              className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50 transition"
+              className="bg-[#367666] text-white px-5 py-2 rounded-full hover:bg-[#2a5a4d] disabled:opacity-50 transition"
             >
               {addingToCart ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
