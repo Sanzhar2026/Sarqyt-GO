@@ -369,8 +369,8 @@ export default function HomePage() {
     
     if (imgError) {
       return (
-        <div className="w-64 h-64 mx-auto rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
-          <div className="text-5xl font-bold tracking-tight">
+        <div className="w-56 h-56 mx-auto rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
+          <div className="text-4xl font-bold tracking-tight">
             <span className="text-black">SARQYT</span>
             <span className="text-[#FF9500]">GO</span>
           </div>
@@ -379,10 +379,10 @@ export default function HomePage() {
     }
     
     return (
-      <div className="w-64 h-64 mx-auto rounded-full overflow-hidden shadow-2xl">
-        <div className="relative w-full h-full scale-[2]">
+      <div className="w-56 h-56 mx-auto rounded-full overflow-hidden shadow-2xl">
+        <div className="relative w-full h-full scale-[1.4]">
           <Image 
-            src="/ready.png" 
+            src="/logotype.jpeg" 
             alt="SARQYT GO" 
             fill
             className="object-cover"
