@@ -380,10 +380,10 @@ export default function HomePage() {
     return (
       <div className="w-72 h-72 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
         <Image 
-          src="/ready.png" 
+          src="/logotype.jpeg" 
           alt="SARQYT GO" 
-          width={288} 
-          height={288} 
+          width={388} 
+          height={388} 
           className="object-cover w-full h-full"
           priority
           onError={() => setImgError(true)}
