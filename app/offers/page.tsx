@@ -233,7 +233,7 @@ export default function OffersPage() {
                           {lang === 'kz' ? 'Қосылуда...' : 'Добавление...'}
                         </span>
                       ) : (
-                        lang === 'kz' ? 'Себетке' : 'В корзину'
+                        lang === 'kz' ? 'Тапсырыс беру' : 'Заказать'
                       )}
                     </button>
                   </div>
