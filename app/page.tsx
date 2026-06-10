@@ -398,11 +398,7 @@ export default function HomePage() {
       <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
         <div className="text-center">
           <LogoCircle />
-          <h1 className="text-4xl font-bold tracking-tight">
-            <span className="text-black">SARQYT</span>{' '}
-            <span className="text-[#FF9500]">GO</span>
-          </h1>
-          <p className="text-white text-lg mt-2 font-medium">Спасая еду - спасаем мир!</p>
+      
         </div>
       </div>
     );
