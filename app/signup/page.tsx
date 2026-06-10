@@ -174,15 +174,11 @@ export default function SignupPage() {
         <button onClick={toggleLanguage} className={`px-4 py-2 rounded-full text-sm font-medium transition ${lang === 'ru' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'}`}>Рус</button>
       </div>
 
-      <div className="flex flex-col items-center justify-center pt-12 pb-6">
-        <Logo size="large" showText={true} />
-      </div>
+      
 
       <div className="px-6 pb-12">
         <div className="bg-white rounded-3xl shadow-lg p-6">
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">{t[lang].title}</h2>
-          <p className="text-center text-gray-500 text-sm mb-8">{t[lang].subtitle}</p>
-
+         
           {error && <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">{error}</div>}
           {isDemoMode && step === 'verify' && <div className="mb-4 p-3 bg-yellow-50 text-yellow-700 rounded-xl text-sm border border-yellow-200">{t[lang].demoCode}</div>}
 

@@ -144,7 +144,7 @@ export default function CourierLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-lg">
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🚚</div>
+          
           <h1 className="text-2xl font-bold text-emerald-600">Sarqyt GO</h1>
           <p className="text-gray-500 mt-2">Вход для курьеров</p>
         </div>
