@@ -31,20 +31,20 @@ interface SurpriseBagData {
 
 interface OfferCardProps {
   id: number;
-  name: string;           // ← из пропсов
-  businessName: string;   // ← из пропсов
-  distance: string;       // ← из пропсов
-  price: number;          // ← из пропсов
-  originalPrice: number;  // ← из пропсов
-  discount: number;       // ← из пропсов
-  imageUrl: string;       // ← из пропсов
-  description?: string;   // ← из пропсов
+  name: string;
+  businessName: string;
+  distance: string;
+  price: number;
+  originalPrice: number;
+  discount: number;
+  imageUrl: string;
+  description?: string;
   onOrderSuccess?: () => void;
 }
 
 export default function OfferCard({
   id,
-  name: propName,              // ← переименовали чтобы не путать
+  name: propName,
   businessName,
   distance,
   price: propPrice,
@@ -64,26 +64,24 @@ export default function OfferCard({
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ Загружаем ТОЛЬКО состав (items) из БД
- // ✅ Загружаем состав сюрприза из правильного эндпоинта
-useEffect(() => {
-  const fetchBagItems = async () => {
-    try {
-      // ✅ ИСПРАВЛЕНО: убрал /items
-      const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setBagItems(data.items || []);
+  // Загружаем состав сюрприза
+  useEffect(() => {
+    const fetchBagItems = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setBagItems(data.items || []);
+        }
+      } catch (error) {
+        console.error('Error fetching bag items:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching bag items:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  fetchBagItems();
-}, [id, API_URL]);
+    };
+    
+    fetchBagItems();
+  }, [id, API_URL]);
 
   // Проверка авторизации
   useEffect(() => {
@@ -216,7 +214,7 @@ useEffect(() => {
       {/* Изображение */}
       <div className="relative h-52 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
         <Image 
-          src={propImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'} 
+          src={propImageUrl || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop'} 
           alt={propName} 
           fill 
           className="object-cover"
@@ -229,7 +227,7 @@ useEffect(() => {
             </div>
           )}
           <div className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-bold">
-            🎁 {totalItems} предметов
+            {totalItems} предметов
           </div>
         </div>
         <button
@@ -253,7 +251,7 @@ useEffect(() => {
         {/* Ресторан и расстояние */}
         <div className="flex items-center justify-between mb-2">
           <p className="text-gray-500 text-sm">{businessName}</p>
-          <p className="text-gray-400 text-xs">📍 {distance}</p>
+          <p className="text-gray-400 text-xs">{distance}</p>
         </div>
         
         {/* Описание */}
@@ -262,8 +260,8 @@ useEffect(() => {
         {/* Состав сюрприза */}
         {showDetails && bagItems.length > 0 && (
           <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
-            <h4 className="font-semibold text-sm mb-2 flex items-center gap-1">
-              <span>🎁</span> В состав входит:
+            <h4 className="font-semibold text-sm mb-2">
+              В состав входит:
             </h4>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {bagItems.map((item, idx) => (
@@ -279,10 +277,10 @@ useEffect(() => {
             </div>
             <div className="mt-3 pt-2 border-t border-gray-200">
               <p className="text-xs text-emerald-600 font-medium">
-                ✨ При отдельном заказе: {propOriginalPrice.toLocaleString()} ₸
+                При отдельном заказе: {propOriginalPrice.toLocaleString()} ₸
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                💰 Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸)
+                Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸)
               </p>
             </div>
           </div>
@@ -309,18 +307,12 @@ useEffect(() => {
             <button
               onClick={addToCart}
               disabled={addingToCart}
-              className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50 transition flex items-center gap-2"
+              className="bg-emerald-600 text-white px-5 py-2 rounded-full hover:bg-emerald-700 disabled:opacity-50 transition"
             >
               {addingToCart ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>...</span>
-                </>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                <>
-                  <span>🛒</span>
-                  <span>В корзину</span>
-                </>
+                'Заказать'
               )}
             </button>
           </div>
