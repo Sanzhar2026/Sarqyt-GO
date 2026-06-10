@@ -27,15 +27,15 @@ export default function OffersPage() {
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<number | null>(null);
 
-  // ✅ Получение токена
+  // Получение токена
   const getAuthToken = () => sessionStorage.getItem('authToken');
 
-  // ✅ Авторизованный fetch
+  // Авторизованный fetch
   const authFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     
     if (!token) {
-      console.error('❌ Нет токена');
+      console.error('Нет токена');
       router.push('/login');
       throw new Error('No token');
     }
@@ -52,7 +52,6 @@ export default function OffersPage() {
 
   const fetchBags = async () => {
     try {
-      // ✅ Для получения сюрпризов токен не обязателен
       const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
       const data = await response.json();
       setBags(data);
@@ -86,19 +85,17 @@ export default function OffersPage() {
     setAddingId(bag.id);
     
     try {
-      console.log('🛒 Добавление в корзину:', bag.id, bag.name);
+      console.log('Добавление в корзину:', bag.id, bag.name);
       
-      // ✅ ИСПРАВЛЕНО: добавляем Authorization header!
       const response = await authFetch('https://toogood-2ncf.onrender.com/api/cart/add', {
         method: 'POST',
         body: JSON.stringify({ bag_id: bag.id, quantity: 1 })
       });
 
       const data = await response.json();
-      console.log('📦 Ответ сервера:', data);
+      console.log('Ответ сервера:', data);
 
       if (response.ok && data.success) {
-        // ✅ Используем sessionStorage
         const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === bag.id);
         
@@ -127,11 +124,11 @@ export default function OffersPage() {
         alert(`✅ ${bag.name} добавлен в корзину! У вас 15 минут на оплату.`);
         router.push('/cart');
       } else {
-        alert(data.detail || data.message || '❌ Ошибка при добавлении');
+        alert(data.detail || data.message || 'Ошибка при добавлении');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('❌ Ошибка соединения с сервером');
+      alert('Ошибка соединения с сервером');
     } finally {
       setAddingId(null);
     }
@@ -144,7 +141,7 @@ export default function OffersPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
       </div>
     );
   }
@@ -152,34 +149,12 @@ export default function OffersPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
-      <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">
-            {lang === 'kz' ? '🎁 Сюрприз-пакеттер' : '🎁 Сюрприз-пакеты'}
+            {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
           </h1>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setLang('kz')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                lang === 'kz' 
-                  ? 'bg-white text-emerald-600' 
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
-            >
-              Қаз
-            </button>
-            <button
-              onClick={() => setLang('ru')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                lang === 'ru' 
-                  ? 'bg-white text-emerald-600' 
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
-            >
-              Рус
-            </button>
-          </div>
+          <div className="w-16"></div>
         </div>
         <p className="text-emerald-100 text-sm mt-1">
           {lang === 'kz' ? 'Өзіңізге сюрприз-пакетті таңдаңыз' : 'Выберите свой сюрприз-пакет'}
@@ -190,13 +165,13 @@ export default function OffersPage() {
       <div className="px-4 py-6">
         {bags.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎁</div>
+            <div className="text-6xl mb-4"></div>
             <p className="text-gray-500">
               {lang === 'kz' ? 'Барлық пакеттер уақытша броньдалған' : 'Все пакеты временно забронированы'}
             </p>
             <button 
               onClick={fetchBags}
-              className="mt-4 text-emerald-600 underline"
+              className="mt-4 text-[#367666] underline"
             >
               {lang === 'kz' ? 'Жаңарту' : 'Обновить'}
             </button>
@@ -233,7 +208,7 @@ export default function OffersPage() {
                   
                   <div className="flex items-center justify-between mt-3">
                     <div>
-                      <span className="text-xl font-bold text-emerald-600">
+                      <span className="text-xl font-bold text-[#367666]">
                         {formatPrice(bag.discounted_price)}
                       </span>
                       {bag.original_price > bag.discounted_price && (
@@ -249,7 +224,7 @@ export default function OffersPage() {
                       className={`px-6 py-2 rounded-xl font-semibold transition ${
                         bag.available_quantity <= 0 || addingId === bag.id
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          : 'bg-[#367666] text-white hover:bg-[#2a5a4d]'
                       }`}
                     >
                       {addingId === bag.id ? (
@@ -258,7 +233,7 @@ export default function OffersPage() {
                           {lang === 'kz' ? 'Қосылуда...' : 'Добавление...'}
                         </span>
                       ) : (
-                        lang === 'kz' ? '🛒 Себетке' : '🛒 В корзину'
+                        lang === 'kz' ? 'Себетке' : 'В корзину'
                       )}
                     </button>
                   </div>

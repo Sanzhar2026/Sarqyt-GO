@@ -387,25 +387,7 @@ export default function CartPage() {
               ←
             </button>
             <h1 className="text-xl font-bold text-gray-800">{t[lang].cart}</h1>
-            
-            <div className="flex gap-1">
-              <button
-                onClick={() => setLang('kz')}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'kz' ? 'bg-[#367666] text-white' : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                Қаз
-              </button>
-              <button
-                onClick={() => setLang('ru')}
-                className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
-                  lang === 'ru' ? 'bg-[#367666] text-white' : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                Рус
-              </button>
-            </div>
+            <div className="w-10"></div>
           </div>
           
           {/* Способ получения */}
