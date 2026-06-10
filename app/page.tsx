@@ -389,7 +389,7 @@ export default function HomePage() {
     return (
       <div className="w-64 h-64 mx-auto mb-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
         <Image 
-          src="/icon.png" 
+          src="/ic.jpeg" 
           alt="SARQYT GO" 
           width={256} 
           height={256} 
