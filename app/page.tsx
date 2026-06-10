@@ -369,25 +369,27 @@ export default function HomePage() {
     
     if (imgError) {
       return (
-        <div className="w-72 h-72 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
-          <div className="text-center">
-            <div className="text-9xl mb-2">🍽️</div>
+        <div className="w-64 h-64 mx-auto rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
+          <div className="text-5xl font-bold tracking-tight">
+            <span className="text-black">SARQYT</span>
+            <span className="text-[#FF9500]">GO</span>
           </div>
         </div>
       );
     }
     
     return (
-      <div className="w-72 h-72 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
-        <Image 
-          src="/logotype.jpeg" 
-          alt="SARQYT GO" 
-          width={388} 
-          height={388} 
-          className="object-cover w-full h-full"
-          priority
-          onError={() => setImgError(true)}
-        />
+      <div className="w-64 h-64 mx-auto rounded-full overflow-hidden shadow-2xl">
+        <div className="relative w-full h-full scale-110">
+          <Image 
+            src="/logotype.jpeg" 
+            alt="SARQYT GO" 
+            fill
+            className="object-cover"
+            priority
+            onError={() => setImgError(true)}
+          />
+        </div>
       </div>
     );
   };
