@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Logo from '../components/Logo';
 
 type Language = 'kz' | 'ru';
 
@@ -168,37 +167,114 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-white">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-white">
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <button onClick={toggleLanguage} className={`px-4 py-2 rounded-full text-sm font-medium transition ${lang === 'kz' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'}`}>Қаз</button>
         <button onClick={toggleLanguage} className={`px-4 py-2 rounded-full text-sm font-medium transition ${lang === 'ru' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'}`}>Рус</button>
       </div>
 
-      
-
-      <div className="px-6 pb-12">
+      <div className="w-full max-w-md px-6">
         <div className="bg-white rounded-3xl shadow-lg p-6">
-         
           {error && <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">{error}</div>}
           {isDemoMode && step === 'verify' && <div className="mb-4 p-3 bg-yellow-50 text-yellow-700 rounded-xl text-sm border border-yellow-200">{t[lang].demoCode}</div>}
 
           {step === 'phone' ? (
             <div className="space-y-5">
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].phone}</label><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t[lang].phonePlaceholder} className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" /></div>
-              <button onClick={sendVerification} disabled={loading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg hover:bg-emerald-700 transition disabled:opacity-70 shadow-md">{loading ? <span className="flex items-center justify-center gap-2"><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>{lang === 'kz' ? 'Жіберілуде...' : 'Отправка...'}</span> : t[lang].sendCode}</button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].phone}</label>
+                <input 
+                  type="tel" 
+                  value={phone} 
+                  onChange={(e) => setPhone(e.target.value)} 
+                  placeholder={t[lang].phonePlaceholder} 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                />
+              </div>
+              <button 
+                onClick={sendVerification} 
+                disabled={loading} 
+                className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg hover:bg-emerald-700 transition disabled:opacity-70 shadow-md"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {lang === 'kz' ? 'Жіберілуде...' : 'Отправка...'}
+                  </span>
+                ) : t[lang].sendCode}
+              </button>
             </div>
           ) : (
             <div className="space-y-4">
-              {!isDemoMode && (<div><label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].code}</label><input type="text" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} placeholder="123456" className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" /></div>)}
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].firstName}</label><input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder={lang === 'kz' ? 'Атыңыз' : 'Ваше имя'} className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].lastName}</label><input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder={lang === 'kz' ? 'Тегіңіз' : 'Ваша фамилия'} className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].password}</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" /></div>
-              <div><label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].confirmPassword}</label><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" /></div>
-              <button onClick={handleSignup} disabled={loading} className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg mt-4 hover:bg-emerald-700 transition disabled:opacity-70 shadow-md">{loading ? <span className="flex items-center justify-center gap-2"><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>{lang === 'kz' ? 'Тіркелу...' : 'Регистрация...'}</span> : t[lang].signup}</button>
+              {!isDemoMode && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].code}</label>
+                  <input 
+                    type="text" 
+                    value={verificationCode} 
+                    onChange={(e) => setVerificationCode(e.target.value)} 
+                    placeholder="123456" 
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].firstName}</label>
+                <input 
+                  type="text" 
+                  value={firstName} 
+                  onChange={(e) => setFirstName(e.target.value)} 
+                  placeholder={lang === 'kz' ? 'Атыңыз' : 'Ваше имя'} 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].lastName}</label>
+                <input 
+                  type="text" 
+                  value={lastName} 
+                  onChange={(e) => setLastName(e.target.value)} 
+                  placeholder={lang === 'kz' ? 'Тегіңіз' : 'Ваша фамилия'} 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].password}</label>
+                <input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t[lang].confirmPassword}</label>
+                <input 
+                  type="password" 
+                  value={confirmPassword} 
+                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-base transition" 
+                />
+              </div>
+              <button 
+                onClick={handleSignup} 
+                disabled={loading} 
+                className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold text-lg mt-4 hover:bg-emerald-700 transition disabled:opacity-70 shadow-md"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {lang === 'kz' ? 'Тіркелу...' : 'Регистрация...'}
+                  </span>
+                ) : t[lang].signup}
+              </button>
             </div>
           )}
 
-          <p className="text-center text-gray-500 mt-8">{t[lang].haveAccount} <Link href="/login" className="text-emerald-600 font-semibold hover:underline">{t[lang].login}</Link></p>
+          <p className="text-center text-gray-500 mt-8">
+            {t[lang].haveAccount} <Link href="/login" className="text-emerald-600 font-semibold hover:underline">{t[lang].login}</Link>
+          </p>
         </div>
       </div>
     </div>
