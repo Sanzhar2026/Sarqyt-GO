@@ -398,7 +398,7 @@ export default function HomePage() {
         <div className="text-center">
           <LogoCircle />
           <h1 className="text-4xl font-bold tracking-tight">
-            <span className="text-black">SARQYT</span>{' '}
+            <span className="text-black">Sarqyt</span>{' '}
             <span className="text-[#FF9500]">GO</span>
           </h1>
           <p className="text-white text-lg mt-2 font-medium">Спасая еду - спасаем мир!</p>
