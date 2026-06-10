@@ -93,7 +93,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
+        <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full"></div>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header с кнопками языка */}
-      <div className="bg-emerald-600 text-white pt-12 pb-8 px-6">
+      <div className="bg-[#367666] text-white pt-12 pb-8 px-6">
         <div className="flex justify-between items-start mb-6">
           <h1 className="text-2xl font-bold">{t[lang].profile}</h1>
           
@@ -113,7 +113,7 @@ export default function ProfilePage() {
               onClick={() => setLang('kz')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                 lang === 'kz' 
-                  ? 'bg-white text-emerald-600' 
+                  ? 'bg-white text-[#367666]' 
                   : 'bg-white/20 text-white hover:bg-white/30'
               }`}
             >
@@ -123,7 +123,7 @@ export default function ProfilePage() {
               onClick={() => setLang('ru')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                 lang === 'ru' 
-                  ? 'bg-white text-emerald-600' 
+                  ? 'bg-white text-[#367666]' 
                   : 'bg-white/20 text-white hover:bg-white/30'
               }`}
             >

@@ -10,7 +10,7 @@ const DeliveryMap = dynamic(() => import('../../components/DeliveryMap'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-[400px] bg-gray-200 rounded-xl flex items-center justify-center">
-      <div className="animate-spin h-8 w-8 border-b-2 border-emerald-600 rounded-full"></div>
+      <div className="animate-spin h-8 w-8 border-b-2 border-[#367666] rounded-full"></div>
     </div>
   )
 });
@@ -124,13 +124,13 @@ export default function OrderDetailPage() {
     const ws = new WebSocket('wss://toogood-2ncf.onrender.com/ws');
     
     ws.onopen = () => {
-      console.log('🔌 WebSocket connected for order');
+      console.log('WebSocket connected for order');
       ws.send(JSON.stringify({ type: 'subscribe', channel: `order_${orderId}` }));
     };
     
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log('📨 Получено уведомление:', data);
+      console.log('Получено уведомление:', data);
       
       if (data.type === 'courier_arrived') {
         showToast(`${data.data.message}! ${data.data.courier_name} ожидает вас.`, 'info');
@@ -139,7 +139,7 @@ export default function OrderDetailPage() {
     };
     
     ws.onclose = () => {
-      console.log('🔌 WebSocket disconnected');
+      console.log('WebSocket disconnected');
     };
     
     return () => ws.close();
@@ -156,7 +156,7 @@ export default function OrderDetailPage() {
         
         if (diff === 0 && !order.auto_refund_processed) {
           clearInterval(interval);
-          alert('⏰ Время получения истекло. Будет оформлен автоматический возврат.');
+          alert('Время получения истекло. Будет оформлен автоматический возврат.');
           fetchOrder();
         }
       }, 1000);
@@ -183,7 +183,7 @@ export default function OrderDetailPage() {
       
       const data = await response.json();
       if (data.success) {
-        showToast('✅ Спасибо! Заказ получен.', 'success');
+        showToast('Спасибо! Заказ получен.', 'success');
         fetchOrder();
       } else {
         alert(data.message || 'Ошибка');
@@ -213,16 +213,16 @@ export default function OrderDetailPage() {
       });
       
       if (response.ok) {
-        alert('✅ Запрос на возврат отправлен. Администратор рассмотрит его в ближайшее время.');
+        alert('Запрос на возврат отправлен. Администратор рассмотрит его в ближайшее время.');
         setShowRefundModal(false);
         setRefundReason('');
         fetchOrder();
       } else {
         const error = await response.json();
-        alert(`❌ ${error.detail || 'Ошибка'}`);
+        alert(`Ошибка: ${error.detail || 'Ошибка'}`);
       }
     } catch (err) {
-      alert('❌ Ошибка при отправке запроса');
+      alert('Ошибка при отправке запроса');
     } finally {
       setSubmitting(false);
     }
@@ -270,7 +270,7 @@ export default function OrderDetailPage() {
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const toast = document.createElement('div');
     toast.className = `fixed bottom-24 left-4 right-4 z-50 p-4 rounded-xl text-white text-center ${
-      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+      type === 'success' ? 'bg-[#367666]' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
     } animate-slide-up`;
     toast.textContent = message;
     document.body.appendChild(toast);
@@ -280,7 +280,7 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
       </div>
     );
   }
@@ -289,12 +289,12 @@ export default function OrderDetailPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
         <div className="text-center">
-          <div className="text-6xl mb-4">😢</div>
+          <div className="text-6xl mb-4"></div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Заказ не найден</h1>
           <p className="text-gray-500 mb-6">Проверьте номер заказа или вернитесь на главную</p>
           <button
             onClick={() => router.push('/')}
-            className="bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 transition"
+            className="bg-[#367666] text-white px-6 py-3 rounded-xl hover:bg-[#2a5a4d] transition"
           >
             На главную
           </button>
@@ -306,7 +306,7 @@ export default function OrderDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white p-6">
+      <div className="bg-[#367666] text-white p-6">
         <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
         </button>
@@ -327,15 +327,15 @@ export default function OrderDetailPage() {
           {/* Progress Bar */}
           <div className="mt-4">
             <div className="flex justify-between text-xs text-gray-500 mb-2">
-              <span>✅ Заказ</span>
-              <span>🍳 Готовка</span>
-              <span>📍 Готово</span>
-              <span>🚚 Доставка</span>
-              <span>🏠 Доставлен</span>
+              <span>Заказ</span>
+              <span>Готовка</span>
+              <span>Готово</span>
+              <span>Доставка</span>
+              <span>Доставлен</span>
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-emerald-600 transition-all duration-500"
+                className="h-full bg-[#367666] transition-all duration-500"
                 style={{ width: getProgressWidth() }}
               />
             </div>
@@ -345,7 +345,7 @@ export default function OrderDetailPage() {
         {/* КНОПКА ДЛЯ КЛИЕНТА - ПОДТВЕРЖДЕНИЕ ПОЛУЧЕНИЯ */}
         {order.status === 'nearby' && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3">🚚</div>
+            <div className="text-5xl mb-3"></div>
             <h2 className="font-bold text-xl text-green-700 mb-2">Курьер рядом!</h2>
             {order.assigned_courier && (
               <p className="text-green-600 text-sm mb-2">
@@ -358,9 +358,9 @@ export default function OrderDetailPage() {
             <button
               onClick={confirmDelivery}
               disabled={confirming}
-              className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold text-lg"
+              className="w-full bg-[#367666] text-white py-3 rounded-xl font-semibold text-lg hover:bg-[#2a5a4d] transition"
             >
-              {confirming ? 'Подтверждение...' : '✅ ПОЛУЧИЛ ЗАКАЗ'}
+              {confirming ? 'Подтверждение...' : 'ПОЛУЧИЛ ЗАКАЗ'}
             </button>
           </div>
         )}
@@ -368,12 +368,12 @@ export default function OrderDetailPage() {
         {/* Заказ в пути */}
         {order.status === 'out_for_delivery' && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3">🚚</div>
+            <div className="text-5xl mb-3"></div>
             <h2 className="font-bold text-xl text-blue-700 mb-2">Ваш заказ в пути!</h2>
             <p className="text-blue-600 text-sm">Курьер уже выехал к вам</p>
             <div className="mt-4">
               <p className="text-3xl font-mono font-bold text-blue-600">
-                ⏱️ {formatTime(timeLeft)}
+                {formatTime(timeLeft)}
               </p>
               <p className="text-xs text-gray-500">Осталось времени на получение</p>
             </div>
@@ -383,7 +383,7 @@ export default function OrderDetailPage() {
         {/* Заказ доставлен */}
         {order.status === 'delivered' && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3">✅</div>
+            <div className="text-5xl mb-3"></div>
             <h2 className="font-bold text-xl text-green-700 mb-2">Заказ успешно доставлен!</h2>
             <p className="text-green-600 text-sm mt-1">Спасибо, что выбрали нас</p>
           </div>
@@ -392,7 +392,7 @@ export default function OrderDetailPage() {
         {/* Запрос на возврат отправлен */}
         {order.refund_status === 'requested' && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3">⏳</div>
+            <div className="text-5xl mb-3"></div>
             <h2 className="font-bold text-xl text-yellow-700 mt-2">Запрос на возврат отправлен</h2>
             <p className="text-yellow-600 text-sm mt-1">Администратор рассмотрит ваш запрос</p>
           </div>
@@ -401,7 +401,7 @@ export default function OrderDetailPage() {
         {/* Карта */}
         {(order.status === 'out_for_delivery' || order.status === 'nearby' || order.status === 'delivered') && (
           <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
-            <h2 className="font-bold text-lg mb-4">🗺️ Карта доставки</h2>
+            <h2 className="font-bold text-lg mb-4">Карта доставки</h2>
             <DeliveryMap
               supplierLat={order.supplier_lat}
               supplierLon={order.supplier_lon}
@@ -419,7 +419,7 @@ export default function OrderDetailPage() {
         {/* Информация о курьере */}
         {order.assigned_courier && order.status !== 'delivered' && (
           <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
-            <h2 className="font-bold text-lg mb-4">🚚 Курьер</h2>
+            <h2 className="font-bold text-lg mb-4">Курьер</h2>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-3xl">
                 {order.assigned_courier.courier_type === 'driver' ? '🚗' : '🚶'}
@@ -432,9 +432,9 @@ export default function OrderDetailPage() {
               </div>
               <button
                 onClick={() => window.location.href = `tel:${order.assigned_courier?.phone}`}
-                className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-sm font-semibold"
+                className="bg-[#367666] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#2a5a4d] transition"
               >
-                📞 Позвонить
+                Позвонить
               </button>
             </div>
           </div>
@@ -442,7 +442,7 @@ export default function OrderDetailPage() {
 
         {/* Детали заказа */}
         <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
-          <h2 className="font-bold text-lg mb-4">📋 Детали заказа</h2>
+          <h2 className="font-bold text-lg mb-4">Детали заказа</h2>
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-600">Товар:</span>
@@ -454,7 +454,7 @@ export default function OrderDetailPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Сумма:</span>
-              <span className="font-bold text-emerald-600">{order.amount_paid} ₸</span>
+              <span className="font-bold text-[#367666]">{order.amount_paid} ₸</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Адрес доставки:</span>
@@ -469,7 +469,7 @@ export default function OrderDetailPage() {
             onClick={() => setShowRefundModal(true)}
             className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition"
           >
-            ❌ Отказаться от заказа
+            Отказаться от заказа
           </button>
         )}
       </div>
@@ -479,7 +479,7 @@ export default function OrderDetailPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="text-center mb-4">
-              <div className="text-5xl mb-2">❌</div>
+              <div className="text-5xl mb-2"></div>
               <h2 className="text-xl font-bold">Отказ от заказа</h2>
               <p className="text-gray-500 text-sm mt-1">
                 Укажите причину отказа. Администратор рассмотрит ваш запрос.
@@ -487,7 +487,7 @@ export default function OrderDetailPage() {
             </div>
             
             <textarea
-              className="w-full p-3 border border-gray-200 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full p-3 border border-gray-200 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-[#367666]"
               rows={4}
               placeholder="Например: передумал, нашел дешевле, не подошел размер..."
               value={refundReason}
