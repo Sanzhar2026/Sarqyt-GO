@@ -13,7 +13,7 @@ export default function FavoritesPage() {
       <div className="bg-emerald-600 text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <h1 className="text-2xl font-bold">{t.favorites}</h1>
-          <LanguageSwitcher lang={lang} setLang={setLang} />
+        
         </div>
       </div>
 
