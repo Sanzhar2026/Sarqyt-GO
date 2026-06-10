@@ -380,9 +380,9 @@ export default function HomePage() {
     
     return (
       <div className="w-64 h-64 mx-auto rounded-full overflow-hidden shadow-2xl">
-        <div className="relative w-full h-full scale-110">
+        <div className="relative w-full h-full scale-[2]">
           <Image 
-            src="/logotype.jpeg" 
+            src="/ready.png" 
             alt="SARQYT GO" 
             fill
             className="object-cover"
