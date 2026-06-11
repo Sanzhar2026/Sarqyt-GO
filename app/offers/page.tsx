@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useLanguage } from '../layout';
 
 interface SurpriseBag {
@@ -18,11 +17,13 @@ interface SurpriseBag {
   available_quantity: number;
   supplier_name: string;
   supplier_id: number;
+  rating?: number;
+  total_reviews?: number;
 }
 
 export default function OffersPage() {
   const router = useRouter();
-  const { lang, setLang } = useLanguage();
+  const { lang } = useLanguage();
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<number | null>(null);
@@ -50,11 +51,33 @@ export default function OffersPage() {
     });
   };
 
+  // Загрузка сюрпризов с их рейтингами
   const fetchBags = async () => {
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
       const data = await response.json();
-      setBags(data);
+      
+      // Загружаем рейтинги для каждого сюрприза
+      const bagsWithRatings = await Promise.all(
+        data.map(async (bag: SurpriseBag) => {
+          try {
+            const ratingRes = await fetch(`https://toogood-2ncf.onrender.com/api/surprise-bags/${bag.id}/rating`);
+            if (ratingRes.ok) {
+              const ratingData = await ratingRes.json();
+              return { 
+                ...bag, 
+                rating: ratingData.rating || 0, 
+                total_reviews: ratingData.total_reviews || 0
+              };
+            }
+          } catch (e) {
+            console.error('Error fetching rating:', e);
+          }
+          return { ...bag, rating: 0, total_reviews: 0 };
+        })
+      );
+      
+      setBags(bagsWithRatings);
     } catch (error) {
       console.error('Error fetching bags:', error);
     } finally {
@@ -62,7 +85,25 @@ export default function OffersPage() {
     }
   };
 
-  // Проверка авторизации
+  // Отображение звезд рейтинга
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<span key={`full-${i}`} className="text-yellow-400 text-sm">★</span>);
+    }
+    if (hasHalfStar) {
+      stars.push(<span key="half" className="text-yellow-400 text-sm">½</span>);
+    }
+    const emptyStars = 5 - stars.length;
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<span key={`empty-${i}`} className="text-gray-300 text-sm">★</span>);
+    }
+    return stars;
+  };
+
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
@@ -85,15 +126,12 @@ export default function OffersPage() {
     setAddingId(bag.id);
     
     try {
-      console.log('Добавление в корзину:', bag.id, bag.name);
-      
       const response = await authFetch('https://toogood-2ncf.onrender.com/api/cart/add', {
         method: 'POST',
         body: JSON.stringify({ bag_id: bag.id, quantity: 1 })
       });
 
       const data = await response.json();
-      console.log('Ответ сервера:', data);
 
       if (response.ok && data.success) {
         const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
@@ -121,7 +159,10 @@ export default function OffersPage() {
         sessionStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
         
-        alert(`✅ ${bag.name} добавлен в корзину! У вас 15 минут на оплату.`);
+        const message = lang === 'kz' 
+          ? `✅ ${bag.name} себетке қосылды! Төлеуге 15 минут бар.` 
+          : `✅ ${bag.name} добавлен в корзину! У вас 15 минут на оплату.`;
+        alert(message);
         router.push('/cart');
       } else {
         alert(data.detail || data.message || 'Ошибка при добавлении');
@@ -138,7 +179,17 @@ export default function OffersPage() {
     return price.toLocaleString('ru-KZ') + ' ₸';
   };
 
-  // Иконка сюрприза (подарок)
+  const getReviewText = (count: number) => {
+    if (lang === 'kz') {
+      if (count % 10 === 1 && count % 100 !== 11) return 'баға';
+      return 'баға';
+    } else {
+      if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
+      if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
+      return 'оценок';
+    }
+  };
+
   const SurpriseIcon = () => (
     <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
@@ -159,7 +210,6 @@ export default function OffersPage() {
       <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            
             <h1 className="text-2xl font-bold">
               {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
             </h1>
@@ -215,11 +265,30 @@ export default function OffersPage() {
                 </div>
                 
                 <div className="p-4">
-                  <h3 className="font-bold text-gray-800 text-lg">{bag.name}</h3>
-                  <p className="text-gray-500 text-sm">{bag.supplier_name}</p>
-                  <p className="text-gray-600 text-sm mt-2 line-clamp-2">{bag.description}</p>
+                  <p className="text-[#367666] text-sm font-medium">
+                    {bag.supplier_name}
+                  </p>
                   
-                  <div className="flex items-center justify-between mt-3">
+                  <h3 className="font-bold text-gray-800 text-lg">
+                    {bag.name}
+                  </h3>
+                  
+                  <p className="text-gray-500 text-sm mt-1 line-clamp-2">{bag.description}</p>
+                  
+                  {/* ТОЛЬКО рейтинг - звезды и количество оценок */}
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-0.5">
+                      {renderStars(bag.rating || 0)}
+                    </div>
+                    {bag.total_reviews && bag.total_reviews > 0 && (
+                      <span className="text-xs text-gray-500">
+                        ({bag.total_reviews} {getReviewText(bag.total_reviews)})
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Цена и кнопка */}
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
                     <div>
                       <span className="text-xl font-bold text-[#367666]">
                         {formatPrice(bag.discounted_price)}
