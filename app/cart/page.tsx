@@ -36,7 +36,9 @@ export default function CartPage() {
   const [showTimerWarning, setShowTimerWarning] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [customerAddress, setCustomerAddress] = useState('');
-  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('pickup'); // По умолчанию самовывоз
+
+  const DELIVERY_FEE = 400; // Стоимость доставки
 
   const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
@@ -67,7 +69,10 @@ export default function CartPage() {
       deliveryType: 'Жеткізу түрі',
       courier: 'Курьермен жеткізу',
       pickup: 'Өзім алып кетемін',
-      pickupAddress: 'Алып кету мекенжайы'
+      pickupAddress: 'Алып кету мекенжайы',
+      deliveryFee: 'Жеткізу құны',
+      orderAmount: 'Тапсырыс сомасы',
+      totalAmount: 'Төленетін сома'
     },
     ru: {
       cart: 'Корзина',
@@ -95,7 +100,10 @@ export default function CartPage() {
       deliveryType: 'Способ получения',
       courier: 'Доставка курьером',
       pickup: 'Самовывоз',
-      pickupAddress: 'Адрес самовывоза'
+      pickupAddress: 'Адрес самовывоза',
+      deliveryFee: 'Стоимость доставки',
+      orderAmount: 'Сумма заказа',
+      totalAmount: 'Итого к оплате'
     }
   };
 
@@ -262,8 +270,16 @@ export default function CartPage() {
     window.dispatchEvent(new Event('cartUpdated'));
   };
 
-  const getTotalPrice = () => {
+  const getSubtotalPrice = () => {
     return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  };
+
+  const getDeliveryFee = () => {
+    return deliveryType === 'delivery' ? DELIVERY_FEE : 0;
+  };
+
+  const getTotalPrice = () => {
+    return getSubtotalPrice() + getDeliveryFee();
   };
 
   const getTotalItems = () => {
@@ -363,7 +379,6 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
         <div className="text-center">
-          {/* Иконка корзины как в BottomNav - без фона */}
           <div className="flex justify-center mb-6">
             <svg className="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
@@ -383,11 +398,10 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - зеленый как на главной */}
+      {/* Header */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {/* Иконка корзины как в BottomNav - без фона */}
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
             </svg>
@@ -404,22 +418,12 @@ export default function CartPage() {
 
       {/* Контент корзины */}
       <div className="px-4 pt-4 pb-20">
-        {/* Способ получения */}
+        {/* Способ получения - сначала самовывоз, потом курьер */}
         <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-3">
             {t[lang].deliveryType}
           </label>
           <div className="flex gap-3">
-            <button
-              onClick={() => setDeliveryType('delivery')}
-              className={`flex-1 py-3 rounded-xl font-semibold transition ${
-                deliveryType === 'delivery'
-                  ? 'bg-[#367666] text-white'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {t[lang].courier}
-            </button>
             <button
               onClick={() => setDeliveryType('pickup')}
               className={`flex-1 py-3 rounded-xl font-semibold transition ${
@@ -429,6 +433,16 @@ export default function CartPage() {
               }`}
             >
               {t[lang].pickup}
+            </button>
+            <button
+              onClick={() => setDeliveryType('delivery')}
+              className={`flex-1 py-3 rounded-xl font-semibold transition ${
+                deliveryType === 'delivery'
+                  ? 'bg-[#367666] text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {t[lang].courier}
             </button>
           </div>
           
@@ -478,16 +492,30 @@ export default function CartPage() {
           </div>
         )}
         
-        {/* Итого */}
+        {/* Детали оплаты */}
         <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Итого:</span>
-            <span className="text-2xl font-bold text-[#367666]">
-              {getTotalPrice().toLocaleString()} ₸
-            </span>
-          </div>
-          <div className="text-right text-sm text-gray-500 mt-1">
-            {getTotalItems()} {t[lang].items}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">{t[lang].orderAmount}</span>
+              <span className="text-gray-800">{getSubtotalPrice().toLocaleString()} ₸</span>
+            </div>
+            {deliveryType === 'delivery' && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{t[lang].deliveryFee}</span>
+                <span className="text-gray-800">{DELIVERY_FEE.toLocaleString()} ₸</span>
+              </div>
+            )}
+            <div className="border-t border-gray-100 pt-2 mt-2">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-800">{t[lang].totalAmount}</span>
+                <span className="text-2xl font-bold text-[#367666]">
+                  {getTotalPrice().toLocaleString()} ₸
+                </span>
+              </div>
+              <div className="text-right text-sm text-gray-500 mt-1">
+                {getTotalItems()} {t[lang].items}
+              </div>
+            </div>
           </div>
         </div>
         
