@@ -58,6 +58,7 @@ export default function OfferCard({
   const [addingToCart, setAddingToCart] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -248,8 +249,8 @@ export default function OfferCard({
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
-      {/* Изображение */}
-      <div className="relative h-52">
+      {/* Изображение - при клике показываем состав */}
+      <div className="relative h-52 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
         <Image 
           src={propImageUrl || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop'} 
           alt={propName} 
@@ -279,6 +280,11 @@ export default function OfferCard({
             {totalItems} предметов
           </div>
         </div>
+        
+        {/* Индикатор, что можно нажать */}
+        <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+          👆 Нажми для состава
+        </div>
       </div>
       
       <div className="p-4">
@@ -298,9 +304,9 @@ export default function OfferCard({
         {/* Описание */}
         <p className="text-gray-600 text-sm mb-3 line-clamp-2">{propDescription}</p>
         
-        {/* Состав сюрприза (всегда виден, без кнопки) */}
-        {bagItems.length > 0 && (
-          <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl">
+        {/* Состав сюрприза (показывается при нажатии на картинку) */}
+        {showDetails && bagItems.length > 0 && (
+          <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
             <h4 className="font-semibold text-sm mb-2">
               В состав входит:
             </h4>
