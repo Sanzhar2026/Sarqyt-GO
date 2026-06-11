@@ -38,7 +38,7 @@ const navItems: NavItem[] = [
     labelKz: '', 
     labelRu: '', 
     icon: (
-      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
       </svg>
     ), 
@@ -91,10 +91,10 @@ export default function BottomNav() {
           
           if (item.isCenter) {
             return (
-              <div key={index} className="flex flex-col items-center -mt-8">
+              <div key={index} className="flex flex-col items-center">
                 <div 
                   onClick={() => router.push(item.href)}
-                  className={`w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-md ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
                     active ? 'bg-[#367666]' : 'bg-gray-100 hover:bg-gray-200'
                   }`}
                 >
