@@ -197,7 +197,7 @@ export default function CartPage() {
     
     if (expires.getTime() <= now.getTime()) {
       setTimeLeft(0);
-      alert(`⏰ ${t[lang].bookingExpired}`);
+      alert(`${t[lang].bookingExpired}`);
       sessionStorage.removeItem('cart');
       setCartItems([]);
       setReservation(null);
@@ -212,7 +212,7 @@ export default function CartPage() {
       if (diff <= 0) {
         setTimeLeft(0);
         clearInterval(interval);
-        alert(`⏰ ${t[lang].bookingExpired}`);
+        alert(`${t[lang].bookingExpired}`);
         sessionStorage.removeItem('cart');
         setCartItems([]);
         setReservation(null);
@@ -363,6 +363,12 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
         <div className="text-center">
+          {/* Иконка корзины с полупрозрачным серым фоном */}
+          <div className="w-32 h-32 mx-auto mb-6 rounded-2xl bg-gray-100 flex items-center justify-center">
+            <svg className="w-20 h-20 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 21v-6" />
+            </svg>
+          </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].emptyCart}</h1>
           <p className="text-gray-500 mb-6">{t[lang].addItems}</p>
           <Link href="/offers">
@@ -386,7 +392,15 @@ export default function CartPage() {
             >
               ←
             </button>
-            <h1 className="text-xl font-bold text-gray-800">{t[lang].cart}</h1>
+            <div className="flex items-center gap-2">
+              {/* Иконка корзины в хедере */}
+              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 21v-6" />
+                </svg>
+              </div>
+              <h1 className="text-xl font-bold text-gray-800">{t[lang].cart}</h1>
+            </div>
             <div className="w-10"></div>
           </div>
           
