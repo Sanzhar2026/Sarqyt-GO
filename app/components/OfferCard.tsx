@@ -61,6 +61,7 @@ export default function OfferCard({
   const [showDetails, setShowDetails] = useState(false);
   const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -128,6 +129,33 @@ export default function OfferCard({
     checkAuth();
   }, [API_URL]);
 
+  // Проверка избранного
+  useEffect(() => {
+    const favorites = localStorage.getItem('favorites');
+    if (favorites) {
+      const favList = JSON.parse(favorites);
+      setIsFavorite(favList.includes(id));
+    }
+  }, [id]);
+
+  // Toggle избранного
+  const toggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const favorites = localStorage.getItem('favorites');
+    let favList: number[] = favorites ? JSON.parse(favorites) : [];
+    
+    if (isFavorite) {
+      favList = favList.filter(favId => favId !== id);
+      showNotification('Удалено из избранного', 'info');
+    } else {
+      favList.push(id);
+      showNotification('Добавлено в избранное', 'success');
+    }
+    
+    localStorage.setItem('favorites', JSON.stringify(favList));
+    setIsFavorite(!isFavorite);
+  };
+
   const addToCart = async () => {
     if (!isAuthenticated) {
       alert('Пожалуйста, войдите в аккаунт');
@@ -179,20 +207,30 @@ export default function OfferCard({
         }
         
         sessionStorage.setItem('cart', JSON.stringify(cart));
-        alert(`✅ ${propName} забронирован на 15 минут!`);
+        showNotification(`✅ ${propName} добавлен в корзину!`, 'success');
         
         window.dispatchEvent(new Event('cartUpdated'));
         if (onOrderSuccess) onOrderSuccess();
         
       } else {
-        alert(data.detail || 'Товар временно недоступен');
+        showNotification(data.detail || 'Товар временно недоступен', 'error');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Ошибка соединения');
+      showNotification('Ошибка соединения', 'error');
     } finally {
       setAddingToCart(false);
     }
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-3 rounded-xl text-white text-center animate-slide-up text-sm ${
+      type === 'success' ? 'bg-[#367666]' : type === 'error' ? 'bg-red-600' : 'bg-gray-800'
+    }`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
   };
 
   if (!authChecked || loading) {
@@ -220,6 +258,18 @@ export default function OfferCard({
           className="object-cover"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
+        
+        {/* Кнопка избранного (сердечко) */}
+        <button
+          onClick={toggleFavorite}
+          className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white transition z-10"
+        >
+          <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-500'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </button>
+        
+        {/* Бейджи скидки и количества предметов */}
         <div className="absolute top-3 left-3 flex gap-2">
           {propDiscount > 0 && (
             <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
@@ -230,7 +280,6 @@ export default function OfferCard({
             {totalItems} предметов
           </div>
         </div>
-        {/* Убрана кнопка с фото */}
       </div>
       
       <div className="p-4">
@@ -290,6 +339,13 @@ export default function OfferCard({
           </div>
           
           <div className="flex gap-2">
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition text-sm"
+            >
+              {showDetails ? 'Скрыть' : 'Состав'}
+            </button>
+            
             <button
               onClick={addToCart}
               disabled={addingToCart}
