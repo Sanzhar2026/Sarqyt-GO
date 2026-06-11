@@ -415,19 +415,13 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header с логотипом по центру */}
+      {/* Header с логотипом слева, без номера телефона */}
       <div className="bg-[#367666] text-white px-6 pt-4 pb-5">
-        <div className="flex flex-col items-center justify-center">
+        <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            <span className="text-black">SARQYT</span>{' '}
-            <span className="text-[#FF9500]">GO</span>
+            <span className="text-white">SARQYT</span>{' '}
+            <span className="text-[#FFD700]">GO</span>
           </h1>
-          {user && user.phone && (
-            <div className="mt-2 flex items-center gap-2 text-xs bg-white/10 rounded-xl px-3 py-1.5 w-fit">
-              <span>📞</span>
-              <span>{user.phone}</span>
-            </div>
-          )}
         </div>
       </div>
 
