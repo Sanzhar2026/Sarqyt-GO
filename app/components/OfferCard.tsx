@@ -58,7 +58,6 @@ export default function OfferCard({
   const [addingToCart, setAddingToCart] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
   const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -250,7 +249,7 @@ export default function OfferCard({
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
       {/* Изображение */}
-      <div className="relative h-52 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
+      <div className="relative h-52">
         <Image 
           src={propImageUrl || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop'} 
           alt={propName} 
@@ -299,13 +298,13 @@ export default function OfferCard({
         {/* Описание */}
         <p className="text-gray-600 text-sm mb-3 line-clamp-2">{propDescription}</p>
         
-        {/* Состав сюрприза */}
-        {showDetails && bagItems.length > 0 && (
-          <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
+        {/* Состав сюрприза (всегда виден, без кнопки) */}
+        {bagItems.length > 0 && (
+          <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl">
             <h4 className="font-semibold text-sm mb-2">
               В состав входит:
             </h4>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2 max-h-48 overflow-y-auto">
               {bagItems.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3">
                   <div className="flex-1">
@@ -328,7 +327,7 @@ export default function OfferCard({
           </div>
         )}
         
-        {/* Цена и кнопки */}
+        {/* Цена и кнопка заказа */}
         <div className="flex items-center justify-between mt-2">
           <div>
             <span className="text-2xl font-bold text-[#367666]">{propPrice.toLocaleString()} ₸</span>
@@ -338,26 +337,17 @@ export default function OfferCard({
             <p className="text-xs text-gray-400 mt-1">за весь набор</p>
           </div>
           
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="px-4 py-2 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 transition text-sm"
-            >
-              {showDetails ? 'Скрыть' : 'Состав'}
-            </button>
-            
-            <button
-              onClick={addToCart}
-              disabled={addingToCart}
-              className="bg-[#367666] text-white px-5 py-2 rounded-full hover:bg-[#2a5a4d] disabled:opacity-50 transition"
-            >
-              {addingToCart ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                'Заказать'
-              )}
-            </button>
-          </div>
+          <button
+            onClick={addToCart}
+            disabled={addingToCart}
+            className="bg-[#367666] text-white px-5 py-2 rounded-full hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+          >
+            {addingToCart ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              'Заказать'
+            )}
+          </button>
         </div>
       </div>
     </div>
