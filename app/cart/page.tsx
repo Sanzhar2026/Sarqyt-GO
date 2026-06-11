@@ -42,7 +42,7 @@ export default function CartPage() {
 
   const t = {
     kz: {
-      cart: 'Себет',
+      cart: 'Сатып алулар',
       timeLeft: 'Броньдеу уақыты',
       payBefore: 'Мерзімі өткенше төлеңіз',
       orElse: 'Әйтпесе тауар сатылымға қайтарылады',
@@ -70,7 +70,7 @@ export default function CartPage() {
       pickupAddress: 'Алып кету мекенжайы'
     },
     ru: {
-      cart: 'Корзина',
+      cart: 'Покупки',
       timeLeft: 'Время бронирования',
       payBefore: 'Оплатите до истечения',
       orElse: 'Иначе товар вернется в продажу',
@@ -197,7 +197,7 @@ export default function CartPage() {
     
     if (expires.getTime() <= now.getTime()) {
       setTimeLeft(0);
-      alert(`${t[lang].bookingExpired}`);
+      alert(`⏰ ${t[lang].bookingExpired}`);
       sessionStorage.removeItem('cart');
       setCartItems([]);
       setReservation(null);
@@ -212,7 +212,7 @@ export default function CartPage() {
       if (diff <= 0) {
         setTimeLeft(0);
         clearInterval(interval);
-        alert(`${t[lang].bookingExpired}`);
+        alert(`⏰ ${t[lang].bookingExpired}`);
         sessionStorage.removeItem('cart');
         setCartItems([]);
         setReservation(null);
@@ -363,10 +363,9 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
         <div className="text-center">
-          {/* Иконка корзины с полупрозрачным серым фоном */}
-          <div className="w-32 h-32 mx-auto mb-6 rounded-2xl bg-gray-100 flex items-center justify-center">
-            <svg className="w-20 h-20 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 21v-6" />
+          <div className="w-32 h-32 mx-auto mb-6 rounded-2xl bg-white shadow-sm flex items-center justify-center border border-gray-100">
+            <svg className="w-20 h-20 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].emptyCart}</h1>
@@ -383,59 +382,59 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-40 shadow-sm">
-        <div className="px-4 pt-12 pb-4">
-          <div className="flex items-center justify-between mb-4">
-            <button 
-              onClick={() => router.back()}
-              className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center"
-            >
-              ←
-            </button>
-            <div className="flex items-center gap-2">
-              {/* Иконка корзины в хедере */}
-              <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 21v-6" />
-                </svg>
-              </div>
-              <h1 className="text-xl font-bold text-gray-800">{t[lang].cart}</h1>
+      {/* Header - зеленый как на главной */}
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
             </div>
-            <div className="w-10"></div>
+            <h1 className="text-xl font-bold">{t[lang].cart}</h1>
           </div>
-          
-          {/* Способ получения */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t[lang].deliveryType}
-            </label>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeliveryType('delivery')}
-                className={`flex-1 py-3 rounded-xl font-semibold transition ${
-                  deliveryType === 'delivery'
-                    ? 'bg-[#367666] text-white'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                {t[lang].courier}
-              </button>
-              <button
-                onClick={() => setDeliveryType('pickup')}
-                className={`flex-1 py-3 rounded-xl font-semibold transition ${
-                  deliveryType === 'pickup'
-                    ? 'bg-[#367666] text-white'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                {t[lang].pickup}
-              </button>
-            </div>
+          <button 
+            onClick={() => router.back()}
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Контент корзины */}
+      <div className="px-4 pt-4 pb-20">
+        {/* Способ получения */}
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            {t[lang].deliveryType}
+          </label>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setDeliveryType('delivery')}
+              className={`flex-1 py-3 rounded-xl font-semibold transition ${
+                deliveryType === 'delivery'
+                  ? 'bg-[#367666] text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {t[lang].courier}
+            </button>
+            <button
+              onClick={() => setDeliveryType('pickup')}
+              className={`flex-1 py-3 rounded-xl font-semibold transition ${
+                deliveryType === 'pickup'
+                  ? 'bg-[#367666] text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {t[lang].pickup}
+            </button>
           </div>
           
           {/* Адрес доставки (только для доставки) */}
           {deliveryType === 'delivery' && (
-            <div className="mb-4">
+            <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {t[lang].deliveryAddress}
               </label>
@@ -451,96 +450,100 @@ export default function CartPage() {
           
           {/* Информация о самовывозе */}
           {deliveryType === 'pickup' && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-xl">
+            <div className="mt-4 p-3 bg-blue-50 rounded-xl">
               <p className="text-sm text-blue-700">
                 {t[lang].pickupAddress}: Ресторан по адресу, указанному при оформлении
               </p>
             </div>
           )}
-          
-          {timeLeft !== null && timeLeft > 0 && (
-            <div className={`mb-4 p-4 rounded-2xl ${showTimerWarning ? 'bg-red-50 border border-red-200' : 'bg-yellow-50'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+        </div>
+        
+        {/* Таймер бронирования */}
+        {timeLeft !== null && timeLeft > 0 && (
+          <div className={`mb-4 p-4 rounded-2xl ${showTimerWarning ? 'bg-red-50 border border-red-200' : 'bg-yellow-50'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-semibold ${showTimerWarning ? 'text-red-600' : 'text-yellow-700'}`}>
+                  {t[lang].timeLeft}
+                </p>
+                <p className={`text-2xl font-mono font-bold ${showTimerWarning ? 'text-red-600 animate-pulse' : 'text-yellow-700'}`}>
+                  {formatTimeLeft(timeLeft)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">{t[lang].payBefore}</p>
+                <p className="text-xs text-gray-400">{t[lang].orElse}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Итого */}
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">Итого:</span>
+            <span className="text-2xl font-bold text-[#367666]">
+              {getTotalPrice().toLocaleString()} ₸
+            </span>
+          </div>
+          <div className="text-right text-sm text-gray-500 mt-1">
+            {getTotalItems()} {t[lang].items}
+          </div>
+        </div>
+        
+        {/* Кнопка оформления */}
+        <button
+          onClick={handleCheckout}
+          disabled={timeLeft === 0 || (deliveryType === 'delivery' && !customerAddress)}
+          className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+        >
+          <span>{timeLeft === 0 ? t[lang].timeExpired : t[lang].checkout}</span>
+        </button>
+        
+        {/* Товары в корзине */}
+        <div className="space-y-3">
+          {cartItems.map((item) => (
+            <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm flex gap-4">
+              <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                <Image
+                  src={item.imageUrl || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop'}
+                  alt={item.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
+                <p className="text-gray-500 text-xs">{item.businessName}</p>
+                <div className="flex items-center justify-between mt-2">
                   <div>
-                    <p className={`text-sm font-semibold ${showTimerWarning ? 'text-red-600' : 'text-yellow-700'}`}>
-                      {t[lang].timeLeft}
-                    </p>
-                    <p className={`text-2xl font-mono font-bold ${showTimerWarning ? 'text-red-600 animate-pulse' : 'text-yellow-700'}`}>
-                      {formatTimeLeft(timeLeft)}
-                    </p>
+                    <span className="text-lg font-bold text-[#367666]">{item.price} ₸</span>
+                    {item.originalPrice > item.price && (
+                      <span className="text-gray-400 line-through text-xs ml-2">{item.originalPrice} ₸</span>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    >-</button>
+                    <span className="font-semibold text-sm min-w-[25px] text-center">{item.quantity}</span>
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    >+</button>
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      className="ml-1 text-red-500 hover:text-red-700 text-sm"
+                    >✕</button>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">{t[lang].payBefore}</p>
-                  <p className="text-xs text-gray-400">{t[lang].orElse}</p>
-                </div>
               </div>
             </div>
-          )}
-          
-          <div className="mb-4">
-            <div className="text-2xl font-bold text-[#367666]">
-              {getTotalPrice().toLocaleString()} ₸
-            </div>
-            <div className="text-sm text-gray-500 mt-1">
-              {getTotalItems()} {t[lang].items}
-            </div>
-          </div>
-          
-          <button
-            onClick={handleCheckout}
-            disabled={timeLeft === 0 || (deliveryType === 'delivery' && !customerAddress)}
-            className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <span>{timeLeft === 0 ? t[lang].timeExpired : t[lang].checkout}</span>
-          </button>
+          ))}
         </div>
-      </div>
-
-      {/* Cart Items */}
-      <div className="px-4 py-4 space-y-3 pb-8">
-        {cartItems.map((item) => (
-          <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm flex gap-4">
-            <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
-              <Image
-                src={item.imageUrl || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop'}
-                alt={item.name}
-                fill
-                className="object-cover"
-              />
-            </div>
-            
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
-              <p className="text-gray-500 text-xs">{item.businessName}</p>
-              <div className="flex items-center justify-between mt-2">
-                <div>
-                  <span className="text-lg font-bold text-[#367666]">{item.price} ₸</span>
-                  {item.originalPrice > item.price && (
-                    <span className="text-gray-400 line-through text-xs ml-2">{item.originalPrice} ₸</span>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  >-</button>
-                  <span className="font-semibold text-sm min-w-[25px] text-center">{item.quantity}</span>
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  >+</button>
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className="ml-1 text-red-500 hover:text-red-700 text-sm"
-                  >✕</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* Payment Modal */}
