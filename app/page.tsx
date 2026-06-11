@@ -506,14 +506,9 @@ export default function HomePage() {
               <div className="space-y-4">
                 {bags.length === 0 ? (
                   <div className="text-center py-12">
-                    <div className="text-6xl mb-4">😢</div>
+                  
                     <p className="text-gray-500">{t[lang].noOffers}</p>
-                    <button 
-                      onClick={handleManualRefresh}
-                      className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl text-sm"
-                    >
-                      Обновить
-                    </button>
+                    
                   </div>
                 ) : (
                   bags.map((bag, bagIdx) => (
