@@ -66,7 +66,7 @@ export default function SupplierPage() {
     fetchData();
   }, [supplierId]);
 
-  // ✅ Функция добавления в корзину (как на главной)
+  // Функция добавления заказа
   const addToCart = async (bagId: number, bagName: string) => {
     const token = sessionStorage.getItem('authToken');
     
@@ -110,11 +110,11 @@ export default function SupplierPage() {
     }
   };
   
-  // ✅ Уведомления
+  // Уведомления
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const toast = document.createElement('div');
     toast.className = `fixed bottom-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-up ${
-      type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+      type === 'success' ? 'bg-[#367666]' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
     }`;
     toast.textContent = message;
     document.body.appendChild(toast);
@@ -124,7 +124,7 @@ export default function SupplierPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
+        <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full"></div>
       </div>
     );
   }
@@ -139,8 +139,8 @@ export default function SupplierPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-green-600 text-white p-6">
+      {/* Header - зеленый как на главной */}
+      <div className="bg-[#367666] text-white p-6">
         <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
         </button>
@@ -187,7 +187,7 @@ export default function SupplierPage() {
                     {/* Цена */}
                     <div className="mt-2">
                       <span className="text-gray-400 line-through text-sm">{bag.original_price} ₸</span>
-                      <span className="text-emerald-600 font-bold text-xl ml-2">{bag.discounted_price} ₸</span>
+                      <span className="text-[#367666] font-bold text-xl ml-2">{bag.discounted_price} ₸</span>
                       <span className="text-xs text-gray-400 ml-1">-{bag.discount_percentage}%</span>
                     </div>
                     
@@ -198,25 +198,25 @@ export default function SupplierPage() {
                       </span>
                     </div>
                     
-                    {/* Кнопка добавления в корзину */}
+                    {/* Кнопка заказа */}
                     <button
                       onClick={() => addToCart(bag.id, bag.name)}
                       disabled={bag.available_quantity <= 0 || addingToCart === bag.id}
                       className={`mt-3 w-full py-2 rounded-xl text-sm font-semibold transition ${
                         bag.available_quantity > 0
-                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          ? 'bg-[#367666] text-white hover:bg-[#2a5a4d]'
                           : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       }`}
                     >
                       {addingToCart === bag.id ? (
                         <span className="flex items-center justify-center gap-2">
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Добавление...
+                          Заказ...
                         </span>
                       ) : bag.available_quantity > 0 ? (
-                        '🛒 В корзину'
+                        'Заказать'
                       ) : (
-                        '❌ Нет в наличии'
+                        'Нет в наличии'
                       )}
                     </button>
                   </div>
