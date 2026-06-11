@@ -5,28 +5,13 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 interface SurpriseItem {
   product_id: number;
   name: string;
   price: number;
   quantity: number;
-}
-
-interface SurpriseBagData {
-  id: number;
-  name: string;
-  description: string;
-  original_price: number;
-  discounted_price: number;
-  discount_percentage: number;
-  image_url: string;
-  available_quantity: number;
-  is_active: boolean;
-  supplier_name: string;
-  supplier_id: number;
-  items: SurpriseItem[];
-  totalItems?: number;
 }
 
 interface OfferCardProps {
@@ -39,6 +24,8 @@ interface OfferCardProps {
   discount: number;
   imageUrl: string;
   description?: string;
+  rating?: number;
+  reviewCount?: number;
   onOrderSuccess?: () => void;
 }
 
@@ -52,9 +39,12 @@ export default function OfferCard({
   discount: propDiscount,
   imageUrl: propImageUrl,
   description: propDescription,
+  rating = 4.5,
+  reviewCount = 128,
   onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [addingToCart, setAddingToCart] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -64,9 +54,17 @@ export default function OfferCard({
   const [isFavorite, setIsFavorite] = useState(false);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
+  
+  // Определяем, находимся ли мы на странице поиска (где нужно показывать состав при нажатии)
+  const isSearchPage = pathname === '/' || pathname === '/offers';
 
-  // Загружаем состав сюрприза
+  // Загружаем состав сюрприза (только для страницы поиска)
   useEffect(() => {
+    if (!isSearchPage) {
+      setLoading(false);
+      return;
+    }
+    
     const fetchBagItems = async () => {
       try {
         const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
@@ -82,7 +80,7 @@ export default function OfferCard({
     };
     
     fetchBagItems();
-  }, [id, API_URL]);
+  }, [id, API_URL, isSearchPage]);
 
   // Проверка авторизации
   useEffect(() => {
@@ -233,7 +231,26 @@ export default function OfferCard({
     setTimeout(() => toast.remove(), 2000);
   };
 
-  if (!authChecked || loading) {
+  // Функция для отображения звезд рейтинга
+  const renderStars = () => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+    
+    const stars = [];
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<span key={`full-${i}`} className="text-yellow-400">★</span>);
+    }
+    if (hasHalfStar) {
+      stars.push(<span key="half" className="text-yellow-400">½</span>);
+    }
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
+    }
+    return stars;
+  };
+
+  if (!authChecked || (isSearchPage && loading)) {
     return (
       <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
         <div className="h-48 bg-gray-200"></div>
@@ -249,8 +266,11 @@ export default function OfferCard({
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
-      {/* Изображение - клик для раскрытия состава */}
-      <div className="relative h-52 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
+      {/* Изображение - клик для раскрытия состава (только на странице поиска) */}
+      <div 
+        className="relative h-52 cursor-pointer" 
+        onClick={() => isSearchPage && setShowDetails(!showDetails)}
+      >
         <Image 
           src={propImageUrl || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop'} 
           alt={propName} 
@@ -283,33 +303,42 @@ export default function OfferCard({
       </div>
       
       <div className="p-4">
-        {/* Название */}
+        {/* Название ресторана - жирное и темное */}
+        <Link href={`/supplier/${id}`}>
+          <p className="font-bold text-gray-800 text-base hover:text-[#367666] transition mb-1">
+            {businessName}
+          </p>
+        </Link>
+        
+        {/* Звезды рейтинга и количество отзывов */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">
+              {renderStars()}
+            </div>
+            <span className="text-xs text-gray-500">({reviewCount})</span>
+          </div>
+          <p className="text-gray-400 text-xs">{distance}</p>
+        </div>
+        
+        {/* Название сюрприза */}
         <Link href={`/offers/${id}`}>
-          <h3 className="font-bold text-lg mb-1 hover:text-[#367666] transition line-clamp-1">
+          <h3 className="font-semibold text-md mb-1 hover:text-[#367666] transition line-clamp-1">
             {propName}
           </h3>
         </Link>
         
-        {/* Ресторан и расстояние */}
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-gray-500 text-sm">{businessName}</p>
-          <p className="text-gray-400 text-xs">{distance}</p>
-        </div>
-        
         {/* Описание */}
-        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{propDescription}</p>
+        <p className="text-gray-500 text-xs mb-3 line-clamp-2">{propDescription}</p>
         
-        {/* Состав сюрприза (раскрывается при нажатии на картинку) */}
-        {showDetails && bagItems.length > 0 && (
+        {/* Состав сюрприза (раскрывается при нажатии на картинку, только на странице поиска) */}
+        {isSearchPage && showDetails && bagItems.length > 0 && (
           <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
-            <h4 className="font-semibold text-sm mb-2">
-              В состав входит:
-            </h4>
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {bagItems.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-3">
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{item.name}</p>
+                    <p className="text-sm font-medium text-gray-700">{item.name}</p>
                     <p className="text-xs text-gray-500">
                       {item.quantity} шт. × {item.price} ₸ = {(item.price * item.quantity).toLocaleString()} ₸
                     </p>
@@ -322,7 +351,7 @@ export default function OfferCard({
                 При отдельном заказе: {propOriginalPrice.toLocaleString()} ₸
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸)
+                Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸
               </p>
             </div>
           </div>
