@@ -91,7 +91,7 @@ export default function BottomNav() {
           
           if (item.isCenter) {
             return (
-              <div key={index} className="flex flex-col items-center">
+              <div key={index} className="flex flex-col items-center -mt-1">
                 <div 
                   onClick={() => router.push(item.href)}
                   className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
