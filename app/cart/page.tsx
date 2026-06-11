@@ -42,7 +42,7 @@ export default function CartPage() {
 
   const t = {
     kz: {
-      cart: 'Сатып алулар',
+      cart: 'Себет',
       timeLeft: 'Броньдеу уақыты',
       payBefore: 'Мерзімі өткенше төлеңіз',
       orElse: 'Әйтпесе тауар сатылымға қайтарылады',
@@ -70,7 +70,7 @@ export default function CartPage() {
       pickupAddress: 'Алып кету мекенжайы'
     },
     ru: {
-      cart: 'Покупки',
+      cart: 'Корзина',
       timeLeft: 'Время бронирования',
       payBefore: 'Оплатите до истечения',
       orElse: 'Иначе товар вернется в продажу',
@@ -363,9 +363,10 @@ export default function CartPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
         <div className="text-center">
-          <div className="w-32 h-32 mx-auto mb-6 rounded-2xl bg-white shadow-sm flex items-center justify-center border border-gray-100">
-            <svg className="w-20 h-20 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          {/* Иконка корзины как в BottomNav - без фона */}
+          <div className="flex justify-center mb-6">
+            <svg className="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].emptyCart}</h1>
@@ -385,17 +386,16 @@ export default function CartPage() {
       {/* Header - зеленый как на главной */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-              </svg>
-            </div>
+          <div className="flex items-center gap-2">
+            {/* Иконка корзины как в BottomNav - без фона */}
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
+            </svg>
             <h1 className="text-xl font-bold">{t[lang].cart}</h1>
           </div>
           <button 
             onClick={() => router.back()}
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"
           >
             ✕
           </button>
