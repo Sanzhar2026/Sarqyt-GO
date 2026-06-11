@@ -52,6 +52,12 @@ export default function OfferCard({
   const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  
+  // ============ ДОБАВЛЯЕМ СОСТОЯНИЯ ДЛЯ РЕЙТИНГА ============
+  const [bagRating, setBagRating] = useState(0);
+  const [bagTotalReviews, setBagTotalReviews] = useState(0);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [isRatingLoading, setIsRatingLoading] = useState(false);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
   
@@ -81,6 +87,31 @@ export default function OfferCard({
     
     fetchBagItems();
   }, [id, API_URL, isSearchPage]);
+
+  // ============ ЗАГРУЗАЕМ РЕЙТИНГ СЮРПРИЗА ============
+  useEffect(() => {
+    const fetchRating = async () => {
+      try {
+        const token = sessionStorage.getItem('authToken');
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(`${API_URL}/api/surprise-bags/${id}/rating`, { headers });
+        if (response.ok) {
+          const data = await response.json();
+          setBagRating(data.rating || 0);
+          setBagTotalReviews(data.total_reviews || 0);
+          setUserRating(data.user_rating);
+        }
+      } catch (error) {
+        console.error('Error fetching rating:', error);
+      }
+    };
+    
+    fetchRating();
+  }, [id, API_URL]);
 
   // Проверка авторизации
   useEffect(() => {
@@ -135,6 +166,77 @@ export default function OfferCard({
       setIsFavorite(favList.includes(id));
     }
   }, [id]);
+
+  // ============ ФУНКЦИЯ ДЛЯ ОЦЕНКИ СЮРПРИЗА ============
+  const rateSurpriseBag = async (rating: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Чтобы не открывать состав
+    
+    const token = sessionStorage.getItem('authToken');
+    
+    if (!token) {
+      alert('Пожалуйста, войдите в аккаунт');
+      router.push('/login');
+      return;
+    }
+    
+    setIsRatingLoading(true);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/surprise-bags/${id}/rate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ rating })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setBagRating(data.rating);
+        setBagTotalReviews(data.total_reviews);
+        setUserRating(rating);
+        showNotification('Спасибо за оценку!', 'success');
+      } else {
+        showNotification(data.message || 'Ошибка при оценке', 'error');
+      }
+    } catch (error) {
+      console.error('Error rating:', error);
+      showNotification('Ошибка при оценке', 'error');
+    } finally {
+      setIsRatingLoading(false);
+    }
+  };
+
+  // ============ ФУНКЦИЯ ДЛЯ ОТОБРАЖЕНИЯ ЗВЕЗД СЮРПРИЗА ============
+  const renderBagStars = (interactive = false) => {
+    const stars = [];
+    const currentRating = interactive ? (userRating || 0) : bagRating;
+    
+    for (let i = 1; i <= 5; i++) {
+      if (interactive) {
+        stars.push(
+          <button
+            key={i}
+            onClick={(e) => rateSurpriseBag(i, e)}
+            disabled={isRatingLoading || userRating !== null}
+            className={`text-sm transition-all ${userRating !== null ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'} ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}
+          >
+            ★
+          </button>
+        );
+      } else {
+        stars.push(
+          <span key={i} className={`text-sm ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}>
+            ★
+          </span>
+        );
+      }
+    }
+    
+    return stars;
+  };
 
   // Toggle избранного
   const toggleFavorite = (e: React.MouseEvent) => {
@@ -231,7 +333,7 @@ export default function OfferCard({
     setTimeout(() => toast.remove(), 2000);
   };
 
-  // Функция для отображения звезд рейтинга
+  // Функция для отображения звезд рейтинга (для магазина, пока оставляем как есть)
   const renderStars = () => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
@@ -310,16 +412,34 @@ export default function OfferCard({
           </p>
         </Link>
         
-        {/* Звезды рейтинга и количество отзывов */}
-        <div className="flex items-center justify-between mb-2">
+        {/* ============ ЗВЕЗДЫ РЕЙТИНГА СЮРПРИЗА И ОЦЕНКА ============ */}
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-0.5">
-              {renderStars()}
+              {renderBagStars(false)}
             </div>
-            <span className="text-xs text-gray-500">({reviewCount})</span>
+            {bagTotalReviews > 0 && (
+              <span className="text-xs text-gray-500">({bagTotalReviews})</span>
+            )}
           </div>
           <p className="text-gray-400 text-xs">{distance}</p>
         </div>
+        
+        {/* Интерактивные звезды для оценки (только если пользователь не оценил) */}
+        {userRating === null && (
+          <div className="flex items-center gap-1 mb-2">
+            <span className="text-xs text-gray-400">Оценить сюрприз:</span>
+            <div className="flex items-center gap-0.5">
+              {renderBagStars(true)}
+            </div>
+          </div>
+        )}
+        
+        {userRating !== null && (
+          <div className="mb-2">
+            <span className="text-xs text-green-600">✓ Вы оценили этот сюрприз на {userRating} ★</span>
+          </div>
+        )}
         
         {/* Название сюрприза */}
         <Link href={`/offers/${id}`}>
