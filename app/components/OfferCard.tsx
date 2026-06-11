@@ -221,14 +221,14 @@ export default function OfferCard({
             key={i}
             onClick={(e) => rateSurpriseBag(i, e)}
             disabled={isRatingLoading || userRating !== null}
-            className={`text-sm transition-all ${userRating !== null ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'} ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}
+            className={`text-xs transition-all ${userRating !== null ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'} ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}
           >
             ★
           </button>
         );
       } else {
         stars.push(
-          <span key={i} className={`text-sm ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}>
+          <span key={i} className={`text-xs ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}>
             ★
           </span>
         );
@@ -341,24 +341,24 @@ export default function OfferCard({
     
     const stars = [];
     for (let i = 0; i < fullStars; i++) {
-      stars.push(<span key={`full-${i}`} className="text-yellow-400">★</span>);
+      stars.push(<span key={`full-${i}`} className="text-yellow-400 text-xs">★</span>);
     }
     if (hasHalfStar) {
-      stars.push(<span key="half" className="text-yellow-400">½</span>);
+      stars.push(<span key="half" className="text-yellow-400 text-xs">½</span>);
     }
     for (let i = 0; i < emptyStars; i++) {
-      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
+      stars.push(<span key={`empty-${i}`} className="text-gray-300 text-xs">★</span>);
     }
     return stars;
   };
 
   if (!authChecked || (isSearchPage && loading)) {
     return (
-      <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
-        <div className="h-48 bg-gray-200"></div>
-        <div className="p-4">
-          <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
+        <div className="h-36 bg-gray-200"></div>
+        <div className="p-3">
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
         </div>
       </div>
     );
@@ -367,10 +367,10 @@ export default function OfferCard({
   const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
+    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       {/* Изображение - клик для раскрытия состава (только на странице поиска) */}
       <div 
-        className="relative h-52 cursor-pointer" 
+        className="relative h-36 cursor-pointer" 
         onClick={() => isSearchPage && setShowDetails(!showDetails)}
       >
         <Image 
@@ -384,37 +384,37 @@ export default function OfferCard({
         {/* Кнопка избранного (сердечко) */}
         <button
           onClick={toggleFavorite}
-          className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white transition z-10"
+          className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm hover:bg-white transition z-10"
         >
-          <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-500'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-500'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
         {/* Бейджи скидки и количества предметов */}
-        <div className="absolute top-3 left-3 flex gap-2">
+        <div className="absolute top-2 left-2 flex gap-1.5">
           {propDiscount > 0 && (
-            <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+            <div className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
               -{propDiscount}%
             </div>
           )}
-          <div className="bg-[#367666] text-white px-3 py-1 rounded-full text-sm font-bold">
+          <div className="bg-[#367666] text-white px-2 py-0.5 rounded-full text-xs font-bold">
             {totalItems} предметов
           </div>
         </div>
       </div>
       
-      <div className="p-4">
+      <div className="p-3">
         {/* Название ресторана - жирное и темное */}
         <Link href={`/supplier/${id}`}>
-          <p className="font-bold text-gray-800 text-base hover:text-[#367666] transition mb-1">
+          <p className="font-bold text-gray-800 text-sm hover:text-[#367666] transition mb-1">
             {businessName}
           </p>
         </Link>
         
         {/* ============ ЗВЕЗДЫ РЕЙТИНГА СЮРПРИЗА И ОЦЕНКА ============ */}
-        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+          <div className="flex items-center gap-1">
             <div className="flex items-center gap-0.5">
               {renderBagStars(false)}
             </div>
@@ -427,7 +427,7 @@ export default function OfferCard({
         
         {/* Интерактивные звезды для оценки (только если пользователь не оценил) */}
         {userRating === null && (
-          <div className="flex items-center gap-1 mb-2">
+          <div className="flex items-center gap-1 mb-1">
             <span className="text-xs text-gray-400">Оценить сюрприз:</span>
             <div className="flex items-center gap-0.5">
               {renderBagStars(true)}
@@ -436,29 +436,29 @@ export default function OfferCard({
         )}
         
         {userRating !== null && (
-          <div className="mb-2">
+          <div className="mb-1">
             <span className="text-xs text-green-600">✓ Вы оценили этот сюрприз на {userRating} ★</span>
           </div>
         )}
         
         {/* Название сюрприза */}
         <Link href={`/offers/${id}`}>
-          <h3 className="font-semibold text-md mb-1 hover:text-[#367666] transition line-clamp-1">
+          <h3 className="font-semibold text-sm mb-1 hover:text-[#367666] transition line-clamp-1">
             {propName}
           </h3>
         </Link>
         
         {/* Описание */}
-        <p className="text-gray-500 text-xs mb-3 line-clamp-2">{propDescription}</p>
+        <p className="text-gray-500 text-xs mb-2 line-clamp-2">{propDescription}</p>
         
         {/* Состав сюрприза (раскрывается при нажатии на картинку, только на странице поиска) */}
         {isSearchPage && showDetails && bagItems.length > 0 && (
-          <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+          <div className="mt-2 mb-3 p-2 bg-gray-50 rounded-lg animate-fadeIn">
+            <div className="space-y-1 max-h-36 overflow-y-auto">
               {bagItems.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3">
+                <div key={idx} className="flex items-center gap-2">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-700">{item.name}</p>
+                    <p className="text-xs font-medium text-gray-700">{item.name}</p>
                     <p className="text-xs text-gray-500">
                       {item.quantity} шт. × {item.price} ₸ = {(item.price * item.quantity).toLocaleString()} ₸
                     </p>
@@ -466,7 +466,7 @@ export default function OfferCard({
                 </div>
               ))}
             </div>
-            <div className="mt-3 pt-2 border-t border-gray-200">
+            <div className="mt-2 pt-1 border-t border-gray-200">
               <p className="text-xs text-[#367666] font-medium">
                 При отдельном заказе: {propOriginalPrice.toLocaleString()} ₸
               </p>
@@ -480,20 +480,20 @@ export default function OfferCard({
         {/* Цена и кнопка заказа */}
         <div className="flex items-center justify-between mt-2">
           <div>
-            <span className="text-2xl font-bold text-[#367666]">{propPrice.toLocaleString()} ₸</span>
+            <span className="text-lg font-bold text-[#367666]">{propPrice.toLocaleString()} ₸</span>
             {propOriginalPrice > propPrice && (
-              <span className="text-gray-400 line-through text-sm ml-2">{propOriginalPrice.toLocaleString()} ₸</span>
+              <span className="text-gray-400 line-through text-xs ml-1">{propOriginalPrice.toLocaleString()} ₸</span>
             )}
-            <p className="text-xs text-gray-400 mt-1">за весь набор</p>
+            <p className="text-xs text-gray-400 mt-0.5">за весь набор</p>
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-5 py-2 rounded-full hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}

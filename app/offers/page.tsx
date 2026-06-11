@@ -21,6 +21,8 @@ interface SurpriseBag {
   total_reviews?: number;
 }
 
+
+
 export default function OffersPage() {
   const router = useRouter();
   const { lang } = useLanguage();
