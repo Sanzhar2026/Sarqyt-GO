@@ -17,8 +17,7 @@ export default function ProfilePage() {
       welcome: 'Қош келдіңіз',
       login: 'Кіру',
       register: 'Тіркелу',
-      myOrders: 'Менің тапсырыстарым',
-      courierPanel: 'Курьер панелі',
+      myOrders: 'Сюрприздер',
       language: 'Тіл'
     },
     ru: {
@@ -26,8 +25,7 @@ export default function ProfilePage() {
       welcome: 'Добро пожаловать',
       login: 'Войти',
       register: 'Регистрация',
-      myOrders: 'Мои заказы',
-      courierPanel: 'Панель курьера',
+      myOrders: 'Сюрпризы',
       language: 'Язык'
     }
   };
@@ -122,7 +120,7 @@ export default function ProfilePage() {
         
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl">
-            {isLoggedIn ? '👤' : '👋'}
+            👤
           </div>
           <div>
             <h2 className="text-xl font-semibold">
@@ -135,15 +133,39 @@ export default function ProfilePage() {
       <div className="p-6 space-y-3">
         {!isLoggedIn ? (
           <>
-            <Link href="/login"><div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition"><span className="flex items-center gap-3"><span className="text-2xl">🔑</span><span className="font-medium">{t[lang].login}</span></span><span className="text-gray-400">→</span></div></Link>
-            <Link href="/signup"><div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition"><span className="flex items-center gap-3"><span className="text-2xl">📝</span><span className="font-medium">{t[lang].register}</span></span><span className="text-gray-400">→</span></div></Link>
+            <Link href="/login">
+              <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
+                <span className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                  </svg>
+                  <span className="font-medium text-gray-700">{t[lang].login}</span>
+                </span>
+                <span className="text-gray-400">→</span>
+              </div>
+            </Link>
+            <Link href="/signup">
+              <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
+                <span className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  <span className="font-medium text-gray-700">{t[lang].register}</span>
+                </span>
+                <span className="text-gray-400">→</span>
+              </div>
+            </Link>
           </>
         ) : (
           <>
-            <Link href="/orders"><div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition"><span className="flex items-center gap-3"><span className="text-2xl">📦</span><span className="font-medium">{t[lang].myOrders}</span></span><span className="text-gray-400">→</span></div></Link>
-            <Link href="/courier/dashboard">
-              <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition">
-                <span className="flex items-center gap-3"><span className="text-2xl">🚚</span><span className="font-medium">{t[lang].courierPanel}</span></span>
+            <Link href="/orders">
+              <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
+                <span className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                  </svg>
+                  <span className="font-medium text-gray-700">{t[lang].myOrders}</span>
+                </span>
                 <span className="text-gray-400">→</span>
               </div>
             </Link>
