@@ -18,8 +18,6 @@ export default function ProfilePage() {
       login: 'Кіру',
       register: 'Тіркелу',
       myOrders: 'Менің тапсырыстарым',
-      phone: 'Телефон',
-      logout: 'Шығу',
       courierPanel: 'Курьер панелі',
       language: 'Тіл'
     },
@@ -29,8 +27,6 @@ export default function ProfilePage() {
       login: 'Войти',
       register: 'Регистрация',
       myOrders: 'Мои заказы',
-      phone: 'Телефон',
-      logout: 'Выйти',
       courierPanel: 'Панель курьера',
       language: 'Язык'
     }
@@ -82,14 +78,6 @@ export default function ProfilePage() {
     loadUserData();
   }, []);
 
-  const handleLogout = async () => {
-    await fetch(`https://toogood-2ncf.onrender.com/logout`, { method: 'GET', credentials: 'include' });
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('isLoggedIn');
-    setUser(null);
-    window.location.href = '/';
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -140,9 +128,6 @@ export default function ProfilePage() {
             <h2 className="text-xl font-semibold">
               {isLoggedIn ? (user?.full_name || user?.phone) : t[lang].welcome}
             </h2>
-            <p className="text-emerald-100 text-sm">
-              {isLoggedIn ? user?.phone : t[lang].login}
-            </p>
           </div>
         </div>
       </div>
@@ -156,8 +141,6 @@ export default function ProfilePage() {
         ) : (
           <>
             <Link href="/orders"><div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition"><span className="flex items-center gap-3"><span className="text-2xl">📦</span><span className="font-medium">{t[lang].myOrders}</span></span><span className="text-gray-400">→</span></div></Link>
-            <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm"><span className="flex items-center gap-3"><span className="text-2xl">📞</span><span className="font-medium">{t[lang].phone}</span></span><span className="text-gray-500 text-sm">{user?.phone}</span></div>
-            <button onClick={handleLogout} className="w-full bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:bg-red-50 transition text-red-600"><span className="flex items-center gap-3"><span className="text-2xl">🚪</span><span className="font-medium">{t[lang].logout}</span></span><span className="text-red-400">→</span></button>
             <Link href="/courier/dashboard">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition">
                 <span className="flex items-center gap-3"><span className="text-2xl">🚚</span><span className="font-medium">{t[lang].courierPanel}</span></span>
