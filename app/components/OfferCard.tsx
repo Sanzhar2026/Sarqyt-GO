@@ -1,412 +1,419 @@
-// app/components/OfferCard.tsx
+// app/offers/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import { useLanguage } from '../layout';
 
-interface SurpriseItem {
-  product_id: number;
-  name: string;
-  price: number;
-  quantity: number;
-}
-
-interface OfferCardProps {
+interface SurpriseBag {
   id: number;
   name: string;
-  businessName: string;
-  distance: string;
-  price: number;
-  originalPrice: number;
-  discount: number;
-  imageUrl: string;
-  description?: string;
+  description: string;
+  original_price: number;
+  discounted_price: number;
+  discount_percentage: number;
+  image_url: string;
+  available_quantity: number;
+  supplier_name: string;
+  supplier_id: number;
   rating?: number;
-  reviewCount?: number;
-  onOrderSuccess?: () => void;
+  total_reviews?: number;
+  pickup_start_time?: string;
+  pickup_end_time?: string;
+  address?: string;
 }
 
-export default function OfferCard({
-  id,
-  name: propName,
-  businessName,
-  distance,
-  price: propPrice,
-  originalPrice: propOriginalPrice,
-  discount: propDiscount,
-  imageUrl: propImageUrl,
-  description: propDescription,
-  rating = 4.5,
-  reviewCount = 128,
-  onOrderSuccess
-}: OfferCardProps) {
+export default function OffersPage() {
   const router = useRouter();
-  const pathname = usePathname();
-  const [addingToCart, setAddingToCart] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
-  
-  // Рейтинг
-  const [bagRating, setBagRating] = useState(0);
-  const [bagTotalReviews, setBagTotalReviews] = useState(0);
-  const [userRating, setUserRating] = useState<number | null>(null);
-  const [isRatingLoading, setIsRatingLoading] = useState(false);
+  const { lang } = useLanguage();
+  const [bags, setBags] = useState<SurpriseBag[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addingId, setAddingId] = useState<number | null>(null);
+  const [favorites, setFavorites] = useState<number[]>([]);
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
-  
-  const isSearchPage = pathname === '/' || pathname === '/offers' || pathname?.startsWith('/offers');
+  // Получение токена
+  const getAuthToken = () => sessionStorage.getItem('authToken');
 
-  // Загружаем состав сюрприза
-  const fetchBagItems = async () => {
-    if (bagItems.length > 0) return;
-    setLoading(true);
+  // Загрузка избранного из localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('favorites');
+    if (savedFavorites) {
+      setFavorites(JSON.parse(savedFavorites));
+    }
+  }, []);
+
+  // Сохранение избранного в localStorage
+  const toggleFavorite = (bagId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    let newFavorites;
+    if (favorites.includes(bagId)) {
+      newFavorites = favorites.filter(id => id !== bagId);
+    } else {
+      newFavorites = [...favorites, bagId];
+    }
+    setFavorites(newFavorites);
+    localStorage.setItem('favorites', JSON.stringify(newFavorites));
+  };
+
+  // Авторизованный fetch
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    
+    if (!token) {
+      console.error('Нет токена');
+      router.push('/login');
+      throw new Error('No token');
+    }
+    
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+  };
+
+  // Загрузка сюрпризов с их рейтингами и дополнительной информацией
+  const fetchBags = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setBagItems(data.items || []);
-      }
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
+      const data = await response.json();
+      
+      // Загружаем рейтинги и доп. инфо для каждого сюрприза
+      const bagsWithDetails = await Promise.all(
+        data.map(async (bag: SurpriseBag) => {
+          try {
+            // Загружаем рейтинг
+            const ratingRes = await fetch(`https://toogood-2ncf.onrender.com/api/surprise-bags/${bag.id}/rating`);
+            let rating = 0, total_reviews = 0;
+            if (ratingRes.ok) {
+              const ratingData = await ratingRes.json();
+              rating = ratingData.rating || 0;
+              total_reviews = ratingData.total_reviews || 0;
+            }
+            
+            // Загружаем информацию о поставщике (адрес, время работы)
+            const supplierRes = await fetch(`https://toogood-2ncf.onrender.com/api/suppliers/${bag.supplier_id}`);
+            let address = '', pickupStart = '', pickupEnd = '';
+            if (supplierRes.ok) {
+              const supplierData = await supplierRes.json();
+              address = supplierData.address || '';
+              pickupStart = supplierData.pickup_start_time || '19:30';
+              pickupEnd = supplierData.pickup_end_time || '20:30';
+            }
+            
+            return { 
+              ...bag, 
+              rating: rating, 
+              total_reviews: total_reviews,
+              address: address,
+              pickup_start_time: pickupStart,
+              pickup_end_time: pickupEnd
+            };
+          } catch (e) {
+            console.error('Error fetching details:', e);
+          }
+          return { 
+            ...bag, 
+            rating: 0, 
+            total_reviews: 0,
+            address: '',
+            pickup_start_time: '19:30',
+            pickup_end_time: '20:30'
+          };
+        })
+      );
+      
+      setBags(bagsWithDetails);
     } catch (error) {
-      console.error('Error fetching bag items:', error);
+      console.error('Error fetching bags:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Загружаем рейтинг
   useEffect(() => {
-    const fetchRating = async () => {
-      try {
-        const token = sessionStorage.getItem('authToken');
-        const headers: HeadersInit = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        
-        const response = await fetch(`${API_URL}/api/surprise-bags/${id}/rating`, { headers });
-        if (response.ok) {
-          const data = await response.json();
-          setBagRating(data.rating || 0);
-          setBagTotalReviews(data.total_reviews || 0);
-          setUserRating(data.user_rating);
-        }
-      } catch (error) {
-        console.error('Error fetching rating:', error);
-      }
-    };
-    fetchRating();
-  }, [id, API_URL]);
-
-  // Проверка авторизации
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = sessionStorage.getItem('authToken');
-      if (token) {
-        setIsAuthenticated(true);
-        setAuthChecked(true);
-        return;
-      }
-      try {
-        const response = await fetch(`${API_URL}/api/auth/me`);
-        const data = await response.json();
-        setIsAuthenticated(data.authenticated);
-        if (data.token) sessionStorage.setItem('authToken', data.token);
-      } catch (error) {
-        setIsAuthenticated(false);
-      } finally {
-        setAuthChecked(true);
-      }
-    };
-    checkAuth();
-  }, [API_URL]);
-
-  // Проверка избранного
-  useEffect(() => {
-    const favorites = localStorage.getItem('favorites');
-    if (favorites) {
-      const favList = JSON.parse(favorites);
-      setIsFavorite(favList.includes(id));
-    }
-  }, [id]);
-
-  // Клик по картинке
-  const handleImageClick = async () => {
-    if (isSearchPage) {
-      if (!showDetails && bagItems.length === 0) {
-        await fetchBagItems();
-      }
-      setShowDetails(!showDetails);
-    }
-  };
-
-  // Оценка сюрприза
-  const rateSurpriseBag = async (rating: number) => {
-    const token = sessionStorage.getItem('authToken');
+    const token = getAuthToken();
     if (!token) {
-      alert('Пожалуйста, войдите в аккаунт');
       router.push('/login');
-      return;
     }
-    
-    setIsRatingLoading(true);
-    
-    try {
-      const response = await fetch(`${API_URL}/api/surprise-bags/${id}/rate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ rating })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setBagRating(data.rating);
-        setBagTotalReviews(data.total_reviews);
-        setUserRating(rating);
-      }
-    } catch (error) {
-      console.error('Error rating:', error);
-    } finally {
-      setIsRatingLoading(false);
-    }
-  };
+  }, [router]);
 
-  const toggleFavorite = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const favorites = localStorage.getItem('favorites');
-    let favList: number[] = favorites ? JSON.parse(favorites) : [];
-    
-    if (isFavorite) {
-      favList = favList.filter(favId => favId !== id);
-    } else {
-      favList.push(id);
-    }
-    localStorage.setItem('favorites', JSON.stringify(favList));
-    setIsFavorite(!isFavorite);
-  };
+  useEffect(() => {
+    fetchBags();
+    const interval = setInterval(fetchBags, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const addToCart = async () => {
-    if (!isAuthenticated) {
-      alert('Пожалуйста, войдите в аккаунт');
-      router.push('/login');
+  const addToCart = async (bag: SurpriseBag) => {
+    if (bag.available_quantity <= 0) {
+      alert(lang === 'kz' ? 'Бұл сюрприз таусылған' : 'Этот сюрприз закончился');
       return;
     }
 
-    setAddingToCart(true);
-    const token = sessionStorage.getItem('authToken');
-
+    setAddingId(bag.id);
+    
     try {
-      const response = await fetch(`${API_URL}/api/cart/add`, {
+      const response = await authFetch('https://toogood-2ncf.onrender.com/api/cart/add', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ bag_id: id, quantity: 1 })
+        body: JSON.stringify({ bag_id: bag.id, quantity: 1 })
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
         const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
-        const existing = cart.find((item: any) => item.id === id);
-        
-        const cartItem = {
-          id, name: propName, businessName,
-          price: propPrice, originalPrice: propOriginalPrice,
-          discount: propDiscount, imageUrl: propImageUrl,
-          quantity: 1, description: propDescription,
-          totalItems: bagItems.length || 1,
-          reservation_id: data.reservation_id,
-          expires_at: data.expires_at
-        };
+        const existing = cart.find((item: any) => item.id === bag.id);
         
         if (existing) {
           existing.quantity += 1;
           existing.reservation_id = data.reservation_id;
           existing.expires_at = data.expires_at;
         } else {
-          cart.push(cartItem);
+          cart.push({
+            id: bag.id,
+            name: bag.name,
+            businessName: bag.supplier_name,
+            price: bag.discounted_price,
+            originalPrice: bag.original_price,
+            discount: bag.discount_percentage,
+            imageUrl: bag.image_url,
+            quantity: 1,
+            reservation_id: data.reservation_id,
+            expires_at: data.expires_at
+          });
         }
         
         sessionStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
-        if (onOrderSuccess) onOrderSuccess();
+        
+        const message = lang === 'kz' 
+          ? `✅ ${bag.name} себетке қосылды! Төлеуге 15 минут бар.` 
+          : `✅ ${bag.name} добавлен в корзину! У вас 15 минут на оплату.`;
+        alert(message);
+        router.push('/cart');
+      } else {
+        alert(data.detail || data.message || 'Ошибка при добавлении');
       }
     } catch (error) {
       console.error('Error:', error);
+      alert('Ошибка соединения с сервером');
     } finally {
-      setAddingToCart(false);
+      setAddingId(null);
     }
   };
 
-  // Функция для иконки продукта
-  const getProductIcon = (name: string) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
-    if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
-    if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл')) return '🍣';
-    if (lowerName.includes('салат') || lowerName.includes('salad')) return '🥗';
-    if (lowerName.includes('кола') || lowerName.includes('coca') || lowerName.includes('cola')) return '🥤';
-    if (lowerName.includes('лимонад') || lowerName.includes('lemonade')) return '🧃';
-    if (lowerName.includes('сок') || lowerName.includes('juice')) return '🧃';
-    if (lowerName.includes('картошк') || lowerName.includes('fries')) return '🍟';
-    if (lowerName.includes('крилс') || lowerName.includes('wings')) return '🍗';
-    if (lowerName.includes('сыр') || lowerName.includes('cheese')) return '🧀';
-    if (lowerName.includes('десерт') || lowerName.includes('dessert')) return '🍰';
-    if (lowerName.includes('торт') || lowerName.includes('cake')) return '🎂';
-    if (lowerName.includes('морожен') || lowerName.includes('ice cream')) return '🍦';
-    return '🍽️';
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('ru-KZ') + ' ₸';
   };
 
-  if (!authChecked) {
+  const getReviewText = (count: number) => {
+    if (lang === 'kz') {
+      if (count % 10 === 1 && count % 100 !== 11) return 'баға';
+      return 'баға';
+    } else {
+      if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
+      if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
+      return 'оценок';
+    }
+  };
+
+  const SurpriseIcon = () => (
+    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+    </svg>
+  );
+
+  const ClockIcon = () => (
+    <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+
+  const HeartIcon = ({ isFavorite }: { isFavorite: boolean }) => (
+    <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+    </svg>
+  );
+
+  // Фото еды вместо сюрприза
+  const getFoodImage = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('пицц') || lowerName.includes('pizza')) {
+      return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop';
+    }
+    if (lowerName.includes('бургер') || lowerName.includes('burger')) {
+      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
+    }
+    if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл')) {
+      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
+    }
+    if (lowerName.includes('салат') || lowerName.includes('salad')) {
+      return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop';
+    }
+    if (lowerName.includes('десерт') || lowerName.includes('dessert') || lowerName.includes('торт')) {
+      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop';
+    }
+    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+  };
+
+  if (loading) {
     return (
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
-        <div className="h-32 bg-gray-200"></div>
-        <div className="p-3">
-          <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
       </div>
     );
   }
 
-  const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
-
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
-      {/* Изображение */}
-      <div 
-        className="relative w-full cursor-pointer" 
-        style={{ height: '140px' }}
-        onClick={handleImageClick}
-      >
-        <Image 
-          src={propImageUrl || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop'} 
-          alt={propName} 
-          fill 
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, 50vw"
-        />
-        
-        <button
-          onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-white/80 backdrop-blur-sm rounded-full p-1.5 shadow-sm z-10"
-        >
-          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-500'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </button>
-        
-        <div className="absolute top-2 left-2 flex gap-1.5">
-          {propDiscount > 0 && (
-            <div className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-bold">
-              -{propDiscount}%
-            </div>
-          )}
-          <div className="bg-[#367666] text-white px-2 py-0.5 rounded-full text-xs font-bold">
-            {totalItems} шт
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Header */}
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">
+              {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
+            </h1>
           </div>
+          <div className="w-16"></div>
         </div>
+        <p className="text-emerald-100 text-sm mt-1">
+          {lang === 'kz' ? 'Өзіңізге сюрприз-пакетті таңдаңыз' : 'Выберите свой сюрприз-пакет'}
+        </p>
       </div>
-      
-      {/* Контент */}
-      <div className="p-3">
-        {/* Название кафе - жирное */}
-        <Link href={`/supplier/${id}`}>
-          <p className="font-extrabold text-gray-800 text-base hover:text-[#367666] transition mb-1">
-            {businessName}
-          </p>
-        </Link>
-        
-        {/* Название сюрприза - жирное */}
-        <h3 className="font-bold text-gray-800 text-md mb-1">
-          {propName}
-        </h3>
-        
-        {/* Адрес и время работы */}
-        <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
-          <span className="flex items-center gap-1">📍 {distance}</span>
-          <span className="text-gray-300">|</span>
-          <span className="flex items-center gap-1">🕒 19:30 - 20:30</span>
-        </div>
-        
-        {/* Описание */}
-        <p className="text-gray-500 text-xs mb-2 line-clamp-1">{propDescription}</p>
-        
-        {/* Состав сюрприза (при клике) */}
-        {isSearchPage && showDetails && (
-          <div className="mb-3 p-2 bg-gray-50 rounded-xl">
-            {loading ? (
-              <div className="flex justify-center py-2">
-                <div className="w-4 h-4 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : bagItems.length > 0 ? (
-              <>
-                <p className="text-xs font-semibold text-gray-700 mb-1">Состав:</p>
-                {bagItems.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2 py-1">
-                    <span className="text-base">{getProductIcon(item.name)}</span>
-                    <span className="text-gray-700 text-sm font-medium flex-1">{item.name}</span>
-                    <span className="text-gray-500 text-xs">×{item.quantity}</span>
-                    <span className="text-gray-700 text-sm font-semibold">{(item.price * item.quantity).toLocaleString()} ₸</span>
+
+      {/* Bags Grid */}
+      <div className="px-4 py-6">
+        {bags.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">
+              {lang === 'kz' ? 'Барлық пакеттер уақытша броньдалған' : 'Все пакеты временно забронированы'}
+            </p>
+            <button 
+              onClick={fetchBags}
+              className="mt-4 text-[#367666] underline"
+            >
+              {lang === 'kz' ? 'Жаңарту' : 'Обновить'}
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3">
+            {bags.map((bag) => (
+              <div key={bag.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex">
+                {/* Изображение - 50% */}
+                <div className="relative w-1/2 flex-shrink-0">
+                  <div className="relative h-28">
+                    <Image
+                      src={getFoodImage(bag.name)}
+                      alt={bag.name}
+                      fill
+                      className="object-cover"
+                    />
+                    {/* Сердечко справа вверху на изображении */}
+                    <button
+                      onClick={(e) => toggleFavorite(bag.id, e)}
+                      className="absolute top-1.5 right-1.5 bg-black/50 backdrop-blur-sm rounded-full p-1 z-10"
+                    >
+                      <HeartIcon isFavorite={favorites.includes(bag.id)} />
+                    </button>
+                    {/* Иконка пакетика с количеством слева вверху на изображении */}
+                    <div className="absolute top-1.5 left-1.5 bg-black/50 backdrop-blur-sm rounded-full px-1.5 py-0.5 flex items-center gap-1">
+                      <SurpriseIcon />
+                      <span className="text-white text-[10px] font-bold">{bag.available_quantity}</span>
+                    </div>
+                    {bag.available_quantity <= 0 && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="text-white font-bold text-[10px] px-1.5 py-0.5 bg-red-600 rounded-full">
+                          {lang === 'kz' ? 'Таусылған' : 'Распродано'}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                ))}
-                <div className="mt-2 pt-2 border-t border-gray-200">
-                  <p className="text-xs text-[#367666] font-semibold">
-                    💰 Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸)
-                  </p>
                 </div>
-              </>
-            ) : (
-              <p className="text-xs text-gray-400 text-center py-2">Состав не указан</p>
-            )}
+                
+                {/* Контент - 50% */}
+                <div className="w-1/2 p-2 flex flex-col justify-between">
+                  <div>
+                    {/* Название кафе */}
+                    <p className="text-[#367666] text-[11px] font-bold truncate">
+                      {bag.supplier_name}
+                    </p>
+                    
+                    {/* Название сюрприза */}
+                    <h3 className="font-bold text-gray-800 text-xs mt-0.5 truncate">
+                      {bag.name}
+                    </h3>
+                    
+                    {/* Адрес без иконки */}
+                    <p className="text-gray-500 text-[9px] mt-1 truncate">
+                      {bag.address || 'Адрес не указан'}
+                    </p>
+                    
+                    {/* Время работы с иконкой */}
+                    <div className="flex items-center gap-0.5 mt-0.5">
+                      <ClockIcon />
+                      <span className="text-gray-500 text-[9px]">
+                        {bag.pickup_start_time && bag.pickup_end_time 
+                          ? `${bag.pickup_start_time}-${bag.pickup_end_time}`
+                          : 'Время не указано'}
+                      </span>
+                    </div>
+                    
+                    {/* Рейтинг */}
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <span className="font-extrabold text-gray-800 text-xs">
+                        {bag.rating?.toFixed(1) || '0'}
+                      </span>
+                      <span className="text-yellow-400 text-[10px]">★</span>
+                      {bag.total_reviews && bag.total_reviews > 0 && (
+                        <span className="text-gray-400 text-[9px]">
+                          ({bag.total_reviews} {getReviewText(bag.total_reviews)})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Цена и кнопка */}
+                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-gray-100">
+                    <div>
+                      <span className="text-sm font-extrabold text-[#367666]">
+                        {formatPrice(bag.discounted_price)}
+                      </span>
+                      {bag.original_price > bag.discounted_price && (
+                        <span className="text-gray-400 line-through text-[8px] ml-0.5">
+                          {formatPrice(bag.original_price)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => addToCart(bag)}
+                      disabled={bag.available_quantity <= 0 || addingId === bag.id}
+                      className={`px-2 py-0.5 rounded-lg font-bold text-[9px] transition ${
+                        bag.available_quantity <= 0 || addingId === bag.id
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-[#367666] text-white hover:bg-[#2a5a4d]'
+                      }`}
+                    >
+                      {addingId === bag.id ? (
+                        <span className="flex items-center gap-0.5">
+                          <div className="w-1.5 h-1.5 border-1.5 border-white border-t-transparent rounded-full animate-spin"></div>
+                          {lang === 'kz' ? 'Қосылуда...' : 'Добавление...'}
+                        </span>
+                      ) : (
+                        lang === 'kz' ? 'Тапсырыс беру' : 'Заказать'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
-        
-        {/* Рейтинг (число + звезды + количество голосов) */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="font-extrabold text-gray-800 text-lg">{bagRating.toFixed(1)}</span>
-          <span className="text-yellow-400 text-base">★</span>
-          <span className="text-gray-400 text-xs">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
-        </div>
-        
-        {/* Цена + кнопка Заказать */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <div>
-            <span className="text-xl font-extrabold text-[#367666]">{propPrice.toLocaleString()} ₸</span>
-            {propOriginalPrice > propPrice && (
-              <span className="text-gray-400 line-through text-xs ml-2">{propOriginalPrice.toLocaleString()} ₸</span>
-            )}
-          </div>
-          
-          <button
-            onClick={addToCart}
-            disabled={addingToCart}
-            className="bg-[#367666] text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-[#2a5a4d] disabled:opacity-50 transition"
-          >
-            {addingToCart ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              'Заказать'
-            )}
-          </button>
-        </div>
       </div>
     </div>
   );
-}
-
-function getReviewText(count: number): string {
-  if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
-  if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
-  return 'оценок';
 }
