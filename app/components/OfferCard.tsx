@@ -134,7 +134,7 @@ export default function OfferCard({
     }
   }, [id]);
 
-  // Клик по картинке - переключает детали и размер карточки
+  // Клик по картинке
   const handleImageClick = async () => {
     if (isSearchPage) {
       if (!showDetails && bagItems.length === 0) {
@@ -145,9 +145,7 @@ export default function OfferCard({
   };
 
   // Оценка сюрприза
-  const rateSurpriseBag = async (rating: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
+  const rateSurpriseBag = async (rating: number) => {
     const token = sessionStorage.getItem('authToken');
     if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
@@ -173,44 +171,12 @@ export default function OfferCard({
         setBagRating(data.rating);
         setBagTotalReviews(data.total_reviews);
         setUserRating(rating);
-        showNotification('Спасибо за оценку!', 'success');
-      } else {
-        showNotification(data.message || 'Ошибка при оценке', 'error');
       }
     } catch (error) {
       console.error('Error rating:', error);
-      showNotification('Ошибка при оценке', 'error');
     } finally {
       setIsRatingLoading(false);
     }
-  };
-
-  // Звезды
-  const renderBagStars = (interactive = false) => {
-    const stars = [];
-    const currentRating = interactive ? (userRating || 0) : bagRating;
-    
-    for (let i = 1; i <= 5; i++) {
-      if (interactive) {
-        stars.push(
-          <button
-            key={i}
-            onClick={(e) => rateSurpriseBag(i, e)}
-            disabled={isRatingLoading || userRating !== null}
-            className={`text-xs transition-all ${userRating !== null ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'} ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}
-          >
-            ★
-          </button>
-        );
-      } else {
-        stars.push(
-          <span key={i} className={`text-xs ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}>
-            ★
-          </span>
-        );
-      }
-    }
-    return stars;
   };
 
   const toggleFavorite = (e: React.MouseEvent) => {
@@ -220,12 +186,9 @@ export default function OfferCard({
     
     if (isFavorite) {
       favList = favList.filter(favId => favId !== id);
-      showNotification('Удалено из избранного', 'info');
     } else {
       favList.push(id);
-      showNotification('Добавлено в избранное', 'success');
     }
-    
     localStorage.setItem('favorites', JSON.stringify(favList));
     setIsFavorite(!isFavorite);
   };
@@ -276,55 +239,41 @@ export default function OfferCard({
         
         sessionStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
-        showNotification(`✅ ${propName} добавлен в корзину!`, 'success');
         if (onOrderSuccess) onOrderSuccess();
-        
-      } else {
-        showNotification(data.detail || 'Товар временно недоступен', 'error');
       }
     } catch (error) {
       console.error('Error:', error);
-      showNotification('Ошибка соединения', 'error');
     } finally {
       setAddingToCart(false);
     }
   };
 
-  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const toast = document.createElement('div');
-    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-3 rounded-xl text-white text-center animate-slide-up text-sm ${
-      type === 'success' ? 'bg-[#367666]' : type === 'error' ? 'bg-red-600' : 'bg-gray-800'
-    }`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
-  };
-
-  const renderStarsForSupplier = () => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-    
-    const stars = [];
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<span key={`full-${i}`} className="text-yellow-400 text-xs">★</span>);
-    }
-    if (hasHalfStar) {
-      stars.push(<span key="half" className="text-yellow-400 text-xs">½</span>);
-    }
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<span key={`empty-${i}`} className="text-gray-300 text-xs">★</span>);
-    }
-    return stars;
+  // Функция для иконки продукта
+  const getProductIcon = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
+    if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
+    if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл')) return '🍣';
+    if (lowerName.includes('салат') || lowerName.includes('salad')) return '🥗';
+    if (lowerName.includes('кола') || lowerName.includes('coca') || lowerName.includes('cola')) return '🥤';
+    if (lowerName.includes('лимонад') || lowerName.includes('lemonade')) return '🧃';
+    if (lowerName.includes('сок') || lowerName.includes('juice')) return '🧃';
+    if (lowerName.includes('картошк') || lowerName.includes('fries')) return '🍟';
+    if (lowerName.includes('крилс') || lowerName.includes('wings')) return '🍗';
+    if (lowerName.includes('сыр') || lowerName.includes('cheese')) return '🧀';
+    if (lowerName.includes('десерт') || lowerName.includes('dessert')) return '🍰';
+    if (lowerName.includes('торт') || lowerName.includes('cake')) return '🎂';
+    if (lowerName.includes('морожен') || lowerName.includes('ice cream')) return '🍦';
+    return '🍽️';
   };
 
   if (!authChecked) {
     return (
-      <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
-        <div className="h-48 bg-gray-200"></div>
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
+        <div className="h-32 bg-gray-200"></div>
         <div className="p-3">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+          <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
         </div>
       </div>
     );
@@ -333,18 +282,11 @@ export default function OfferCard({
   const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
 
   return (
-    <div 
-      className={`bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col ${
-        showDetails ? 'scale-100' : ''
-      }`}
-      style={{ 
-        transition: 'all 0.3s ease-in-out'
-      }}
-    >
-      {/* Изображение - 70% от текущей высоты карточки */}
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+      {/* Изображение */}
       <div 
-        className="relative w-full cursor-pointer flex-shrink-0" 
-        style={{ height: showDetails ? '200px' : '220px' }}
+        className="relative w-full cursor-pointer" 
+        style={{ height: '140px' }}
         onClick={handleImageClick}
       >
         <Image 
@@ -352,7 +294,7 @@ export default function OfferCard({
           alt={propName} 
           fill 
           className="object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          sizes="(max-width: 768px) 100vw, 50vw"
         />
         
         <button
@@ -376,102 +318,95 @@ export default function OfferCard({
         </div>
       </div>
       
-      {/* Контент - анимированная высота */}
-      <div 
-        className="p-3 flex-1 flex flex-col justify-between overflow-hidden transition-all duration-300"
-        style={{ 
-          minHeight: showDetails ? 'auto' : '140px'
-        }}
-      >
-        <div>
-          <Link href={`/supplier/${id}`}>
-            <p className="font-bold text-gray-800 text-sm hover:text-[#367666] transition mb-0.5 line-clamp-1">
-              {businessName}
-            </p>
-          </Link>
-          
-          <div className="flex items-center justify-between mb-0.5">
-            <div className="flex items-center gap-1">
-              <div className="flex items-center gap-0.5">
-                {renderBagStars(false)}
-              </div>
-              {bagTotalReviews > 0 && (
-                <span className="text-[10px] text-gray-500">({bagTotalReviews})</span>
-              )}
-            </div>
-            <p className="text-gray-400 text-[10px]">{distance}</p>
-          </div>
-          
-          {userRating === null ? (
-            <div className="flex items-center gap-0.5 mb-0.5">
-              <span className="text-[10px] text-gray-400">Оценить:</span>
-              <div className="flex items-center gap-0.5">
-                {renderBagStars(true)}
-              </div>
-            </div>
-          ) : (
-            <div className="mb-0.5">
-              <span className="text-[10px] text-green-600">✓ Вы оценили на {userRating} ★</span>
-            </div>
-          )}
-          
-          <h3 className="font-semibold text-xs mb-0.5 line-clamp-1">
-            {propName}
-          </h3>
-          
-          <p className="text-gray-500 text-[10px] mb-1 line-clamp-1">{propDescription}</p>
-          
-          {/* Состав - появляется/исчезает с анимацией */}
-          {isSearchPage && showDetails && (
-            <div className="mt-2 mb-1 p-2 bg-gray-50 rounded-lg animate-fadeIn">
-              {loading ? (
-                <div className="flex justify-center py-2">
-                  <div className="w-4 h-4 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              ) : bagItems.length > 0 ? (
-                <>
-                  <p className="text-xs font-semibold text-gray-700 mb-1">Состав сюрприза:</p>
-                  {bagItems.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-xs py-1 border-b border-gray-100 last:border-0">
-                      <span className="text-gray-600">{item.name} ×{item.quantity}</span>
-                      <span className="font-medium text-gray-700">{(item.price * item.quantity).toLocaleString()} ₸</span>
-                    </div>
-                  ))}
-                  <div className="mt-2 pt-1 border-t border-gray-200">
-                    <p className="text-xs text-[#367666] font-medium">
-                      Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸)
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <p className="text-xs text-gray-400 text-center py-2">Состав не указан</p>
-              )}
-            </div>
-          )}
+      {/* Контент */}
+      <div className="p-3">
+        {/* Название кафе - жирное */}
+        <Link href={`/supplier/${id}`}>
+          <p className="font-extrabold text-gray-800 text-base hover:text-[#367666] transition mb-1">
+            {businessName}
+          </p>
+        </Link>
+        
+        {/* Название сюрприза - жирное */}
+        <h3 className="font-bold text-gray-800 text-md mb-1">
+          {propName}
+        </h3>
+        
+        {/* Адрес и время работы */}
+        <div className="flex items-center gap-2 text-gray-500 text-xs mb-2">
+          <span className="flex items-center gap-1">📍 {distance}</span>
+          <span className="text-gray-300">|</span>
+          <span className="flex items-center gap-1">🕒 19:30 - 20:30</span>
         </div>
         
-        {/* Цена и кнопка - всегда видимы */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+        {/* Описание */}
+        <p className="text-gray-500 text-xs mb-2 line-clamp-1">{propDescription}</p>
+        
+        {/* Состав сюрприза (при клике) */}
+        {isSearchPage && showDetails && (
+          <div className="mb-3 p-2 bg-gray-50 rounded-xl">
+            {loading ? (
+              <div className="flex justify-center py-2">
+                <div className="w-4 h-4 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : bagItems.length > 0 ? (
+              <>
+                <p className="text-xs font-semibold text-gray-700 mb-1">Состав:</p>
+                {bagItems.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-2 py-1">
+                    <span className="text-base">{getProductIcon(item.name)}</span>
+                    <span className="text-gray-700 text-sm font-medium flex-1">{item.name}</span>
+                    <span className="text-gray-500 text-xs">×{item.quantity}</span>
+                    <span className="text-gray-700 text-sm font-semibold">{(item.price * item.quantity).toLocaleString()} ₸</span>
+                  </div>
+                ))}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <p className="text-xs text-[#367666] font-semibold">
+                    💰 Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸)
+                  </p>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-gray-400 text-center py-2">Состав не указан</p>
+            )}
+          </div>
+        )}
+        
+        {/* Рейтинг (число + звезды + количество голосов) */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="font-extrabold text-gray-800 text-lg">{bagRating.toFixed(1)}</span>
+          <span className="text-yellow-400 text-base">★</span>
+          <span className="text-gray-400 text-xs">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
+        </div>
+        
+        {/* Цена + кнопка Заказать */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <div>
-            <span className="text-base font-bold text-[#367666]">{propPrice.toLocaleString()} ₸</span>
+            <span className="text-xl font-extrabold text-[#367666]">{propPrice.toLocaleString()} ₸</span>
             {propOriginalPrice > propPrice && (
-              <span className="text-gray-400 line-through text-[10px] ml-1">{propOriginalPrice.toLocaleString()} ₸</span>
+              <span className="text-gray-400 line-through text-xs ml-2">{propOriginalPrice.toLocaleString()} ₸</span>
             )}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
-              'В корзину'
+              'Заказать'
             )}
           </button>
         </div>
       </div>
     </div>
   );
+}
+
+function getReviewText(count: number): string {
+  if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
+  if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
+  return 'оценок';
 }
