@@ -262,7 +262,7 @@ export default function SurpriseBagCard({
   if (!authChecked) {
     return (
       <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
-        <div className="h-40 bg-gray-200"></div>
+        <div className="h-32 bg-gray-200"></div>
         <div className="p-3">
           <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
           <div className="h-3 bg-gray-200 rounded w-1/2"></div>
@@ -273,8 +273,8 @@ export default function SurpriseBagCard({
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Изображение */}
-      <div className="relative h-48">
+      {/* Изображение - высота уменьшена */}
+      <div className="relative h-32">
         <Image 
           src={getImageByTitle()} 
           alt={name} 
@@ -282,20 +282,22 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
+        {/* Кнопка избранного - круглый фон */}
         <button
           onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1.5 z-10"
+          className="absolute top-2 right-2 bg-black/50 rounded-full p-1.5 z-10 w-8 h-8 flex items-center justify-center"
         >
-          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white/80'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
+        {/* Кнопка восклицательного знака - круглый фон */}
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10"
+          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-7 h-7 flex items-center justify-center z-10"
         >
-          <svg className="w-3 h-3 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
