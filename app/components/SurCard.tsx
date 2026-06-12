@@ -50,9 +50,6 @@ export default function SurpriseBagCard({
   
   const [bagRating, setBagRating] = useState(rating);
   const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
-  const [userRating, setUserRating] = useState<number | null>(null);
-  const [isRatingLoading, setIsRatingLoading] = useState(false);
-  const [tempRating, setTempRating] = useState(0);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -68,7 +65,6 @@ export default function SurpriseBagCard({
           const data = await response.json();
           setBagRating(data.rating || 0);
           setBagTotalReviews(data.total_reviews || 0);
-          setUserRating(data.user_rating);
         }
       } catch (error) {
         console.error('Error fetching rating:', error);
@@ -106,55 +102,6 @@ export default function SurpriseBagCard({
       setIsFavorite(favList.includes(id));
     }
   }, [id]);
-
-  const rateSurpriseBag = async (ratingValue: number) => {
-    const token = sessionStorage.getItem('authToken');
-    if (!token) {
-      alert('Пожалуйста, войдите в аккаунт');
-      router.push('/login');
-      return;
-    }
-    setIsRatingLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/surprise-bags/${id}/rate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ rating: ratingValue })
-      });
-      const data = await response.json();
-      if (data.success) {
-        setBagRating(data.rating);
-        setBagTotalReviews(data.total_reviews);
-        setUserRating(ratingValue);
-        showNotification('Спасибо за оценку!', 'success');
-      }
-    } catch (error) {
-      console.error('Error rating:', error);
-      showNotification('Ошибка при оценке', 'error');
-    } finally {
-      setIsRatingLoading(false);
-    }
-  };
-
-  const renderStars = () => {
-    const stars = [];
-    const currentRating = userRating !== null ? userRating : bagRating;
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <button
-          key={i}
-          onClick={() => rateSurpriseBag(i)}
-          onMouseEnter={() => setTempRating(i)}
-          onMouseLeave={() => setTempRating(0)}
-          className={`text-xs font-semibold transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-500' : 'text-gray-300'}`}
-          disabled={isRatingLoading}
-        >
-          ★
-        </button>
-      );
-    }
-    return stars;
-  };
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -233,12 +180,6 @@ export default function SurpriseBagCard({
 
   const formatPrice = (priceVal: number) => priceVal.toLocaleString('ru-KZ') + ' ₸';
   
-  const getReviewText = (count: number) => {
-    if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
-    if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
-    return 'оценок';
-  };
-
   const getImageByTitle = () => {
     const title = name.toLowerCase();
     if (title.includes('пицц') || title.includes('pizza')) {
@@ -282,28 +223,28 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Сердечко - круглый фон */}
+        {/* Сердечко - большое и круглое */}
         <button
           onClick={toggleFavorite}
-          className="absolute top-1.5 right-1.5 bg-black/50 rounded-full w-7 h-7 flex items-center justify-center z-10"
+          className="absolute top-2 right-2 bg-black/50 rounded-full w-9 h-9 flex items-center justify-center z-10 hover:bg-black/70 transition"
         >
-          <svg className={`w-3.5 h-3.5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
-        {/* Восклицательный знак - круглый фон */}
+        {/* Восклицательный знак - большой и круглый */}
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-1.5 right-1.5 bg-black/50 rounded-full w-6 h-6 flex items-center justify-center z-10"
+          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
         >
-          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
         
         {discount > 0 && (
-          <div className="absolute top-1.5 left-1.5 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">
+          <div className="absolute top-2 left-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">
             -{discount}%
           </div>
         )}
@@ -332,19 +273,7 @@ export default function SurpriseBagCard({
           </div>
         )}
         
-        {/* Рейтинг */}
-        <div className="flex items-center justify-between mt-0.5">
-          <div className="flex items-center gap-1">
-            <div className="flex items-center gap-0.5">
-              {renderStars()}
-            </div>
-            {bagTotalReviews > 0 && (
-              <span className="text-[9px] text-gray-400">({bagTotalReviews})</span>
-            )}
-          </div>
-        </div>
-        
-        {/* Цена и кнопка - широкая, не круглая */}
+        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-1 pt-1 border-t border-gray-100">
           <div>
             <span className="text-sm font-bold text-[#367666]">{formatPrice(price)}</span>
@@ -356,7 +285,7 @@ export default function SurpriseBagCard({
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-4 py-1 rounded-lg text-xs font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-5 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
               <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
