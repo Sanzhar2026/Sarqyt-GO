@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "NODE_OPTIONS='--max-old-space-size=450' next start",
+    "start": "node .next/standalone/server.js",
     "start:render": "NODE_OPTIONS='--max-old-space-size=450' next start --port $PORT"
   },
   "dependencies": {
