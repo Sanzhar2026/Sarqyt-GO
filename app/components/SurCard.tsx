@@ -112,7 +112,7 @@ export default function SurpriseBagCard({
     }
   }, [id]);
 
-  // Оценка сюрприза
+  // Оценка сюрприза (можно повторно менять)
   const rateSurpriseBag = async (rating: number, e: React.MouseEvent) => {
     e.stopPropagation();
     
@@ -145,6 +145,7 @@ export default function SurpriseBagCard({
       }
     } catch (error) {
       console.error('Error rating:', error);
+      showNotification('Ошибка при оценке', 'error');
     } finally {
       setIsRatingLoading(false);
     }
@@ -161,8 +162,8 @@ export default function SurpriseBagCard({
           <button
             key={i}
             onClick={(e) => rateSurpriseBag(i, e)}
-            disabled={isRatingLoading || userRating !== null}
-            className={`text-sm transition-all ${userRating !== null ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'} ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}
+            disabled={isRatingLoading}
+            className={`text-sm transition-all hover:scale-110 ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}
           >
             ★
           </button>
@@ -274,119 +275,124 @@ export default function SurpriseBagCard({
     return 'оценок';
   };
 
+  // Случайное фото сюрприза (еда)
+  const getSurpriseImage = () => {
+    const images = [
+      'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop',
+      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
+      'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop',
+      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
+      'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop',
+    ];
+    return images[Math.floor(Math.random() * images.length)];
+  };
+
   if (!authChecked) {
     return (
-      <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
-        <div className="h-48 bg-gray-200"></div>
-        <div className="p-3">
-          <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
+        <div className="h-32 bg-gray-200"></div>
+        <div className="p-2">
+          <div className="h-3 bg-gray-200 rounded w-3/4 mb-1"></div>
+          <div className="h-2 bg-gray-200 rounded w-1/2"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
-      {/* Изображение */}
-      <div className="relative h-48">
+    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+      {/* Изображение - уменьшено */}
+      <div className="relative h-32">
         <Image 
-          src={imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'} 
+          src={imageUrl || getSurpriseImage()} 
           alt={name} 
           fill 
           className="object-cover"
         />
         
+        {/* Сердечко - полупрозрачное */}
         <button
           onClick={toggleFavorite}
-          className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white transition z-10"
+          className="absolute top-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1.5 z-10"
         >
-          <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-500'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-3.5 h-3.5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white/80'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
-        {/* Кнопка восклицательного знака для разворачивания адреса */}
+        {/* Бейдж скидки */}
+        {discount > 0 && (
+          <div className="absolute top-2 left-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+            -{discount}%
+          </div>
+        )}
+        
+        {/* Иконка восклицательного знака */}
         <button 
           onClick={(e) => { e.stopPropagation(); setShowFullAddress(!showFullAddress); }}
-          className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm rounded-full p-1.5 z-10"
+          className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10"
         >
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3 h-3 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
-        
-        <div className="absolute top-3 left-3 flex gap-2">
-          {discount > 0 && (
-            <div className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-              -{discount}%
-            </div>
-          )}
-        </div>
       </div>
       
-      <div className="p-3">
-        {/* Название ресторана - жирное темное */}
+      <div className="p-2">
+        {/* Название ресторана */}
         <Link href={`/supplier/${id}`}>
-          <h2 className="font-extrabold text-gray-900 text-lg hover:text-[#367666] transition mb-1">
+          <p className="font-bold text-[#367666] text-xs hover:text-[#2a5a4d] transition mb-0.5">
             {supplierName}
-          </h2>
+          </p>
         </Link>
         
         {/* Название сюрприза */}
-        <h3 className="font-semibold text-gray-700 text-md mb-2">
+        <h3 className="font-semibold text-gray-800 text-xs mb-1 line-clamp-1">
           {name}
         </h3>
         
-        {/* Адрес - с возможностью раскрытия */}
-        <div className="mb-2">
-          <div className={`text-gray-500 text-sm ${!showFullAddress && 'line-clamp-1'}`}>
+        {/* Адрес и время */}
+        <div className="mb-1">
+          <div className={`text-gray-400 text-[10px] ${!showFullAddress && 'line-clamp-1'}`}>
             {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
           </div>
         </div>
         
         {/* Рейтинг и оценка */}
-        <div className="flex items-center justify-between mt-2 mb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mt-1 mb-1">
+          <div className="flex items-center gap-1">
             <div className="flex items-center gap-0.5">{renderBagStars(false)}</div>
-            {bagTotalReviews > 0 && <span className="text-xs text-gray-500">({bagTotalReviews})</span>}
+            {bagTotalReviews > 0 && <span className="text-[9px] text-gray-400">({bagTotalReviews})</span>}
           </div>
-          {userRating === null && (
-            <button
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                const r = prompt('Оцените от 1 до 5:'); 
-                if(r && Number(r) >= 1 && Number(r) <= 5) rateSurpriseBag(Number(r), e); 
-              }}
-              className="text-xs text-gray-400 hover:text-yellow-500 transition"
-            >
-              ⭐ Оценить
-            </button>
-          )}
-          {userRating !== null && (
-            <span className="text-xs text-green-600">✓ Вы оценили на {userRating} ★</span>
-          )}
+          <button
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              const r = prompt('Оцените от 1 до 5:'); 
+              if(r && Number(r) >= 1 && Number(r) <= 5) rateSurpriseBag(Number(r), e); 
+            }}
+            className="text-[9px] text-gray-400 hover:text-yellow-500 transition"
+            disabled={isRatingLoading}
+          >
+            ⭐ Оценить
+          </button>
         </div>
         
-        {/* Описание */}
-        <p className="text-gray-500 text-xs mb-3 line-clamp-2">{description}</p>
-        
         {/* Цена и кнопка */}
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-1 pt-1 border-t border-gray-100">
           <div>
-            <span className="text-2xl font-bold text-[#367666]">{formatPrice(price)}</span>
+            <span className="text-sm font-bold text-[#367666]">{formatPrice(price)}</span>
             {originalPrice > price && (
-              <span className="text-gray-400 line-through text-sm ml-2">{formatPrice(originalPrice)}</span>
+              <span className="text-gray-400 line-through text-[9px] ml-1">{formatPrice(originalPrice)}</span>
             )}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-5 py-2 rounded-full font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-2.5 py-1 rounded-full text-[9px] font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
