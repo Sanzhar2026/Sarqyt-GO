@@ -19,10 +19,8 @@ interface SurpriseBag {
   supplier_id: number;
   rating?: number;
   total_reviews?: number;
-  pickup_start_time?: string;
-  pickup_end_time?: string;
-  address?: string;
 }
+
 
 export default function OffersPage() {
   const router = useRouter();
@@ -30,31 +28,9 @@ export default function OffersPage() {
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<number | null>(null);
-  const [favorites, setFavorites] = useState<number[]>([]);
 
   // Получение токена
   const getAuthToken = () => sessionStorage.getItem('authToken');
-
-  // Загрузка избранного из localStorage
-  useEffect(() => {
-    const savedFavorites = localStorage.getItem('favorites');
-    if (savedFavorites) {
-      setFavorites(JSON.parse(savedFavorites));
-    }
-  }, []);
-
-  // Сохранение избранного в localStorage
-  const toggleFavorite = (bagId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    let newFavorites;
-    if (favorites.includes(bagId)) {
-      newFavorites = favorites.filter(id => id !== bagId);
-    } else {
-      newFavorites = [...favorites, bagId];
-    }
-    setFavorites(newFavorites);
-    localStorage.setItem('favorites', JSON.stringify(newFavorites));
-  };
 
   // Авторизованный fetch
   const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -76,63 +52,57 @@ export default function OffersPage() {
     });
   };
 
-  // Загрузка сюрпризов с их рейтингами и дополнительной информацией
+  // Загрузка сюрпризов с их рейтингами
   const fetchBags = async () => {
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
       const data = await response.json();
       
-      // Загружаем рейтинги и доп. инфо для каждого сюрприза
-      const bagsWithDetails = await Promise.all(
+      // Загружаем рейтинги для каждого сюрприза
+      const bagsWithRatings = await Promise.all(
         data.map(async (bag: SurpriseBag) => {
           try {
-            // Загружаем рейтинг
             const ratingRes = await fetch(`https://toogood-2ncf.onrender.com/api/surprise-bags/${bag.id}/rating`);
-            let rating = 0, total_reviews = 0;
             if (ratingRes.ok) {
               const ratingData = await ratingRes.json();
-              rating = ratingData.rating || 0;
-              total_reviews = ratingData.total_reviews || 0;
+              return { 
+                ...bag, 
+                rating: ratingData.rating || 0, 
+                total_reviews: ratingData.total_reviews || 0
+              };
             }
-            
-            // Загружаем информацию о поставщике (адрес, время работы)
-            const supplierRes = await fetch(`https://toogood-2ncf.onrender.com/api/suppliers/${bag.supplier_id}`);
-            let address = '', pickupStart = '', pickupEnd = '';
-            if (supplierRes.ok) {
-              const supplierData = await supplierRes.json();
-              address = supplierData.address || '';
-              pickupStart = supplierData.pickup_start_time || '19:30';
-              pickupEnd = supplierData.pickup_end_time || '20:30';
-            }
-            
-            return { 
-              ...bag, 
-              rating: rating, 
-              total_reviews: total_reviews,
-              address: address,
-              pickup_start_time: pickupStart,
-              pickup_end_time: pickupEnd
-            };
           } catch (e) {
-            console.error('Error fetching details:', e);
+            console.error('Error fetching rating:', e);
           }
-          return { 
-            ...bag, 
-            rating: 0, 
-            total_reviews: 0,
-            address: '',
-            pickup_start_time: '19:30',
-            pickup_end_time: '20:30'
-          };
+          return { ...bag, rating: 0, total_reviews: 0 };
         })
       );
       
-      setBags(bagsWithDetails);
+      setBags(bagsWithRatings);
     } catch (error) {
       console.error('Error fetching bags:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Отображение звезд рейтинга
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<span key={`full-${i}`} className="text-yellow-400 text-sm">★</span>);
+    }
+    if (hasHalfStar) {
+      stars.push(<span key="half" className="text-yellow-400 text-sm">½</span>);
+    }
+    const emptyStars = 5 - stars.length;
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<span key={`empty-${i}`} className="text-gray-300 text-sm">★</span>);
+    }
+    return stars;
   };
 
   useEffect(() => {
@@ -222,43 +192,10 @@ export default function OffersPage() {
   };
 
   const SurpriseIcon = () => (
-    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
     </svg>
   );
-
-  const ClockIcon = () => (
-    <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-
-  const HeartIcon = ({ isFavorite }: { isFavorite: boolean }) => (
-    <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-    </svg>
-  );
-
-  // Фото еды вместо сюрприза
-  const getFoodImage = (name: string) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('пицц') || lowerName.includes('pizza')) {
-      return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('бургер') || lowerName.includes('burger')) {
-      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл')) {
-      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('салат') || lowerName.includes('salad')) {
-      return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('десерт') || lowerName.includes('dessert') || lowerName.includes('торт')) {
-      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop';
-    }
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
-  };
 
   if (loading) {
     return (
@@ -277,6 +214,7 @@ export default function OffersPage() {
             <h1 className="text-2xl font-bold">
               {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
             </h1>
+            <SurpriseIcon />
           </div>
           <div className="w-16"></div>
         </div>
@@ -289,6 +227,9 @@ export default function OffersPage() {
       <div className="px-4 py-6">
         {bags.length === 0 ? (
           <div className="text-center py-12">
+            <div className="flex justify-center mb-4">
+              <SurpriseIcon />
+            </div>
             <p className="text-gray-500">
               {lang === 'kz' ? 'Барлық пакеттер уақытша броньдалған' : 'Все пакеты временно забронированы'}
             </p>
@@ -300,90 +241,61 @@ export default function OffersPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-4">
             {bags.map((bag) => (
-              <div key={bag.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex">
-                {/* Изображение - 50% */}
-                <div className="relative w-1/2 flex-shrink-0">
-                  <div className="relative h-28">
-                    <Image
-                      src={getFoodImage(bag.name)}
-                      alt={bag.name}
-                      fill
-                      className="object-cover"
-                    />
-                    {/* Сердечко справа вверху на изображении */}
-                    <button
-                      onClick={(e) => toggleFavorite(bag.id, e)}
-                      className="absolute top-1.5 right-1.5 bg-black/50 backdrop-blur-sm rounded-full p-1 z-10"
-                    >
-                      <HeartIcon isFavorite={favorites.includes(bag.id)} />
-                    </button>
-                    {/* Иконка пакетика с количеством слева вверху на изображении */}
-                    <div className="absolute top-1.5 left-1.5 bg-black/50 backdrop-blur-sm rounded-full px-1.5 py-0.5 flex items-center gap-1">
-                      <SurpriseIcon />
-                      <span className="text-white text-[10px] font-bold">{bag.available_quantity}</span>
+              <div key={bag.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="relative h-48">
+                  <Image
+                    src={bag.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}
+                    alt={bag.name}
+                    fill
+                    className="object-cover"
+                  />
+                  {bag.discount_percentage > 0 && (
+                    <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                      -{bag.discount_percentage}%
                     </div>
-                    {bag.available_quantity <= 0 && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white font-bold text-[10px] px-1.5 py-0.5 bg-red-600 rounded-full">
-                          {lang === 'kz' ? 'Таусылған' : 'Распродано'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  )}
+                  {bag.available_quantity <= 0 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="text-white font-bold text-sm px-3 py-1 bg-red-600 rounded-full">
+                        {lang === 'kz' ? 'Таусылған' : 'Распродано'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
-                {/* Контент - 50% */}
-                <div className="w-1/2 p-2 flex flex-col justify-between">
-                  <div>
-                    {/* Название кафе */}
-                    <p className="text-[#367666] text-[11px] font-bold truncate">
-                      {bag.supplier_name}
-                    </p>
-                    
-                    {/* Название сюрприза */}
-                    <h3 className="font-bold text-gray-800 text-xs mt-0.5 truncate">
-                      {bag.name}
-                    </h3>
-                    
-                    {/* Адрес без иконки */}
-                    <p className="text-gray-500 text-[9px] mt-1 truncate">
-                      {bag.address || 'Адрес не указан'}
-                    </p>
-                    
-                    {/* Время работы с иконкой */}
-                    <div className="flex items-center gap-0.5 mt-0.5">
-                      <ClockIcon />
-                      <span className="text-gray-500 text-[9px]">
-                        {bag.pickup_start_time && bag.pickup_end_time 
-                          ? `${bag.pickup_start_time}-${bag.pickup_end_time}`
-                          : 'Время не указано'}
-                      </span>
+                <div className="p-4">
+                  <p className="text-[#367666] text-sm font-medium">
+                    {bag.supplier_name}
+                  </p>
+                  
+                  <h3 className="font-bold text-gray-800 text-lg">
+                    {bag.name}
+                  </h3>
+                  
+                  <p className="text-gray-500 text-sm mt-1 line-clamp-2">{bag.description}</p>
+                  
+                  {/* ТОЛЬКО рейтинг - звезды и количество оценок */}
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-0.5">
+                      {renderStars(bag.rating || 0)}
                     </div>
-                    
-                    {/* Рейтинг */}
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <span className="font-extrabold text-gray-800 text-xs">
-                        {bag.rating?.toFixed(1) || '0'}
+                    {bag.total_reviews && bag.total_reviews > 0 && (
+                      <span className="text-xs text-gray-500">
+                        ({bag.total_reviews} {getReviewText(bag.total_reviews)})
                       </span>
-                      <span className="text-yellow-400 text-[10px]">★</span>
-                      {bag.total_reviews && bag.total_reviews > 0 && (
-                        <span className="text-gray-400 text-[9px]">
-                          ({bag.total_reviews} {getReviewText(bag.total_reviews)})
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                   
                   {/* Цена и кнопка */}
-                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-gray-100">
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
                     <div>
-                      <span className="text-sm font-extrabold text-[#367666]">
+                      <span className="text-xl font-bold text-[#367666]">
                         {formatPrice(bag.discounted_price)}
                       </span>
                       {bag.original_price > bag.discounted_price && (
-                        <span className="text-gray-400 line-through text-[8px] ml-0.5">
+                        <span className="text-gray-400 line-through text-sm ml-2">
                           {formatPrice(bag.original_price)}
                         </span>
                       )}
@@ -392,15 +304,15 @@ export default function OffersPage() {
                     <button
                       onClick={() => addToCart(bag)}
                       disabled={bag.available_quantity <= 0 || addingId === bag.id}
-                      className={`px-2 py-0.5 rounded-lg font-bold text-[9px] transition ${
+                      className={`px-6 py-2 rounded-xl font-semibold transition ${
                         bag.available_quantity <= 0 || addingId === bag.id
                           ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           : 'bg-[#367666] text-white hover:bg-[#2a5a4d]'
                       }`}
                     >
                       {addingId === bag.id ? (
-                        <span className="flex items-center gap-0.5">
-                          <div className="w-1.5 h-1.5 border-1.5 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span className="flex items-center gap-1">
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                           {lang === 'kz' ? 'Қосылуда...' : 'Добавление...'}
                         </span>
                       ) : (
