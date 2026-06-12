@@ -6,13 +6,6 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useLanguage } from '../layout';
 
-interface SurpriseItem {
-  product_id: number;
-  name: string;
-  price: number;
-  quantity: number;
-}
-
 interface SurpriseBag {
   id: number;
   name: string;
@@ -29,7 +22,6 @@ interface SurpriseBag {
   pickup_start_time?: string;
   pickup_end_time?: string;
   address?: string;
-  items?: SurpriseItem[];
 }
 
 export default function OffersPage() {
@@ -40,6 +32,7 @@ export default function OffersPage() {
   const [addingId, setAddingId] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [bagItemsMap, setBagItemsMap] = useState<Map<number, any[]>>(new Map());
   const [loadingItems, setLoadingItems] = useState<number | null>(null);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
@@ -72,11 +65,7 @@ export default function OffersPage() {
       const response = await fetch(`${API_URL}/api/surprise-bags/${bagId}`);
       if (response.ok) {
         const data = await response.json();
-        setBags(prev => prev.map(bag => 
-          bag.id === bagId 
-            ? { ...bag, items: data.items || [] }
-            : bag
-        ));
+        setBagItemsMap(prev => new Map(prev).set(bagId, data.items || []));
       }
     } catch (error) {
       console.error('Error fetching bag items:', error);
@@ -89,8 +78,7 @@ export default function OffersPage() {
     if (expandedId === bagId) {
       setExpandedId(null);
     } else {
-      const bag = bags.find(b => b.id === bagId);
-      if (bag && !bag.items) {
+      if (!bagItemsMap.has(bagId)) {
         await fetchBagItems(bagId);
       }
       setExpandedId(bagId);
@@ -128,8 +116,7 @@ export default function OffersPage() {
               total_reviews,
               address,
               pickup_start_time: pickupStart,
-              pickup_end_time: pickupEnd,
-              items: []
+              pickup_end_time: pickupEnd
             };
           } catch (e) {
             console.error('Error fetching details:', e);
@@ -140,8 +127,7 @@ export default function OffersPage() {
             total_reviews: 0,
             address: '',
             pickup_start_time: '19:30',
-            pickup_end_time: '20:30',
-            items: []
+            pickup_end_time: '20:30'
           };
         })
       );
@@ -230,18 +216,13 @@ export default function OffersPage() {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return price.toLocaleString('ru-KZ') + ' ₸';
-  };
-
+  const formatPrice = (price: number) => price.toLocaleString('ru-KZ') + ' ₸';
+  
   const getReviewText = (count: number) => {
-    if (lang === 'kz') {
-      return 'баға';
-    } else {
-      if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
-      if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
-      return 'оценок';
-    }
+    if (lang === 'kz') return 'баға';
+    if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
+    if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
+    return 'оценок';
   };
 
   const getProductIcon = (name: string) => {
@@ -258,37 +239,11 @@ export default function OffersPage() {
     return '🍽️';
   };
 
-  const SurpriseIcon = () => (
-    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-    </svg>
-  );
-
   const HeartIcon = ({ isFavorite }: { isFavorite: boolean }) => (
-    <svg className={`w-3.5 h-3.5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+    <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
     </svg>
   );
-
-  const getFoodImage = (name: string) => {
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes('пицц') || lowerName.includes('pizza')) {
-      return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('бургер') || lowerName.includes('burger')) {
-      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл')) {
-      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('салат') || lowerName.includes('salad')) {
-      return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop';
-    }
-    if (lowerName.includes('десерт') || lowerName.includes('dessert') || lowerName.includes('торт')) {
-      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop';
-    }
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
-  };
 
   if (loading) {
     return (
@@ -300,19 +255,17 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-[#367666] text-white px-4 pt-12 pb-4">
-        <div className="flex justify-between items-center">
-          <h1 className="text-xl font-bold">
-            {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
-          </h1>
-          <div className="w-12"></div>
-        </div>
-        <p className="text-emerald-100 text-xs mt-1">
+      {/* Header */}
+      <div className="bg-[#367666] text-white px-4 pt-12 pb-4 sticky top-0 z-10">
+        <h1 className="text-xl font-bold">
+          {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
+        </h1>
+        <p className="text-emerald-100 text-xs mt-0.5">
           {lang === 'kz' ? 'Өзіңізге сюрприз-пакетті таңдаңыз' : 'Выберите свой сюрприз-пакет'}
         </p>
       </div>
 
-      <div className="px-3 py-4">
+      <div className="p-4">
         {bags.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 text-sm">
@@ -323,27 +276,26 @@ export default function OffersPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            {bags.map((bag) => {
+          // ОДНА КОЛОНКА - 3 ряда
+          <div className="flex flex-col gap-4">
+            {bags.slice(0, 3).map((bag) => {
               const isExpanded = expandedId === bag.id;
-              const hasItems = bag.items && bag.items.length > 0;
+              const bagItems = bagItemsMap.get(bag.id) || [];
               const isLoading = loadingItems === bag.id;
               
               return (
                 <div 
                   key={bag.id} 
-                  className={`bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-300 ${
-                    isExpanded ? 'pb-3' : ''
-                  }`}
+                  className={`bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-300 ${isExpanded ? 'pb-3' : ''}`}
                 >
+                  {/* Изображение */}
                   <div 
                     className="relative w-full cursor-pointer"
-                    style={{ height: isExpanded ? 'auto' : '160px' }}
                     onClick={() => handleImageClick(bag.id)}
                   >
-                    <div className="relative h-40">
+                    <div className="relative h-48">
                       <Image
-                        src={getFoodImage(bag.name)}
+                        src={bag.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}
                         alt={bag.name}
                         fill
                         className="object-cover"
@@ -354,64 +306,61 @@ export default function OffersPage() {
                       >
                         <HeartIcon isFavorite={favorites.includes(bag.id)} />
                       </button>
-                      <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1">
-                        <SurpriseIcon />
-                        <span className="text-white text-[10px] font-bold">{bag.available_quantity}</span>
-                      </div>
-                      {bag.available_quantity <= 0 && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <span className="text-white font-bold text-[10px] px-2 py-1 bg-red-600 rounded-full">
-                            {lang === 'kz' ? 'Таусылған' : 'Распродано'}
-                          </span>
+                      {bag.discount_percentage > 0 && (
+                        <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
+                          -{bag.discount_percentage}%
                         </div>
                       )}
                     </div>
                   </div>
                   
                   <div className="p-3">
-                    <p className="text-[#367666] text-xs font-bold">
+                    {/* Название кафе */}
+                    <p className="text-[#367666] text-sm font-bold">
                       {bag.supplier_name}
                     </p>
                     
-                    <h3 className="font-bold text-gray-800 text-sm mt-0.5">
+                    {/* Название сюрприза */}
+                    <h3 className="font-bold text-gray-800 text-base mt-1">
                       {bag.name}
                     </h3>
                     
-                    {/* Адрес и время на одной линии */}
+                    {/* Адрес • Время работы */}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-gray-500 text-[10px]">
+                      <span className="text-gray-500 text-xs">
                         {bag.address || 'Адрес не указан'}
                       </span>
-                      <span className="text-gray-300 text-[10px]">•</span>
-                      <span className="text-gray-500 text-[10px]">
+                      <span className="text-gray-300 text-xs">•</span>
+                      <span className="text-gray-500 text-xs">
                         {bag.pickup_start_time && bag.pickup_end_time 
                           ? `${bag.pickup_start_time}-${bag.pickup_end_time}`
                           : 'Время не указано'}
                       </span>
                     </div>
                     
-                    {/* Рейтинг и количество оценок на одной линии */}
-                    <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-gray-100">
-                      <span className="font-extrabold text-gray-800 text-xs">
+                    {/* Рейтинг и количество оценок */}
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span className="font-extrabold text-gray-800 text-sm">
                         {bag.rating?.toFixed(1) || '0'}
                       </span>
-                      <span className="text-yellow-400 text-[10px]">★</span>
+                      <span className="text-yellow-400 text-xs">★</span>
                       {bag.total_reviews && bag.total_reviews > 0 && (
-                        <span className="text-gray-400 text-[9px]">
+                        <span className="text-gray-400 text-[10px]">
                           {bag.total_reviews} {getReviewText(bag.total_reviews)}
                         </span>
                       )}
                     </div>
                     
-                    <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-gray-100">
-                      <span className="text-base font-extrabold text-[#367666]">
+                    {/* Цена и кнопка */}
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+                      <span className="text-xl font-extrabold text-[#367666]">
                         {formatPrice(bag.discounted_price)}
                       </span>
                       
                       <button
                         onClick={() => addToCart(bag)}
                         disabled={bag.available_quantity <= 0 || addingId === bag.id}
-                        className={`px-3 py-1 rounded-lg font-bold text-[10px] transition ${
+                        className={`px-4 py-1.5 rounded-lg font-bold text-xs transition ${
                           bag.available_quantity <= 0 || addingId === bag.id
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             : 'bg-[#367666] text-white hover:bg-[#2a5a4d]'
@@ -420,38 +369,39 @@ export default function OffersPage() {
                         {addingId === bag.id ? (
                           <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         ) : (
-                          lang === 'kz' ? 'Тапсырыс беру' : 'Заказать'
+                          'Заказать'
                         )}
                       </button>
                     </div>
                     
+                    {/* Состав при клике */}
                     {isExpanded && (
                       <div className="mt-3 pt-2 border-t border-gray-100 animate-fadeIn">
-                        <p className="text-[10px] font-semibold text-gray-700 mb-1.5">Состав сюрприза:</p>
+                        <p className="text-xs font-semibold text-gray-700 mb-1.5">Состав сюрприза:</p>
                         {isLoading ? (
                           <div className="flex justify-center py-3">
                             <div className="w-4 h-4 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
                           </div>
-                        ) : hasItems ? (
+                        ) : bagItems.length > 0 ? (
                           <div className="space-y-1.5">
-                            {bag.items!.slice(0, 4).map((item, idx) => (
+                            {bagItems.slice(0, 4).map((item, idx) => (
                               <div key={idx} className="flex items-center gap-2">
                                 <span className="text-base">{getProductIcon(item.name)}</span>
-                                <span className="text-gray-700 text-[10px] flex-1">{item.name}</span>
-                                <span className="text-gray-500 text-[9px]">×{item.quantity}</span>
-                                <span className="text-gray-700 text-[10px] font-medium">
+                                <span className="text-gray-700 text-xs flex-1">{item.name}</span>
+                                <span className="text-gray-500 text-[10px]">×{item.quantity}</span>
+                                <span className="text-gray-700 text-xs font-medium">
                                   {(item.price * item.quantity).toLocaleString()} ₸
                                 </span>
                               </div>
                             ))}
-                            {bag.items!.length > 4 && (
-                              <p className="text-[9px] text-gray-400 text-center pt-1">
-                                +{bag.items!.length - 4} еще
+                            {bagItems.length > 4 && (
+                              <p className="text-[10px] text-gray-400 text-center pt-1">
+                                +{bagItems.length - 4} еще
                               </p>
                             )}
                           </div>
                         ) : (
-                          <p className="text-[10px] text-gray-400 text-center py-2">Состав не указан</p>
+                          <p className="text-xs text-gray-400 text-center py-2">Состав не указан</p>
                         )}
                       </div>
                     )}
