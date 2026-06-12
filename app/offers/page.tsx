@@ -3,8 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLanguage } from '../../layout';
-import SurpriseBagCard from '../../components/SurpriseBagCard';
+import { useLanguage } from '.././layout';
+import SurpriseBagCard from './.././components/SurCard';
 
 interface SurpriseBag {
   id: number;
