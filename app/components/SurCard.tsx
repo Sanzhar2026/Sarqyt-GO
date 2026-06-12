@@ -146,7 +146,7 @@ export default function SurpriseBagCard({
           onClick={() => rateSurpriseBag(i)}
           onMouseEnter={() => setTempRating(i)}
           onMouseLeave={() => setTempRating(0)}
-          className={`text-xs transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-400' : 'text-gray-300'}`}
+          className={`text-sm transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-400' : 'text-gray-300'}`}
           disabled={isRatingLoading}
         >
           ★
@@ -274,7 +274,7 @@ export default function SurpriseBagCard({
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       {/* Изображение */}
-      <div className="relative h-40">
+      <div className="relative h-48">
         <Image 
           src={getImageByTitle()} 
           alt={name} 
@@ -295,7 +295,7 @@ export default function SurpriseBagCard({
           onClick={() => setShowExpanded(!showExpanded)}
           className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10"
         >
-          <svg className="w-3.5 h-3.5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3 h-3 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
@@ -308,63 +308,58 @@ export default function SurpriseBagCard({
       </div>
       
       <div className="p-3">
+        {/* Название кафе - жирное темное */}
         <Link href={`/supplier/${id}`}>
-          <p className="font-bold text-[#367666] text-sm hover:text-[#2a5a4d] transition mb-1">
+          <p className="font-extrabold text-gray-900 text-base hover:text-[#367666] transition mb-1">
             {supplierName}
           </p>
         </Link>
         
-        <h3 className="font-semibold text-gray-800 text-md mb-1 line-clamp-1">
+        {/* Название сюрприза */}
+        <h3 className="font-semibold text-gray-800 text-lg mb-1 line-clamp-1">
           {name}
         </h3>
         
-        {/* Адрес и время */}
-        <div className="mb-2">
-          <div className="text-gray-500 text-xs line-clamp-1">
-            {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
-          </div>
+        {/* Адрес и время - первой строкой */}
+        <div className="text-gray-500 text-sm mb-1 leading-tight">
+          {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
+        {/* Расширенный адрес (при нажатии на !) */}
+        {showExpanded && (
+          <div className="text-gray-400 text-sm mb-1 leading-tight">
+            📍 Полный адрес: {address || 'Адрес не указан'}
+          </div>
+        )}
+        
         {/* Рейтинг */}
-        <div className="flex items-center justify-between mt-2 mb-2">
+        <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-0.5">
               {renderStars()}
             </div>
             {bagTotalReviews > 0 && (
-              <span className="text-xs text-gray-500">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
+              <span className="text-sm text-gray-500">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
             )}
           </div>
         </div>
         
-        {/* Развернутая информация */}
-        {showExpanded && (
-          <div className="mt-2 mb-2 p-2 bg-gray-50 rounded-lg">
-            <div className="text-gray-600 text-xs">
-              📍 Полный адрес: {address || 'Адрес не указан'}
-            </div>
-            <div className="text-gray-500 text-xs mt-1">
-              🕒 Время работы: {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
-            </div>
-          </div>
-        )}
-        
         {/* Цена и кнопка */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
           <div>
-            <span className="text-lg font-bold text-[#367666]">{formatPrice(price)}</span>
+            <span className="text-2xl font-bold text-[#367666]">{formatPrice(price)}</span>
             {originalPrice > price && (
-              <span className="text-gray-400 line-through text-xs ml-1">{formatPrice(originalPrice)}</span>
+              <span className="text-gray-400 line-through text-sm ml-1">{formatPrice(originalPrice)}</span>
             )}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
