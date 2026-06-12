@@ -146,7 +146,7 @@ export default function SurpriseBagCard({
           onClick={() => rateSurpriseBag(i)}
           onMouseEnter={() => setTempRating(i)}
           onMouseLeave={() => setTempRating(0)}
-          className={`text-xs transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-400' : 'text-gray-300'}`}
+          className={`text-[9px] transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-400' : 'text-gray-300'}`}
           disabled={isRatingLoading}
         >
           ★
@@ -223,7 +223,7 @@ export default function SurpriseBagCard({
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-3 rounded-xl text-white text-center animate-slide-up text-sm ${
+    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-2 rounded-xl text-white text-center animate-slide-up text-[10px] ${
       type === 'success' ? 'bg-[#367666]' : 'bg-red-600'
     }`;
     toast.textContent = message;
@@ -242,39 +242,39 @@ export default function SurpriseBagCard({
   const getImageByTitle = () => {
     const title = name.toLowerCase();
     if (title.includes('пицц') || title.includes('pizza')) {
-      return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop';
+      return 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop';
     }
     if (title.includes('бургер') || title.includes('burger')) {
-      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
+      return 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&h=300&fit=crop';
     }
     if (title.includes('суши') || title.includes('sushi') || title.includes('ролл')) {
       return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
     }
     if (title.includes('салат') || title.includes('salad')) {
-      return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop';
+      return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop';
     }
     if (title.includes('десерт') || title.includes('dessert') || title.includes('торт')) {
       return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop';
     }
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+    return 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&h=300&fit=crop';
   };
 
   if (!authChecked) {
     return (
-      <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
-        <div className="h-40 bg-gray-200"></div>
-        <div className="p-3">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+      <div className="bg-white rounded-lg overflow-hidden shadow-sm animate-pulse">
+        <div className="h-24 bg-gray-200"></div>
+        <div className="p-1.5">
+          <div className="h-2 bg-gray-200 rounded w-3/4 mb-1"></div>
+          <div className="h-1.5 bg-gray-200 rounded w-1/2"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+    <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       {/* Изображение */}
-      <div className="relative h-40">
+      <div className="relative h-28">
         <Image 
           src={getImageByTitle()} 
           alt={name} 
@@ -284,87 +284,82 @@ export default function SurpriseBagCard({
         
         <button
           onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1.5 z-10"
+          className="absolute top-1 right-1 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10"
         >
-          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white/80'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-2.5 h-2.5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white/80'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10"
+          className="absolute bottom-1 right-1 bg-black/40 backdrop-blur-sm rounded-full p-0.5 z-10"
         >
-          <svg className="w-3.5 h-3.5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-2 h-2 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
         
         {discount > 0 && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+          <div className="absolute top-1 left-1 bg-red-500 text-white px-1 py-0.5 rounded-full text-[7px] font-bold">
             -{discount}%
           </div>
         )}
       </div>
       
-      <div className="p-3">
+      <div className="p-1.5">
+        {/* Название кафе - жирное темное */}
         <Link href={`/supplier/${id}`}>
-          <p className="font-bold text-[#367666] text-sm hover:text-[#2a5a4d] transition mb-1">
+          <p className="font-extrabold text-gray-900 text-[10px] hover:text-[#367666] transition mb-0.5">
             {supplierName}
           </p>
         </Link>
         
-        <h3 className="font-semibold text-gray-800 text-md mb-1 line-clamp-1">
+        {/* Название сюрприза */}
+        <h3 className="font-semibold text-gray-800 text-[9px] mb-0.5 line-clamp-1">
           {name}
         </h3>
         
-        {/* Адрес и время */}
-        <div className="mb-2">
-          <div className="text-gray-500 text-xs line-clamp-1">
-            {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
-          </div>
+        {/* Адрес - первая строка */}
+        <div className="text-gray-500 text-[7px] mb-0.5 leading-tight">
+          {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
+        {/* Расширенный адрес - появляется на следующей строке, серым цветом, без иконок */}
+        {showExpanded && (
+          <div className="text-gray-400 text-[7px] mb-0.5 leading-tight">
+            {address || 'Адрес не указан'}
+          </div>
+        )}
+        
         {/* Рейтинг */}
-        <div className="flex items-center justify-between mt-2 mb-2">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mt-0.5">
+          <div className="flex items-center gap-0.5">
             <div className="flex items-center gap-0.5">
               {renderStars()}
             </div>
             {bagTotalReviews > 0 && (
-              <span className="text-xs text-gray-500">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
+              <span className="text-[6px] text-gray-400">({bagTotalReviews})</span>
             )}
           </div>
         </div>
         
-        {/* Развернутая информация */}
-        {showExpanded && (
-          <div className="mt-2 mb-2 p-2 bg-gray-50 rounded-lg">
-            <div className="text-gray-600 text-xs">
-              📍 Полный адрес: {address || 'Адрес не указан'}
-            </div>
-            <div className="text-gray-500 text-xs mt-1">
-              🕒 Время работы: {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
-            </div>
-          </div>
-        )}
-        
         {/* Цена и кнопка */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-1 pt-0.5 border-t border-gray-100">
           <div>
-            <span className="text-lg font-bold text-[#367666]">{formatPrice(price)}</span>
+            <span className="text-[10px] font-bold text-[#367666]">{formatPrice(price)}</span>
             {originalPrice > price && (
-              <span className="text-gray-400 line-through text-xs ml-1">{formatPrice(originalPrice)}</span>
+              <span className="text-gray-400 line-through text-[6px] ml-0.5">{formatPrice(originalPrice)}</span>
             )}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-1.5 py-0.5 rounded-full text-[7px] font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-1.5 h-1.5 border-1.5 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
