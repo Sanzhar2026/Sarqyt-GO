@@ -39,8 +39,6 @@ export default function OfferCard({
   discount: propDiscount,
   imageUrl: propImageUrl,
   description: propDescription,
-  rating = 4.5,
-  reviewCount = 128,
   onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
@@ -49,22 +47,20 @@ export default function OfferCard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showFullAddress, setShowFullAddress] = useState(false);
   const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   
-  // ============ ДОБАВЛЯЕМ СОСТОЯНИЯ ДЛЯ РЕЙТИНГА ============
   const [bagRating, setBagRating] = useState(0);
   const [bagTotalReviews, setBagTotalReviews] = useState(0);
   const [userRating, setUserRating] = useState<number | null>(null);
   const [isRatingLoading, setIsRatingLoading] = useState(false);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
-  
-  // Определяем, находимся ли мы на странице поиска (где нужно показывать состав при нажатии)
   const isSearchPage = pathname === '/' || pathname === '/offers';
 
-  // Загружаем состав сюрприза (только для страницы поиска)
+  // Загружаем состав сюрприза
   useEffect(() => {
     if (!isSearchPage) {
       setLoading(false);
@@ -88,7 +84,7 @@ export default function OfferCard({
     fetchBagItems();
   }, [id, API_URL, isSearchPage]);
 
-  // ============ ЗАГРУЗАЕМ РЕЙТИНГ СЮРПРИЗА ============
+  // Загружаем рейтинг
   useEffect(() => {
     const fetchRating = async () => {
       try {
@@ -109,7 +105,6 @@ export default function OfferCard({
         console.error('Error fetching rating:', error);
       }
     };
-    
     fetchRating();
   }, [id, API_URL]);
 
@@ -167,12 +162,11 @@ export default function OfferCard({
     }
   }, [id]);
 
-  // ============ ФУНКЦИЯ ДЛЯ ОЦЕНКИ СЮРПРИЗА ============
+  // Оценка сюрприза
   const rateSurpriseBag = async (rating: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Чтобы не открывать состав
+    e.stopPropagation();
     
     const token = sessionStorage.getItem('authToken');
-    
     if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
       router.push('/login');
@@ -209,7 +203,7 @@ export default function OfferCard({
     }
   };
 
-  // ============ ФУНКЦИЯ ДЛЯ ОТОБРАЖЕНИЯ ЗВЕЗД СЮРПРИЗА ============
+  // Отображение звезд
   const renderBagStars = (interactive = false) => {
     const stars = [];
     const currentRating = interactive ? (userRating || 0) : bagRating;
@@ -228,17 +222,13 @@ export default function OfferCard({
         );
       } else {
         stars.push(
-          <span key={i} className={`text-sm ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}>
-            ★
-          </span>
+          <span key={i} className={`text-sm ${i <= currentRating ? 'text-yellow-400' : 'text-gray-300'}`}>★</span>
         );
       }
     }
-    
     return stars;
   };
 
-  // Toggle избранного
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
     const favorites = localStorage.getItem('favorites');
@@ -333,30 +323,11 @@ export default function OfferCard({
     setTimeout(() => toast.remove(), 2000);
   };
 
-  // Функция для отображения звезд рейтинга (для магазина, пока оставляем как есть)
-  const renderStars = () => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-    
-    const stars = [];
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<span key={`full-${i}`} className="text-yellow-400">★</span>);
-    }
-    if (hasHalfStar) {
-      stars.push(<span key="half" className="text-yellow-400">½</span>);
-    }
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
-    }
-    return stars;
-  };
-
   if (!authChecked || (isSearchPage && loading)) {
     return (
       <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
         <div className="h-48 bg-gray-200"></div>
-        <div className="p-4">
+        <div className="p-3">
           <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
         </div>
@@ -368,9 +339,9 @@ export default function OfferCard({
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300">
-      {/* Изображение - клик для раскрытия состава (только на странице поиска) */}
+      {/* Изображение */}
       <div 
-        className="relative h-52 cursor-pointer" 
+        className="relative h-48 cursor-pointer" 
         onClick={() => isSearchPage && setShowDetails(!showDetails)}
       >
         <Image 
@@ -381,13 +352,23 @@ export default function OfferCard({
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         
-        {/* Кнопка избранного (сердечко) */}
+        {/* Кнопка избранного */}
         <button
           onClick={toggleFavorite}
           className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-2 shadow-md hover:bg-white transition z-10"
         >
           <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-500'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+        </button>
+        
+        {/* Кнопка восклицательного знака для разворачивания адреса */}
+        <button 
+          onClick={(e) => { e.stopPropagation(); setShowFullAddress(!showFullAddress); }}
+          className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm rounded-full p-1.5 z-10"
+        >
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
         
@@ -404,96 +385,85 @@ export default function OfferCard({
         </div>
       </div>
       
-      <div className="p-4">
-        {/* Название ресторана - жирное и темное */}
+      <div className="p-3">
+        {/* Название ресторана - жирное темное */}
         <Link href={`/supplier/${id}`}>
-          <p className="font-bold text-gray-800 text-base hover:text-[#367666] transition mb-1">
+          <h2 className="font-extrabold text-gray-900 text-lg hover:text-[#367666] transition mb-1">
             {businessName}
-          </p>
+          </h2>
         </Link>
-        
-        {/* ============ ЗВЕЗДЫ РЕЙТИНГА СЮРПРИЗА И ОЦЕНКА ============ */}
-        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-0.5">
-              {renderBagStars(false)}
-            </div>
-            {bagTotalReviews > 0 && (
-              <span className="text-xs text-gray-500">({bagTotalReviews})</span>
-            )}
-          </div>
-          <p className="text-gray-400 text-xs">{distance}</p>
-        </div>
-        
-        {/* Интерактивные звезды для оценки (только если пользователь не оценил) */}
-        {userRating === null && (
-          <div className="flex items-center gap-1 mb-2">
-            <span className="text-xs text-gray-400">Оценить сюрприз:</span>
-            <div className="flex items-center gap-0.5">
-              {renderBagStars(true)}
-            </div>
-          </div>
-        )}
-        
-        {userRating !== null && (
-          <div className="mb-2">
-            <span className="text-xs text-green-600">✓ Вы оценили этот сюрприз на {userRating} ★</span>
-          </div>
-        )}
         
         {/* Название сюрприза */}
         <Link href={`/offers/${id}`}>
-          <h3 className="font-semibold text-md mb-1 hover:text-[#367666] transition line-clamp-1">
+          <h3 className="font-semibold text-gray-700 text-md mb-2 hover:text-[#367666] transition line-clamp-1">
             {propName}
           </h3>
         </Link>
         
-        {/* Описание */}
-        <p className="text-gray-500 text-xs mb-3 line-clamp-2">{propDescription}</p>
+        {/* Адрес - с возможностью раскрытия */}
+        <div className="mb-2">
+          <div className={`text-gray-500 text-sm ${!showFullAddress && 'line-clamp-1'}`}>
+            {distance}
+          </div>
+        </div>
         
-        {/* Состав сюрприза (раскрывается при нажатии на картинку, только на странице поиска) */}
+        {/* Рейтинг и оценка */}
+        <div className="flex items-center justify-between mt-2 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-0.5">{renderBagStars(false)}</div>
+            {bagTotalReviews > 0 && <span className="text-xs text-gray-500">({bagTotalReviews})</span>}
+          </div>
+          {userRating === null && (
+            <button
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                const r = prompt('Оцените от 1 до 5:'); 
+                if(r && Number(r) >= 1 && Number(r) <= 5) rateSurpriseBag(Number(r), e); 
+              }}
+              className="text-xs text-gray-400 hover:text-yellow-500 transition"
+            >
+              ⭐ Оценить
+            </button>
+          )}
+          {userRating !== null && (
+            <span className="text-xs text-green-600">✓ Вы оценили на {userRating} ★</span>
+          )}
+        </div>
+        
+        {/* Состав сюрприза (раскрывается при нажатии на картинку) */}
         {isSearchPage && showDetails && bagItems.length > 0 && (
           <div className="mt-3 mb-4 p-3 bg-gray-50 rounded-xl animate-fadeIn">
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <p className="text-sm font-semibold text-gray-700 mb-2">Состав сюрприза:</p>
+            <div className="space-y-2">
               {bagItems.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-700">{item.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {item.quantity} шт. × {item.price} ₸ = {(item.price * item.quantity).toLocaleString()} ₸
-                    </p>
-                  </div>
+                <div key={idx} className="flex justify-between items-center">
+                  <span className="text-gray-700">{item.name} ×{item.quantity}</span>
+                  <span className="font-medium text-gray-800">{(item.price * item.quantity).toLocaleString()} ₸</span>
                 </div>
               ))}
-            </div>
-            <div className="mt-3 pt-2 border-t border-gray-200">
-              <p className="text-xs text-[#367666] font-medium">
-                При отдельном заказе: {propOriginalPrice.toLocaleString()} ₸
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Экономия: {propDiscount}% ({(propOriginalPrice - propPrice).toLocaleString()} ₸
-              </p>
+              <div className="pt-2 mt-2 border-t border-gray-200">
+                <p className="text-sm text-[#367666] font-medium">Экономия: {propDiscount}%</p>
+              </div>
             </div>
           </div>
         )}
         
         {/* Цена и кнопка заказа */}
-        <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
           <div>
             <span className="text-2xl font-bold text-[#367666]">{propPrice.toLocaleString()} ₸</span>
             {propOriginalPrice > propPrice && (
               <span className="text-gray-400 line-through text-sm ml-2">{propOriginalPrice.toLocaleString()} ₸</span>
             )}
-            <p className="text-xs text-gray-400 mt-1">за весь набор</p>
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-5 py-2 rounded-full hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-5 py-2 rounded-full font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
@@ -502,5 +472,4 @@ export default function OfferCard({
       </div>
     </div>
   );
-
 }
