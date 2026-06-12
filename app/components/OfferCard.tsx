@@ -39,6 +39,8 @@ export default function OfferCard({
   discount: propDiscount,
   imageUrl: propImageUrl,
   description: propDescription,
+  rating = 4.5,
+  reviewCount = 128,
   onOrderSuccess
 }: OfferCardProps) {
   const router = useRouter();
@@ -331,6 +333,25 @@ export default function OfferCard({
     setTimeout(() => toast.remove(), 2000);
   };
 
+  // Функция для отображения звезд рейтинга (для магазина, пока оставляем как есть)
+  const renderStars = () => {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+    
+    const stars = [];
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<span key={`full-${i}`} className="text-yellow-400">★</span>);
+    }
+    if (hasHalfStar) {
+      stars.push(<span key="half" className="text-yellow-400">½</span>);
+    }
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
+    }
+    return stars;
+  };
+
   if (!authChecked || (isSearchPage && loading)) {
     return (
       <div className="bg-white rounded-2xl overflow-hidden shadow-md animate-pulse">
@@ -481,4 +502,5 @@ export default function OfferCard({
       </div>
     </div>
   );
+
 }
