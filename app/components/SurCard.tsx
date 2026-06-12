@@ -263,9 +263,9 @@ export default function SurpriseBagCard({
     return (
       <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
         <div className="h-32 bg-gray-200"></div>
-        <div className="p-3">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+        <div className="p-2">
+          <div className="h-3 bg-gray-200 rounded w-3/4 mb-1"></div>
+          <div className="h-2 bg-gray-200 rounded w-1/2"></div>
         </div>
       </div>
     );
@@ -273,7 +273,7 @@ export default function SurpriseBagCard({
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Изображение - высота уменьшена */}
+      {/* Изображение - уменьшено */}
       <div className="relative h-32">
         <Image 
           src={getImageByTitle()} 
@@ -282,86 +282,79 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Кнопка избранного - круглый фон */}
         <button
           onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-black/50 rounded-full p-1.5 z-10 w-8 h-8 flex items-center justify-center"
+          className="absolute top-1 right-1 bg-black/50 rounded-full w-6 h-6 flex items-center justify-center z-10"
         >
-          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-3 h-3 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
-        {/* Кнопка восклицательного знака - круглый фон */}
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-7 h-7 flex items-center justify-center z-10"
+          className="absolute bottom-1 right-1 bg-black/50 rounded-full w-5 h-5 flex items-center justify-center z-10"
         >
-          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
         
         {discount > 0 && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold">
+          <div className="absolute top-1 left-1 bg-red-500 text-white px-1 py-0.5 rounded-full text-[8px] font-bold">
             -{discount}%
           </div>
         )}
       </div>
       
-      <div className="p-3">
-        {/* Название кафе - жирное темное */}
+      {/* Контент - уменьшенные отступы */}
+      <div className="px-2 pb-1.5 pt-1">
         <Link href={`/supplier/${id}`}>
-          <p className="font-extrabold text-gray-900 text-base hover:text-[#367666] transition mb-1">
+          <p className="font-extrabold text-gray-900 text-xs hover:text-[#367666] transition mb-0.5">
             {supplierName}
           </p>
         </Link>
         
-        {/* Название сюрприза */}
-        <h3 className="font-semibold text-gray-800 text-lg mb-1 line-clamp-1">
+        <h3 className="font-semibold text-gray-800 text-sm mb-0.5 line-clamp-1">
           {name}
         </h3>
         
-        {/* Адрес и время - первой строкой */}
-        <div className="text-gray-500 text-sm mb-1 leading-tight">
+        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
           {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
-        {/* Расширенный адрес (при нажатии на !) */}
         {showExpanded && (
-          <div className="text-gray-400 text-sm mb-1 leading-tight">
-            📍 Полный адрес: {address || 'Адрес не указан'}
+          <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
+            📍 {address || 'Адрес не указан'}
           </div>
         )}
         
-        {/* Рейтинг */}
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mt-0.5">
+          <div className="flex items-center gap-1">
             <div className="flex items-center gap-0.5">
               {renderStars()}
             </div>
             {bagTotalReviews > 0 && (
-              <span className="text-sm text-gray-500">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
+              <span className="text-[10px] text-gray-500">({bagTotalReviews})</span>
             )}
           </div>
         </div>
         
-        {/* Цена и кнопка */}
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-1 pt-0.5 border-t border-gray-100">
           <div>
-            <span className="text-2xl font-bold text-[#367666]">{formatPrice(price)}</span>
+            <span className="text-base font-bold text-[#367666]">{formatPrice(price)}</span>
             {originalPrice > price && (
-              <span className="text-gray-400 line-through text-sm ml-1">{formatPrice(originalPrice)}</span>
+              <span className="text-gray-400 line-through text-[9px] ml-0.5">{formatPrice(originalPrice)}</span>
             )}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-2 py-0.5 rounded-full text-[9px] font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
