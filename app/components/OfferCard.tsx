@@ -44,6 +44,7 @@ export default function OfferCard({
   const [addingToCart, setAddingToCart] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -58,6 +59,7 @@ export default function OfferCard({
   const API_URL = 'https://toogood-2ncf.onrender.com';
   const isSearchPage = pathname === '/' || pathname === '/offers';
 
+  // Функция для иконки продукта
   const getProductIcon = (name: string) => {
     const lowerName = name.toLowerCase();
     if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
@@ -72,6 +74,7 @@ export default function OfferCard({
     return '🍽️';
   };
 
+  // Загружаем рейтинг
   useEffect(() => {
     const fetchRating = async () => {
       try {
@@ -93,6 +96,7 @@ export default function OfferCard({
     fetchRating();
   }, [id, API_URL]);
 
+  // Проверка авторизации
   useEffect(() => {
     const checkAuth = async () => {
       const token = sessionStorage.getItem('authToken');
@@ -115,6 +119,7 @@ export default function OfferCard({
     checkAuth();
   }, [API_URL]);
 
+  // Проверка избранного
   useEffect(() => {
     const favorites = localStorage.getItem('favorites');
     if (favorites) {
@@ -123,6 +128,7 @@ export default function OfferCard({
     }
   }, [id]);
 
+  // Загрузка состава
   const fetchBagItems = async () => {
     if (bagItems.length > 0) return;
     setLoading(true);
@@ -148,6 +154,7 @@ export default function OfferCard({
     }
   };
 
+  // Оценка сюрприза
   const rateSurpriseBag = async (ratingValue: number) => {
     const token = sessionStorage.getItem('authToken');
     if (!token) {
@@ -184,6 +191,7 @@ export default function OfferCard({
     }
   };
 
+  // Звезды рейтинга
   const renderStars = () => {
     const stars = [];
     const currentRating = userRating !== null ? userRating : bagRating;
@@ -195,7 +203,7 @@ export default function OfferCard({
           onClick={() => rateSurpriseBag(i)}
           onMouseEnter={() => setTempRating(i)}
           onMouseLeave={() => setTempRating(0)}
-          className={`text-[10px] transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-400' : 'text-gray-300'}`}
+          className={`text-[9px] transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-400' : 'text-gray-300'}`}
           disabled={isRatingLoading}
         >
           ★
@@ -296,30 +304,31 @@ export default function OfferCard({
     return 'оценок';
   };
 
+  // Фото по названию
   const getImageByTitle = () => {
     const title = propName.toLowerCase();
     if (title.includes('пицц') || title.includes('pizza')) {
-      return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=450&fit=crop';
+      return 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=500&h=350&fit=crop';
     }
     if (title.includes('бургер') || title.includes('burger')) {
-      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=450&fit=crop';
+      return 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=500&h=350&fit=crop';
     }
     if (title.includes('суши') || title.includes('sushi') || title.includes('ролл')) {
-      return 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=600&h=450&fit=crop';
+      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500&h=350&fit=crop';
     }
     if (title.includes('салат') || title.includes('salad')) {
-      return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&h=450&fit=crop';
+      return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&h=350&fit=crop';
     }
     if (title.includes('десерт') || title.includes('dessert') || title.includes('торт')) {
-      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&h=450&fit=crop';
+      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&h=350&fit=crop';
     }
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=450&fit=crop';
+    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=350&fit=crop';
   };
 
   if (!authChecked) {
     return (
       <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
-        <div className="h-48 bg-gray-200"></div>
+        <div className="h-32 bg-gray-200"></div>
         <div className="p-2">
           <div className="h-3 bg-gray-200 rounded w-3/4 mb-1"></div>
           <div className="h-2 bg-gray-200 rounded w-1/2"></div>
@@ -332,8 +341,8 @@ export default function OfferCard({
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Изображение - 75% высоты */}
-      <div className="relative h-56">
+      {/* Изображение */}
+      <div className="relative h-32">
         <Image 
           src={getImageByTitle()} 
           alt={propName} 
@@ -343,35 +352,35 @@ export default function OfferCard({
         
         <button
           onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1.5 z-10"
+          className="absolute top-1.5 right-1.5 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10"
         >
-          <svg className={`w-3.5 h-3.5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white/80'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-3 h-3 ${isFavorite ? 'text-red-500 fill-current' : 'text-white/80'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
+        {/* Иконка восклицательного знака */}
         <button 
           onClick={handleIconClick}
-          className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10"
+          className="absolute bottom-1.5 right-1.5 bg-black/40 backdrop-blur-sm rounded-full p-0.5 z-10"
         >
-          <svg className="w-3 h-3 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-2.5 h-2.5 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
         
-        <div className="absolute top-2 left-2 flex gap-1.5">
+        <div className="absolute top-1.5 left-1.5 flex gap-1">
           {propDiscount > 0 && (
-            <div className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">
+            <div className="bg-red-500 text-white px-1 py-0.5 rounded-full text-[8px] font-bold">
               -{propDiscount}%
             </div>
           )}
-          <div className="bg-[#367666] text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">
+          <div className="bg-[#367666] text-white px-1 py-0.5 rounded-full text-[8px] font-bold">
             {totalItems} шт
           </div>
         </div>
       </div>
       
-      {/* Контент - 25% высоты */}
       <div className="p-1.5">
         <Link href={`/supplier/${id}`}>
           <p className="font-bold text-[#367666] text-[10px] hover:text-[#2a5a4d] transition mb-0.5">
@@ -383,65 +392,77 @@ export default function OfferCard({
           {propName}
         </h3>
         
+        {/* Адрес - первая строка видна всегда */}
         <div className="mb-0.5">
           <div className="text-gray-400 text-[8px] line-clamp-1">
-            📍 {distance}
+            {distance}
           </div>
         </div>
         
+        {/* Рейтинг */}
         <div className="flex items-center justify-between mt-0.5 mb-0.5">
           <div className="flex items-center gap-0.5">
             <div className="flex items-center gap-0.5">
               {renderStars()}
             </div>
             {bagTotalReviews > 0 && (
-              <span className="text-[7px] text-gray-400">({bagTotalReviews})</span>
+              <span className="text-[8px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
             )}
           </div>
         </div>
         
+        {/* Развернутая информация (полный адрес + состав с иконками) */}
         {showExpanded && (
           <div className="mt-0.5 mb-0.5 p-1 bg-gray-50 rounded-lg">
-            <div className="text-gray-600 text-[8px] mb-0.5">
-              📍 Адрес: {distance}
+            {/* Полный адрес */}
+            <div className="text-gray-600 text-[8px] mb-1">
+              📍 {distance}
             </div>
+            
+            {/* Состав с иконками */}
             {loading ? (
-              <div className="flex justify-center py-0.5">
-                <div className="w-2 h-2 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
+              <div className="flex justify-center py-1">
+                <div className="w-2.5 h-2.5 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : bagItems.length > 0 ? (
               <>
-                <p className="text-[7px] font-semibold text-gray-700 mb-0.5">Состав:</p>
+                <p className="text-[8px] font-semibold text-gray-700 mb-0.5">Состав:</p>
                 {bagItems.slice(0, 2).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-[7px] py-0.5">
-                    <div className="flex items-center gap-0.5">
-                      <span className="text-[9px]">{getProductIcon(item.name)}</span>
+                  <div key={idx} className="flex items-center justify-between text-[8px] py-0.5">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px]">{getProductIcon(item.name)}</span>
                       <span className="text-gray-600">{item.name} ×{item.quantity}</span>
                     </div>
                     <span className="font-medium">{(item.price * item.quantity).toLocaleString()} ₸</span>
                   </div>
                 ))}
-                {bagItems.length > 2 && <p className="text-[6px] text-gray-400 text-center">+{bagItems.length-2} еще</p>}
+                {bagItems.length > 2 && <p className="text-[7px] text-gray-400 text-center pt-0.5">+{bagItems.length - 2} еще</p>}
               </>
             ) : (
-              <p className="text-[7px] text-gray-400 text-center">Нет информации</p>
+              <p className="text-[8px] text-gray-400 text-center py-1">Нет информации</p>
             )}
           </div>
         )}
         
+        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-0.5 pt-0.5 border-t border-gray-100">
           <div>
             <span className="text-xs font-bold text-[#367666]">{formatPrice(propPrice)}</span>
             {propOriginalPrice > propPrice && (
-              <span className="text-gray-400 line-through text-[6px] ml-0.5">{formatPrice(propOriginalPrice)}</span>
+              <span className="text-gray-400 line-through text-[7px] ml-0.5">{formatPrice(propOriginalPrice)}</span>
             )}
           </div>
+          
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-2 py-0.5 rounded-full text-[7px] font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-2 py-0.5 rounded-full text-[8px] font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
-            {addingToCart ? <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Заказать'}
+            {addingToCart ? (
+              <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              'Заказать'
+            )}
           </button>
         </div>
       </div>
