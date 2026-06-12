@@ -146,7 +146,7 @@ export default function SurpriseBagCard({
           onClick={() => rateSurpriseBag(i)}
           onMouseEnter={() => setTempRating(i)}
           onMouseLeave={() => setTempRating(0)}
-          className={`text-[9px] transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-400' : 'text-gray-300'}`}
+          className={`text-[10px] transition-all hover:scale-110 ${i <= (tempRating || currentRating) ? 'text-yellow-400' : 'text-gray-300'}`}
           disabled={isRatingLoading}
         >
           ★
@@ -223,7 +223,7 @@ export default function SurpriseBagCard({
 
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-2 rounded-xl text-white text-center animate-slide-up text-[10px] ${
+    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-3 rounded-xl text-white text-center animate-slide-up text-sm ${
       type === 'success' ? 'bg-[#367666]' : 'bg-red-600'
     }`;
     toast.textContent = message;
@@ -242,127 +242,79 @@ export default function SurpriseBagCard({
   const getImageByTitle = () => {
     const title = name.toLowerCase();
     if (title.includes('пицц') || title.includes('pizza')) {
-      return 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=400&h=300&fit=crop';
+      return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=450&fit=crop';
     }
     if (title.includes('бургер') || title.includes('burger')) {
-      return 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&h=300&fit=crop';
+      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=450&fit=crop';
     }
     if (title.includes('суши') || title.includes('sushi') || title.includes('ролл')) {
-      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
+      return 'https://images.unsplash.com/photo-1553621042-f6e147245754?w=600&h=450&fit=crop';
     }
     if (title.includes('салат') || title.includes('salad')) {
-      return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop';
+      return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&h=450&fit=crop';
     }
     if (title.includes('десерт') || title.includes('dessert') || title.includes('торт')) {
-      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop';
+      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&h=450&fit=crop';
     }
-    return 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=400&h=300&fit=crop';
+    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=450&fit=crop';
   };
 
   if (!authChecked) {
     return (
-      <div className="bg-white rounded-lg overflow-hidden shadow-sm animate-pulse">
-        <div className="h-24 bg-gray-200"></div>
-        <div className="p-1.5">
-          <div className="h-2 bg-gray-200 rounded w-3/4 mb-1"></div>
-          <div className="h-1.5 bg-gray-200 rounded w-1/2"></div>
+      <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
+        <div className="h-48 bg-gray-200"></div>
+        <div className="p-2">
+          <div className="h-3 bg-gray-200 rounded w-3/4 mb-1"></div>
+          <div className="h-2 bg-gray-200 rounded w-1/2"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Изображение */}
-      <div className="relative h-28">
-        <Image 
-          src={getImageByTitle()} 
-          alt={name} 
-          fill 
-          className="object-cover"
-        />
-        
-        <button
-          onClick={toggleFavorite}
-          className="absolute top-1 right-1 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10"
-        >
-          <svg className={`w-2.5 h-2.5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white/80'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+    <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
+      <div className="relative h-56">
+        <Image src={getImageByTitle()} alt={name} fill className="object-cover" />
+        <button onClick={toggleFavorite} className="absolute top-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1.5 z-10">
+          <svg className={`w-3.5 h-3.5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white/80'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
-        
-        <button 
-          onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-1 right-1 bg-black/40 backdrop-blur-sm rounded-full p-0.5 z-10"
-        >
-          <svg className="w-2 h-2 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button onClick={() => setShowExpanded(!showExpanded)} className="absolute bottom-2 right-2 bg-black/40 backdrop-blur-sm rounded-full p-1 z-10">
+          <svg className="w-3 h-3 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
-        
-        {discount > 0 && (
-          <div className="absolute top-1 left-1 bg-red-500 text-white px-1 py-0.5 rounded-full text-[7px] font-bold">
-            -{discount}%
-          </div>
-        )}
+        {discount > 0 && <div className="absolute top-2 left-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">-{discount}%</div>}
       </div>
       
       <div className="p-1.5">
-        {/* Название кафе - жирное темное */}
         <Link href={`/supplier/${id}`}>
-          <p className="font-extrabold text-gray-900 text-[10px] hover:text-[#367666] transition mb-0.5">
-            {supplierName}
-          </p>
+          <p className="font-bold text-[#367666] text-[10px] hover:text-[#2a5a4d] transition mb-0.5">{supplierName}</p>
         </Link>
-        
-        {/* Название сюрприза */}
-        <h3 className="font-semibold text-gray-800 text-[9px] mb-0.5 line-clamp-1">
-          {name}
-        </h3>
-        
-        {/* Адрес - первая строка */}
-        <div className="text-gray-500 text-[7px] mb-0.5 leading-tight">
-          {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
+        <h3 className="font-semibold text-gray-800 text-[10px] mb-0.5 line-clamp-1">{name}</h3>
+        <div className="mb-0.5">
+          <div className="text-gray-400 text-[8px] line-clamp-1">📍 {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}</div>
         </div>
-        
-        {/* Расширенный адрес - появляется на следующей строке, серым цветом, без иконок */}
+        <div className="flex items-center justify-between mt-0.5 mb-0.5">
+          <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5">{renderStars()}</div>
+            {bagTotalReviews > 0 && <span className="text-[7px] text-gray-400">({bagTotalReviews})</span>}
+          </div>
+        </div>
         {showExpanded && (
-          <div className="text-gray-400 text-[7px] mb-0.5 leading-tight">
-            {address || 'Адрес не указан'}
+          <div className="mt-0.5 mb-0.5 p-1 bg-gray-50 rounded-lg">
+            <div className="text-gray-600 text-[8px]">📍 Полный адрес: {address || 'Адрес не указан'}</div>
+            <div className="text-gray-500 text-[8px] mt-0.5">🕒 Время: {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}</div>
           </div>
         )}
-        
-        {/* Рейтинг */}
-        <div className="flex items-center justify-between mt-0.5">
-          <div className="flex items-center gap-0.5">
-            <div className="flex items-center gap-0.5">
-              {renderStars()}
-            </div>
-            {bagTotalReviews > 0 && (
-              <span className="text-[6px] text-gray-400">({bagTotalReviews})</span>
-            )}
-          </div>
-        </div>
-        
-        {/* Цена и кнопка */}
-        <div className="flex items-center justify-between mt-1 pt-0.5 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-0.5 pt-0.5 border-t border-gray-100">
           <div>
-            <span className="text-[10px] font-bold text-[#367666]">{formatPrice(price)}</span>
-            {originalPrice > price && (
-              <span className="text-gray-400 line-through text-[6px] ml-0.5">{formatPrice(originalPrice)}</span>
-            )}
+            <span className="text-xs font-bold text-[#367666]">{formatPrice(price)}</span>
+            {originalPrice > price && <span className="text-gray-400 line-through text-[6px] ml-0.5">{formatPrice(originalPrice)}</span>}
           </div>
-          
-          <button
-            onClick={addToCart}
-            disabled={addingToCart}
-            className="bg-[#367666] text-white px-1.5 py-0.5 rounded-full text-[7px] font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition"
-          >
-            {addingToCart ? (
-              <div className="w-1.5 h-1.5 border-1.5 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              'Заказать'
-            )}
+          <button onClick={addToCart} disabled={addingToCart} className="bg-[#367666] text-white px-2 py-0.5 rounded-full text-[7px] font-medium hover:bg-[#2a5a4d] disabled:opacity-50 transition">
+            {addingToCart ? <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Заказать'}
           </button>
         </div>
       </div>
