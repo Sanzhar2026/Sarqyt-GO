@@ -3,8 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLanguage } from '.././layout';
-import SurpriseBagCard from './.././components/SurCard';
+import SurpriseBagCard from './../components/SurCard';
 
 interface SurpriseBag {
   id: number;
@@ -26,43 +25,20 @@ interface SurpriseBag {
 
 export default function OffersPage() {
   const router = useRouter();
-  const { lang, setLang } = useLanguage();
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Получение токена
+  // Получение токена
   const getAuthToken = () => sessionStorage.getItem('authToken');
-
-  // ✅ Авторизованный fetch
-  const authFetch = async (url: string, options: RequestInit = {}) => {
-    const token = getAuthToken();
-    
-    if (!token) {
-      console.error('❌ Нет токена');
-      router.push('/login');
-      throw new Error('No token');
-    }
-    
-    return fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        ...options.headers,
-      },
-    });
-  };
 
   const fetchBags = async () => {
     try {
       const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
       const data = await response.json();
       
-      // Загружаем дополнительную информацию для каждого сюрприза
       const bagsWithDetails = await Promise.all(
         data.map(async (bag: SurpriseBag) => {
           try {
-            // Загружаем рейтинг
             const ratingRes = await fetch(`https://toogood-2ncf.onrender.com/api/surprise-bags/${bag.id}/rating`);
             let rating = 0, total_reviews = 0;
             if (ratingRes.ok) {
@@ -71,7 +47,6 @@ export default function OffersPage() {
               total_reviews = ratingData.total_reviews || 0;
             }
             
-            // Загружаем информацию о поставщике (адрес, время работы)
             const supplierRes = await fetch(`https://toogood-2ncf.onrender.com/api/suppliers/${bag.supplier_id}`);
             let address = '', pickupStart = '', pickupEnd = '';
             if (supplierRes.ok) {
@@ -111,7 +86,6 @@ export default function OffersPage() {
     }
   };
 
-  // ✅ Проверка авторизации при загрузке
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
@@ -128,63 +102,33 @@ export default function OffersPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-emerald-600 text-white px-6 pt-12 pb-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">
-            {lang === 'kz' ? '🎁 Сюрприз-пакеттер' : '🎁 Сюрприз-пакеты'}
-          </h1>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setLang('kz')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                lang === 'kz' 
-                  ? 'bg-white text-emerald-600' 
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
-            >
-              Қаз
-            </button>
-            <button
-              onClick={() => setLang('ru')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                lang === 'ru' 
-                  ? 'bg-white text-emerald-600' 
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
-            >
-              Рус
-            </button>
-          </div>
-        </div>
-        <p className="text-emerald-100 text-sm mt-1">
-          {lang === 'kz' ? 'Өзіңізге сюрприз-пакетті таңдаңыз' : 'Выберите свой сюрприз-пакет'}
-        </p>
+      {/* Header - зеленый как в приложении */}
+      <div className="bg-[#367666] text-white px-4 pt-12 pb-4">
+        <h1 className="text-xl font-bold">Сюрприз-пакеты</h1>
+        <p className="text-emerald-100 text-xs mt-0.5">Выберите свой сюрприз-пакет</p>
       </div>
 
-      <div className="px-4 py-6">
+      <div className="p-3">
         {bags.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎁</div>
-            <p className="text-gray-500">
-              {lang === 'kz' ? 'Барлық пакеттер уақытша броньдалған' : 'Все пакеты временно забронированы'}
-            </p>
+            <div className="text-5xl mb-3">🎁</div>
+            <p className="text-gray-500 text-sm">Все пакеты временно забронированы</p>
             <button 
               onClick={fetchBags}
-              className="mt-4 text-emerald-600 underline"
+              className="mt-3 text-[#367666] underline text-sm"
             >
-              {lang === 'kz' ? 'Жаңарту' : 'Обновить'}
+              Обновить
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {bags.map((bag) => (
               <SurpriseBagCard
                 key={bag.id}
