@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Gift, Info } from 'lucide-react';
+import { Gift, Info, Heart } from 'lucide-react';
 
 const getImageByTitle = (title: string) => {
   const lowerTitle = title.toLowerCase();
@@ -68,6 +68,7 @@ export default function SurpriseBagCard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showExpanded, setShowExpanded] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   
   const [bagRating, setBagRating] = useState(rating);
   const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
@@ -115,6 +116,27 @@ export default function SurpriseBagCard({
     };
     checkAuth();
   }, [API_URL]);
+
+  useEffect(() => {
+    const favorites = localStorage.getItem('favorites');
+    if (favorites) {
+      const favList = JSON.parse(favorites);
+      setIsFavorite(favList.includes(id));
+    }
+  }, [id]);
+
+  const toggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const favorites = localStorage.getItem('favorites');
+    let favList: number[] = favorites ? JSON.parse(favorites) : [];
+    if (isFavorite) {
+      favList = favList.filter(favId => favId !== id);
+    } else {
+      favList.push(id);
+    }
+    localStorage.setItem('favorites', JSON.stringify(favList));
+    setIsFavorite(!isFavorite);
+  };
 
   const addToCart = async () => {
     if (!isAuthenticated) {
@@ -186,7 +208,6 @@ export default function SurpriseBagCard({
     return 'оценок';
   };
 
-  // Только отображение звезд, без кнопки оценки
   const renderStars = () => {
     const stars = [];
     const fullStars = Math.floor(bagRating);
@@ -221,7 +242,7 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Скидка слева + иконка подарка (без числа) */}
+        {/* Скидка и иконка подарка - top-2 left-2 */}
         <div className="absolute top-2 left-2 flex gap-1.5">
           {discount > 0 && (
             <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold shadow-sm">
@@ -233,7 +254,19 @@ export default function SurpriseBagCard({
           </div>
         </div>
         
-        {/* Восклицательный знак (Info) - серый прозрачный, справа внизу */}
+        {/* Сердечко (лайк) - на одном уровне с иконкой подарка top-2 right-2 */}
+        <button 
+          onClick={toggleFavorite}
+          className="absolute top-2 right-2 z-10"
+        >
+          <Heart 
+            size={20} 
+            className={`transition ${isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-400/70 hover:text-red-400'}`}
+            fill={isFavorite ? 'currentColor' : 'none'}
+          />
+        </button>
+        
+        {/* Восклицательный знак (Info) - справа внизу */}
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
           className="absolute bottom-2 right-2 z-10"
@@ -253,18 +286,15 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
-        {/* Адрес и время - раскрывается при клике на восклицательный знак */}
         <div className="text-gray-500 text-xs mb-1 leading-tight">
           {showExpanded ? address : shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
-        {/* Только отображение звезд */}
         <div className="flex items-center gap-1 mt-1 mb-2">
           {renderStars()}
           {bagTotalReviews > 0 && <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>}
         </div>
         
-        {/* Цена и кнопка - уменьшены на 35% */}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
           <div>
             <span className="text-xl font-bold text-[#367666]">{formatPrice(price)}</span>
