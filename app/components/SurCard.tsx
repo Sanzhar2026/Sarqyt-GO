@@ -7,6 +7,37 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Gift } from 'lucide-react';
 
+// Функция для получения фото по названию
+const getImageByTitle = (title: string) => {
+  const lowerTitle = title.toLowerCase();
+  
+  if (lowerTitle.includes('пицц') || lowerTitle.includes('pizza')) {
+    return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=400&fit=crop';
+  }
+  if (lowerTitle.includes('бургер') || lowerTitle.includes('burger')) {
+    return 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&h=400&fit=crop';
+  }
+  if (lowerTitle.includes('суши') || lowerTitle.includes('sushi') || lowerTitle.includes('ролл')) {
+    return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop';
+  }
+  if (lowerTitle.includes('салат') || lowerTitle.includes('salad')) {
+    return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&h=400&fit=crop';
+  }
+  if (lowerTitle.includes('десерт') || lowerTitle.includes('dessert') || lowerTitle.includes('торт')) {
+    return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&h=400&fit=crop';
+  }
+  if (lowerTitle.includes('крилс') || lowerTitle.includes('wings')) {
+    return 'https://images.unsplash.com/photo-1604908177453-130b5f9a4f36?w=600&h=400&fit=crop';
+  }
+  if (lowerTitle.includes('картошк') || lowerTitle.includes('fries')) {
+    return 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=600&h=400&fit=crop';
+  }
+  if (lowerTitle.includes('напит') || lowerTitle.includes('drink') || lowerTitle.includes('кола')) {
+    return 'https://images.unsplash.com/photo-1551024709-8f23befc30dd?w=600&h=400&fit=crop';
+  }
+  return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
+};
+
 interface SurpriseBagCardProps {
   id: number;
   name: string;
@@ -141,7 +172,7 @@ export default function SurpriseBagCard({
         const existing = cart.find((item: any) => item.id === id);
         const cartItem = {
           id, name, businessName: supplierName,
-          price, originalPrice, discount, imageUrl,
+          price, originalPrice, discount, imageUrl: getImageByTitle(name),
           quantity: 1, description,
           totalItems: 1,
           reservation_id: data.reservation_id,
@@ -181,24 +212,21 @@ export default function SurpriseBagCard({
 
   const formatPrice = (priceVal: number) => priceVal.toLocaleString('ru-KZ') + ' ₸';
   
-  const getImageByTitle = () => {
-    const title = name.toLowerCase();
-    if (title.includes('пицц') || title.includes('pizza')) {
-      return 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=300&fit=crop';
-    }
-    if (title.includes('бургер') || title.includes('burger')) {
-      return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop';
-    }
-    if (title.includes('суши') || title.includes('sushi') || title.includes('ролл')) {
-      return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=400&h=300&fit=crop';
-    }
-    if (title.includes('салат') || title.includes('salad')) {
-      return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop';
-    }
-    if (title.includes('десерт') || title.includes('dessert') || title.includes('торт')) {
-      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop';
-    }
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+  const getReviewText = (count: number) => {
+    if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
+    if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
+    return 'оценок';
+  };
+
+  // Отображение звезд
+  const renderStars = () => {
+    const stars = [];
+    const fullStars = Math.floor(bagRating);
+    const hasHalfStar = bagRating % 1 >= 0.5;
+    for (let i = 0; i < fullStars; i++) stars.push(<span key={`full-${i}`} className="text-yellow-400 text-[10px]">★</span>);
+    if (hasHalfStar) stars.push(<span key="half" className="text-yellow-400 text-[10px]">½</span>);
+    for (let i = stars.length; i < 5; i++) stars.push(<span key={`empty-${i}`} className="text-gray-300 text-[10px]">★</span>);
+    return stars;
   };
 
   if (!authChecked) {
@@ -213,23 +241,20 @@ export default function SurpriseBagCard({
     );
   }
 
-  // Разбиваем адрес на первую часть и продолжение
-  const addressParts = address ? address.split(',') : [];
-  const firstAddressLine = addressParts[0] || 'Адрес не указан';
-  const restAddress = addressParts.slice(1).join(',') || '';
+  const shortAddress = address && address.length > 30 ? address.substring(0, 30) + '...' : address;
+  const fullAddress = address || 'Адрес не указан';
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Изображение */}
+      {/* Изображение - по названию */}
       <div className="relative h-32">
         <Image 
-          src={getImageByTitle()} 
+          src={imageUrl || getImageByTitle(name)} 
           alt={name} 
           fill 
           className="object-cover"
         />
         
-        {/* Сердечко - КРУГЛОЕ */}
         <button
           onClick={toggleFavorite}
           className="absolute top-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
@@ -240,7 +265,6 @@ export default function SurpriseBagCard({
           </svg>
         </button>
         
-        {/* Восклицательный знак - КРУГЛЫЙ */}
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
           className="absolute bottom-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
@@ -251,7 +275,6 @@ export default function SurpriseBagCard({
           </svg>
         </button>
         
-        {/* Иконка сюрприза и количество */}
         <div className="absolute top-2 left-2 bg-black/50 rounded-full px-2 py-1 flex items-center gap-1" style={{ borderRadius: '9999px' }}>
           <Gift size={14} className="text-gray-300/70" />
           <span className="text-white text-[10px] font-bold">{availableQuantity}</span>
@@ -269,42 +292,36 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
-        {/* Первая строка адреса */}
-        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
-          {firstAddressLine}
+        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight line-clamp-1">
+          {shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
-        {/* При нажатии на "!" - показываем продолжение адреса (сразу после первой строки) */}
-        {showExpanded && restAddress && (
+        {showExpanded && fullAddress !== shortAddress && (
           <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
-            {restAddress}
+            📍 {fullAddress}
           </div>
         )}
         
-        {/* Время работы - серовато-прозрачной иконкой */}
-        <div className="flex items-center gap-1 text-gray-400/70 text-[10px] mb-0.5 leading-tight">
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}</span>
+        <div className="flex items-center justify-between mt-0.5 mb-0.5">
+          <div className="flex items-center gap-0.5">
+            {renderStars()}
+            {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
+          </div>
         </div>
         
-        {/* Цена и кнопка */}
-        <div className="flex items-center justify-between mt-1 pt-1 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-1 pt-0.5 border-t border-gray-100">
           <div>
-            <span className="text-sm font-bold text-[#367666]">{formatPrice(price)}</span>
-            {originalPrice > price && (
-              <span className="text-gray-400 line-through text-[9px] ml-0.5">{formatPrice(originalPrice)}</span>
-            )}
+            <span className="text-xs font-bold text-[#367666]">{formatPrice(price)}</span>
+            {originalPrice > price && <span className="text-gray-400 line-through text-[7px] ml-0.5">{formatPrice(originalPrice)}</span>}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-4 py-1 rounded-lg text-[10px] font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-3 py-0.5 rounded-lg text-[9px] font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
