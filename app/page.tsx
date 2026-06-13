@@ -416,15 +416,15 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header с логотипом и номером телефона - надпись БОЛЬШЕ */}
-      <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
+      {/* Header с логотипом и номером телефона */}
+      <div className="bg-[#367666] text-white px-6 pt-4 pb-5">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight">
+          <h1 className="text-2xl font-bold tracking-tight">
             <span className="text-white">SARQYT</span>{' '}
             <span className="text-[#FFD700]">GO</span>
           </h1>
           {user?.phone && (
-            <p className="text-sm text-white/80 mt-1 font-medium">
+            <p className="text-xs text-white/80 mt-1 font-medium">
               {user.phone}
             </p>
           )}
