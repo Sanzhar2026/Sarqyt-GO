@@ -213,10 +213,10 @@ export default function SurpriseBagCard({
     );
   }
 
-  // Короткий адрес для первой строки (без полного)
-  const shortAddress = address && address.length > 30 ? address.substring(0, 30) + '...' : address;
-  // Полный адрес (для раскрытия)
-  const fullAddress = address || 'Адрес не указан';
+  // Разбиваем адрес на первую строку и продолжение
+  const addressParts = address ? address.split(',') : [];
+  const firstAddressLine = addressParts[0] || 'Адрес не указан';
+  const restAddress = addressParts.slice(1).join(',') || '';
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
@@ -269,15 +269,20 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
-        {/* Первая строка адреса (короткая) */}
+        {/* Первая строка адреса (без времени) */}
         <div className="text-gray-500 text-[10px] mb-0.5 leading-tight line-clamp-1">
-          {shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
+          {firstAddressLine}
         </div>
         
-        {/* Продолжение адреса при нажатии на "!" (только дополнительная часть, без повтора первой строки) */}
-        {showExpanded && fullAddress !== shortAddress && (
+        {/* Время работы отдельной строкой */}
+        <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
+          🕒 {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
+        </div>
+        
+        {/* При нажатии на "!" - показываем продолжение адреса (только остальную часть) */}
+        {showExpanded && restAddress && (
           <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
-            {fullAddress}
+            📍 {restAddress}
           </div>
         )}
         
