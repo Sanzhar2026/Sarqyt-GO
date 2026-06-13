@@ -423,7 +423,6 @@ export default function HomePage() {
             <span className="text-white">SARQYT</span>{' '}
             <span className="text-[#FFD700]">GO</span>
           </h1>
-          {/* Номер телефона пользователя */}
           {user?.phone && (
             <p className="text-xs text-white/80 mt-1 font-medium">
               {user.phone}
@@ -477,12 +476,12 @@ export default function HomePage() {
       <div className="px-6 mt-6 pb-32">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
-  <h2 className="font-bold text-lg flex items-center gap-2">
-    <Store size={20} className="text-gray-400/60" />
-    {t[lang].nearbyShops}
-  </h2>
-  <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
-</div>
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <Store size={20} className="text-gray-400/60" />
+              {t[lang].nearbyShops}
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
+          </div>
           
           {viewMode === 'list' ? (
             <div className="p-4">
