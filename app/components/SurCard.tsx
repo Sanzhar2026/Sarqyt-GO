@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Gift } from 'lucide-react';
+import { Gift, Info } from 'lucide-react';
 
 const getImageByTitle = (title: string) => {
   const lowerTitle = title.toLowerCase();
@@ -221,18 +221,25 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Скидка и иконка подарка - увеличены, иконка ЧЕРНАЯ */}
+        {/* Скидка слева + иконка подарка (без числа) */}
         <div className="absolute top-2 left-2 flex gap-1.5">
           {discount > 0 && (
             <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold shadow-sm">
               -{discount}%
             </div>
           )}
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 shadow-sm">
+          <div className="bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
             <Gift size={16} className="text-gray-800" />
-            <span className="text-gray-800 text-[11px] font-bold">{availableQuantity}</span>
           </div>
         </div>
+        
+        {/* Восклицательный знак (Info) - серый прозрачный, справа внизу */}
+        <button 
+          onClick={() => setShowExpanded(!showExpanded)}
+          className="absolute bottom-2 right-2 z-10"
+        >
+          <Info size={20} className="text-gray-400/70 hover:text-gray-600 transition" />
+        </button>
       </div>
       
       <div className="p-3">
@@ -246,17 +253,18 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
+        {/* Адрес и время - раскрывается при клике на восклицательный знак */}
         <div className="text-gray-500 text-xs mb-1 leading-tight">
-          {shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
+          {showExpanded ? address : shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
-        {/* Только отображение звезд, без кнопки "Подробнее" */}
+        {/* Только отображение звезд */}
         <div className="flex items-center gap-1 mt-1 mb-2">
           {renderStars()}
           {bagTotalReviews > 0 && <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>}
         </div>
         
-        {/* Цена и кнопка - цена БОЛЬШЕ, кнопка В 2 РАЗА ДЛИННЕЕ */}
+        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
           <div>
             <span className="text-3xl font-bold text-[#367666]">{formatPrice(price)}</span>
