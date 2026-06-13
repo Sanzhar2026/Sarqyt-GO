@@ -223,22 +223,24 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Сердечко - большое и круглое */}
+        {/* Сердечко - ИДЕАЛЬНО КРУГЛОЕ */}
         <button
           onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-black/50 rounded-full w-9 h-9 flex items-center justify-center z-10 hover:bg-black/70 transition"
+          className="absolute top-2 right-2 bg-black/50 rounded-full w-12 h-12 flex items-center justify-center z-10 hover:bg-black/70 transition"
+          style={{ borderRadius: '9999px' }}
         >
-          <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-6 h-6 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
-        {/* Восклицательный знак - большой и круглый */}
+        {/* Восклицательный знак - ИДЕАЛЬНО КРУГЛЫЙ */}
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
+          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-10 h-10 flex items-center justify-center z-10 hover:bg-black/70 transition"
+          style={{ borderRadius: '9999px' }}
         >
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
