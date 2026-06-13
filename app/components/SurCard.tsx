@@ -213,7 +213,7 @@ export default function SurpriseBagCard({
     );
   }
 
-  // Разбиваем адрес на первую строку и продолжение
+  // Разбиваем адрес на первую часть и продолжение
   const addressParts = address ? address.split(',') : [];
   const firstAddressLine = addressParts[0] || 'Адрес не указан';
   const restAddress = addressParts.slice(1).join(',') || '';
@@ -269,22 +269,25 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
-        {/* Первая строка адреса (без времени) */}
-        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight line-clamp-1">
+        {/* Первая строка адреса */}
+        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
           {firstAddressLine}
         </div>
         
-        {/* Время работы отдельной строкой */}
-        <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
-          🕒 {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
-        </div>
-        
-        {/* При нажатии на "!" - показываем продолжение адреса (только остальную часть) */}
+        {/* При нажатии на "!" - показываем продолжение адреса (сразу после первой строки) */}
         {showExpanded && restAddress && (
           <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
-            📍 {restAddress}
+            {restAddress}
           </div>
         )}
+        
+        {/* Время работы - серовато-прозрачной иконкой */}
+        <div className="flex items-center gap-1 text-gray-400/70 text-[10px] mb-0.5 leading-tight">
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}</span>
+        </div>
         
         {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-1 pt-1 border-t border-gray-100">
