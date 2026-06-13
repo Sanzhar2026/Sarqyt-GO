@@ -307,6 +307,7 @@ export default function OfferCard({
           className="object-cover"
         />
         
+        {/* Сердечко (лайк) */}
         <button
           onClick={toggleFavorite}
           className="absolute top-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
@@ -317,6 +318,7 @@ export default function OfferCard({
           </svg>
         </button>
         
+        {/* Восклицательный знак для раскрытия состава */}
         <button 
           onClick={handleIconClick}
           className="absolute bottom-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
@@ -345,16 +347,20 @@ export default function OfferCard({
           {propName}
         </h3>
         
+        {/* Адрес БЕЗ иконки 📍 */}
         <div className="text-gray-500 text-[10px] mb-0.5 leading-tight line-clamp-1">
-          📍 {distance}
+          {distance}
         </div>
         
-        {showExpanded && distance && (
-          <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
-            📍 {distance}
+        {/* Рейтинг */}
+        <div className="flex items-center justify-between mt-0.5 mb-0.5">
+          <div className="flex items-center gap-0.5">
+            {renderStars()}
+            {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
           </div>
-        )}
+        </div>
         
+        {/* Состав сюрприза (раскрывается при клике на восклицательный знак) */}
         {showExpanded && (
           <div className="mt-0.5 mb-0.5 p-1 bg-gray-50 rounded-lg">
             {loading ? (
@@ -381,6 +387,7 @@ export default function OfferCard({
           </div>
         )}
         
+        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-0.5 pt-0.5 border-t border-gray-100">
           <div>
             <span className="text-xs font-bold text-[#367666]">{formatPrice(propPrice)}</span>

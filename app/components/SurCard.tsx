@@ -78,7 +78,6 @@ export default function SurpriseBagCard({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [showExpanded, setShowExpanded] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
   
   const [bagRating, setBagRating] = useState(rating);
   const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
@@ -126,27 +125,6 @@ export default function SurpriseBagCard({
     };
     checkAuth();
   }, [API_URL]);
-
-  useEffect(() => {
-    const favorites = localStorage.getItem('favorites');
-    if (favorites) {
-      const favList = JSON.parse(favorites);
-      setIsFavorite(favList.includes(id));
-    }
-  }, [id]);
-
-  const toggleFavorite = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const favorites = localStorage.getItem('favorites');
-    let favList: number[] = favorites ? JSON.parse(favorites) : [];
-    if (isFavorite) {
-      favList = favList.filter(favId => favId !== id);
-    } else {
-      favList.push(id);
-    }
-    localStorage.setItem('favorites', JSON.stringify(favList));
-    setIsFavorite(!isFavorite);
-  };
 
   const addToCart = async () => {
     if (!isAuthenticated) {
@@ -255,26 +233,7 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        <button
-          onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
-          style={{ borderRadius: '50%' }}
-        >
-          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </button>
-        
-        <button 
-          onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
-          style={{ borderRadius: '50%' }}
-        >
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
-        
+        {/* Иконка сюрприза и количество (слева вверху) */}
         <div className="absolute top-2 left-2 bg-black/50 rounded-full px-2 py-1 flex items-center gap-1" style={{ borderRadius: '9999px' }}>
           <Gift size={14} className="text-gray-300/70" />
           <span className="text-white text-[10px] font-bold">{availableQuantity}</span>
@@ -296,19 +255,30 @@ export default function SurpriseBagCard({
           {shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
+        {/* Расширенный адрес при клике */}
         {showExpanded && fullAddress !== shortAddress && (
           <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
             📍 {fullAddress}
           </div>
         )}
         
+        {/* Рейтинг */}
         <div className="flex items-center justify-between mt-0.5 mb-0.5">
           <div className="flex items-center gap-0.5">
             {renderStars()}
             {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
           </div>
+          
+          {/* Кнопка раскрытия адреса (вместо восклицательного знака) */}
+          <button 
+            onClick={() => setShowExpanded(!showExpanded)}
+            className="text-[9px] text-gray-400 hover:text-[#367666] transition"
+          >
+            {showExpanded ? 'Свернуть' : 'Подробнее'}
+          </button>
         </div>
         
+        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-1 pt-0.5 border-t border-gray-100">
           <div>
             <span className="text-xs font-bold text-[#367666]">{formatPrice(price)}</span>
