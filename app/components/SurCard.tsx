@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Gift } from 'lucide-react';
 
 interface SurpriseBagCardProps {
   id: number;
@@ -246,11 +247,11 @@ export default function SurpriseBagCard({
           </svg>
         </button>
         
-        {discount > 0 && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">
-            -{discount}%
-          </div>
-        )}
+        {/* Иконка сюрприза и количество - БЕЗ скидки */}
+        <div className="absolute top-2 left-2 bg-black/50 rounded-full px-2 py-1 flex items-center gap-1">
+          <Gift size={14} className="text-gray-300/70" />
+          <span className="text-white text-[10px] font-bold">{availableQuantity}</span>
+        </div>
       </div>
       
       <div className="p-2">

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
+import { Gift } from 'lucide-react';
 
 interface SurpriseItem {
   product_id: number;
@@ -52,7 +53,6 @@ export default function OfferCard({
   const API_URL = 'https://toogood-2ncf.onrender.com';
   const isSearchPage = pathname === '/' || pathname === '/offers';
 
-  // Функция для иконки продукта
   const getProductIcon = (name: string) => {
     const lowerName = name.toLowerCase();
     if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
@@ -67,7 +67,6 @@ export default function OfferCard({
     return '🍽️';
   };
 
-  // Проверка авторизации
   useEffect(() => {
     const checkAuth = async () => {
       const token = sessionStorage.getItem('authToken');
@@ -90,7 +89,6 @@ export default function OfferCard({
     checkAuth();
   }, [API_URL]);
 
-  // Проверка избранного
   useEffect(() => {
     const favorites = localStorage.getItem('favorites');
     if (favorites) {
@@ -99,7 +97,6 @@ export default function OfferCard({
     }
   }, [id]);
 
-  // Загрузка состава
   const fetchBagItems = async () => {
     if (bagItems.length > 0) return;
     setLoading(true);
@@ -209,7 +206,6 @@ export default function OfferCard({
 
   const formatPrice = (priceVal: number) => priceVal.toLocaleString('ru-KZ') + ' ₸';
 
-  // Фото по названию
   const getImageByTitle = () => {
     const title = propName.toLowerCase();
     if (title.includes('пицц') || title.includes('pizza')) {
@@ -244,9 +240,6 @@ export default function OfferCard({
 
   const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
 
-  // Сокращаем адрес для отображения в одну строку
-  const shortAddress = distance && distance.length > 35 ? distance.substring(0, 35) + '...' : distance;
-
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       {/* Изображение */}
@@ -258,7 +251,6 @@ export default function OfferCard({
           className="object-cover"
         />
         
-        {/* Сердечко - большое и круглое */}
         <button
           onClick={toggleFavorite}
           className="absolute top-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
@@ -268,7 +260,6 @@ export default function OfferCard({
           </svg>
         </button>
         
-        {/* Восклицательный знак - такого же размера, круглый */}
         <button 
           onClick={handleIconClick}
           className="absolute bottom-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
@@ -278,15 +269,10 @@ export default function OfferCard({
           </svg>
         </button>
         
-        <div className="absolute top-2 left-2 flex gap-1">
-          {propDiscount > 0 && (
-            <div className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">
-              -{propDiscount}%
-            </div>
-          )}
-          <div className="bg-[#367666] text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold">
-            {totalItems} шт
-          </div>
+        {/* Иконка сюрприза и количество - БЕЗ скидки */}
+        <div className="absolute top-2 left-2 bg-black/50 rounded-full px-2 py-1 flex items-center gap-1.5">
+          <Gift size={14} className="text-gray-300/70" />
+          <span className="text-white text-[10px] font-bold">{totalItems} шт</span>
         </div>
       </div>
       
@@ -301,19 +287,16 @@ export default function OfferCard({
           {propName}
         </h3>
         
-        {/* Адрес - по умолчанию 1 строка (обрезанный) */}
         <div className="text-gray-500 text-[10px] mb-0.5 leading-tight line-clamp-1">
-          {shortAddress || 'Адрес не указан'}
+          {distance}
         </div>
         
-        {/* При нажатии на "!" - показываем полный адрес (разворачивается) */}
         {showExpanded && distance && (
           <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
             📍 {distance}
           </div>
         )}
         
-        {/* Развернутая информация (состав с иконками) */}
         {showExpanded && (
           <div className="mt-0.5 mb-0.5 p-1 bg-gray-50 rounded-lg">
             {loading ? (
@@ -340,7 +323,6 @@ export default function OfferCard({
           </div>
         )}
         
-        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-0.5 pt-0.5 border-t border-gray-100">
           <div>
             <span className="text-xs font-bold text-[#367666]">{formatPrice(propPrice)}</span>
