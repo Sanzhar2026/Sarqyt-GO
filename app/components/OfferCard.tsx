@@ -302,7 +302,7 @@ export default function OfferCard({
           </div>
         </div>
         
-        {/* Сердечко */}
+        {/* Сердечко (лайк) */}
         <button
           onClick={toggleFavorite}
           className="absolute top-2 right-2 z-10"
@@ -314,7 +314,7 @@ export default function OfferCard({
           />
         </button>
         
-        {/* Восклицательный знак */}
+        {/* Восклицательный знак - справа внизу */}
         <button 
           onClick={handleIconClick}
           className="absolute bottom-2 right-2 z-10"
@@ -371,22 +371,22 @@ export default function OfferCard({
           </div>
         )}
         
-        {/* Цена и кнопка - увеличены на 33% */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+        {/* Цена и кнопка - только кнопка длиннее на 33% */}
+        <div className="flex items-center justify-between mt-1 pt-1 border-t border-gray-100">
           <div>
-            <span className="text-base font-bold text-[#367666]">{formatPrice(propPrice)}</span>
+            <span className="text-sm font-bold text-[#367666]">{formatPrice(propPrice)}</span>
             {propOriginalPrice > propPrice && (
-              <span className="text-gray-400 line-through text-[10px] ml-1">{formatPrice(propOriginalPrice)}</span>
+              <span className="text-gray-400 line-through text-[8px] ml-0.5">{formatPrice(propOriginalPrice)}</span>
             )}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-8 py-1.5 rounded-lg text-[11px] font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-8 py-1 rounded-lg text-[9px] font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
