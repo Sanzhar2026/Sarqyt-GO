@@ -264,20 +264,20 @@ export default function SurpriseBagCard({
           {bagTotalReviews > 0 && <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>}
         </div>
         
-        {/* Цена и кнопка */}
+        {/* Цена и кнопка - уменьшены на 35% */}
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
           <div>
-            <span className="text-3xl font-bold text-[#367666]">{formatPrice(price)}</span>
-            {originalPrice > price && <span className="text-gray-400 line-through text-base ml-1">{formatPrice(originalPrice)}</span>}
+            <span className="text-xl font-bold text-[#367666]">{formatPrice(price)}</span>
+            {originalPrice > price && <span className="text-gray-400 line-through text-xs ml-1">{formatPrice(originalPrice)}</span>}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-16 py-2 rounded-xl text-sm font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition whitespace-nowrap"
+            className="bg-[#367666] text-white px-10 py-1.5 rounded-xl text-xs font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition whitespace-nowrap"
           >
             {addingToCart ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}

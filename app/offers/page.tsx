@@ -109,13 +109,13 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header - надпись в 2 раза больше, иконка рядом */}
+      {/* Header - уменьшен на 35% */}
       <div className="bg-[#367666] text-white px-4 pt-12 pb-5">
-        <div className="flex items-center gap-3">
-          <h1 className="text-4xl font-bold">Сюрприз-пакеты</h1>
-          <Gift size={32} className="text-white/80" />
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Сюрприз-пакеты</h1>
+          <Gift size={24} className="text-white/80" />
         </div>
-        <p className="text-emerald-100 text-base mt-1">Выберите свой сюрприз-пакет</p>
+        <p className="text-emerald-100 text-sm mt-1">Выберите свой сюрприз-пакет</p>
       </div>
 
       <div className="p-3">
