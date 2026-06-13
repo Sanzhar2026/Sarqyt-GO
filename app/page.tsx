@@ -417,14 +417,14 @@ export default function HomePage() {
   return (
     <div className="min-h-dvh bg-gray-50">
       {/* Header с логотипом и номером телефона */}
-      <div className="bg-[#367666] text-white px-6 pt-4 pb-5">
+      <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="text-4xl font-bold tracking-tight">
             <span className="text-white">SARQYT</span>{' '}
             <span className="text-[#FFD700]">GO</span>
           </h1>
           {user?.phone && (
-            <p className="text-xs text-white/80 mt-1 font-medium">
+            <p className="text-sm text-white/80 mt-1 font-medium">
               {user.phone}
             </p>
           )}
@@ -472,82 +472,69 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* White Card Container */}
-      <div className="px-6 mt-6 pb-32">
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-gray-100">
-            <h2 className="font-bold text-lg flex items-center gap-2">
-              <Store size={20} className="text-gray-400/60" />
-              {t[lang].nearbyShops}
-            </h2>
-            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
-              Сюрприз-пакеты рядом с вами
-              <Gift size={14} className="text-gray-400" />
-            </p>
-          </div>
-          
-          {viewMode === 'list' ? (
-            <div className="p-4">
-              {user && (
-                <Link href="/orders">
-                  <button className="w-full bg-[#367666]/10 text-[#367666] py-2.5 rounded-xl text-sm font-medium hover:bg-[#367666]/20 transition flex items-center justify-center gap-2 mb-4">
-                    <span>📋</span>
-                    <span>{t[lang].myOrders}</span>
-                  </button>
-                </Link>
-              )}
-              
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold">{t[lang].nearbyOffers}</h3>
-                <button 
-                  onClick={handleManualRefresh}
-                  disabled={isRefreshing}
-                  className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs hover:bg-[#2a5a4d] transition flex items-center gap-1 disabled:opacity-50"
-                >
-                  {isRefreshing ? '...' : t[lang].refresh}
+      {/* Контейнер без белой карточки-обертки - как в /offers */}
+      <div className="px-3 mt-6 pb-32">
+        {viewMode === 'list' ? (
+          <>
+            {user && (
+              <Link href="/orders">
+                <button className="w-full bg-[#367666]/10 text-[#367666] py-2.5 rounded-xl text-sm font-medium hover:bg-[#367666]/20 transition flex items-center justify-center gap-2 mb-4">
+                  <span>📋</span>
+                  <span>{t[lang].myOrders}</span>
                 </button>
-              </div>
-              
-              <div className="text-right text-xs text-gray-400 mb-3">
-                {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
-                {isConnected && <span className="ml-2 text-green-500">● Live</span>}
-              </div>
-              
-              <div className="space-y-4">
-                {bags.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500">{t[lang].noOffers}</p>
-                  </div>
-                ) : (
-                  bags.map((bag, bagIdx) => (
-                    <OfferCard
-                      key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
-                      id={bag.id}
-                      name={bag.name}
-                      businessName={bag.supplier_name}
-                      distance={`${(Math.random() * 5 + 1).toFixed(1)} км`}
-                      price={bag.discounted_price}
-                      originalPrice={bag.original_price}
-                      discount={bag.discount_percentage}
-                      imageUrl={bag.image_url}
-                      description={bag.description}
-                      onOrderSuccess={refreshAfterOrder}
-                    />
-                  ))
-                )}
-              </div>
+              </Link>
+            )}
+            
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold">{t[lang].nearbyOffers}</h3>
+              <button 
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs hover:bg-[#2a5a4d] transition flex items-center gap-1 disabled:opacity-50"
+              >
+                {isRefreshing ? '...' : t[lang].refresh}
+              </button>
             </div>
-          ) : (
-            <div className="w-full h-[500px]">
-              <SuppliersMap 
-                userLat={location.lat} 
-                userLon={location.lon}
-                onSupplierClick={handleSupplierClick}
-                showUserLocation={true}
-              />
+            
+            <div className="text-right text-xs text-gray-400 mb-3">
+              {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
+              {isConnected && <span className="ml-2 text-green-500">● Live</span>}
             </div>
-          )}
-        </div>
+            
+            <div className="flex flex-col gap-3">
+              {bags.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">{t[lang].noOffers}</p>
+                </div>
+              ) : (
+                bags.map((bag, bagIdx) => (
+                  <OfferCard
+                    key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
+                    id={bag.id}
+                    name={bag.name}
+                    businessName={bag.supplier_name}
+                    distance={`${(Math.random() * 5 + 1).toFixed(1)} км`}
+                    price={bag.discounted_price}
+                    originalPrice={bag.original_price}
+                    discount={bag.discount_percentage}
+                    imageUrl={bag.image_url}
+                    description={bag.description}
+                    onOrderSuccess={refreshAfterOrder}
+                  />
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="w-full h-[500px]">
+            <SuppliersMap 
+              userLat={location.lat} 
+              userLon={location.lon}
+              onSupplierClick={handleSupplierClick}
+              showUserLocation={true}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
