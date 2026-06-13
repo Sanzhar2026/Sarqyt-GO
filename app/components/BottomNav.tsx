@@ -9,6 +9,7 @@ interface NavItem {
   labelKz: string;
   labelRu: string;
   icon: React.ReactNode;
+  activeIcon?: React.ReactNode;
   href: string;
   isCenter?: boolean;
 }
@@ -41,7 +42,12 @@ const navItems: NavItem[] = [
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
       </svg>
-    ), 
+    ),
+    activeIcon: (
+      <svg className="w-6 h-6" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+    ),
     href: '/favorites',
     isCenter: true 
   },
@@ -91,15 +97,17 @@ export default function BottomNav() {
           
           if (item.isCenter) {
             return (
-              <div key={index} className="flex flex-col items-center -mt-2">
+              <div key={index} className="flex flex-col items-center -mt-8">
                 <div 
                   onClick={() => router.push(item.href)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 ${
-                    active ? 'bg-[#367666]' : 'bg-gray-100 hover:bg-gray-200'
+                  className={`w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 active:scale-95 shadow-lg ${
+                    active 
+                      ? 'bg-[#367666] text-white shadow-[#367666]/50' 
+                      : 'bg-white border-2 border-[#367666] text-[#367666]'
                   }`}
                 >
-                  <span className={`${active ? 'text-white' : 'text-gray-600'}`}>
-                    {item.icon}
+                  <span className={`transition-all duration-200 ${active ? 'scale-110' : 'scale-100'}`}>
+                    {active && item.activeIcon ? item.activeIcon : item.icon}
                   </span>
                 </div>
               </div>
