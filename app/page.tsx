@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
+import { Store } from 'lucide-react';
 import OfferCard from './components/OfferCard';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -415,13 +416,14 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header */}
+      {/* Header с логотипом и номером телефона */}
       <div className="bg-[#367666] text-white px-6 pt-4 pb-5">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             <span className="text-white">SARQYT</span>{' '}
             <span className="text-[#FFD700]">GO</span>
           </h1>
+          {/* Номер телефона пользователя */}
           {user?.phone && (
             <p className="text-xs text-white/80 mt-1 font-medium">
               {user.phone}
@@ -475,18 +477,12 @@ export default function HomePage() {
       <div className="px-6 mt-6 pb-32">
         <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-gray-100">
-            {/* ТВОЯ ИКОНКА storeI.png */}
-            <h2 className="font-bold text-lg flex items-center gap-2">
-              <img 
-                src="/storeI.png" 
-                alt="store" 
-                className="w-5 h-5"
-                style={{ opacity: 0.5, filter: 'grayscale(100%)' }}
-              />
-              {t[lang].nearbyShops}
-            </h2>
-            <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
-          </div>
+  <h2 className="font-bold text-lg flex items-center gap-2">
+    <Store size={20} className="text-gray-400/60" />
+    {t[lang].nearbyShops}
+  </h2>
+  <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
+</div>
           
           {viewMode === 'list' ? (
             <div className="p-4">
