@@ -290,16 +290,16 @@ export default function OfferCard({
           className="object-cover"
         />
         
-        {/* Скидка и иконка подарка */}
+        {/* Скидка и иконка подарка - БЕЗ окружения, увеличены */}
         <div className="absolute top-2 left-2 flex gap-1">
           {propDiscount > 0 && (
-            <div className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[8px] font-bold">
+            <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold">
               -{propDiscount}%
             </div>
           )}
-          <div className="bg-black/50 rounded-full px-2 py-0.5 flex items-center gap-1" style={{ borderRadius: '9999px' }}>
-            <Gift size={12} className="text-gray-300/70" />
-            <span className="text-white text-[9px] font-bold">{totalItems}</span>
+          <div className="flex items-center gap-1">
+            <Gift size={18} className="text-white drop-shadow-md" />
+            <span className="text-white text-[11px] font-bold">{totalItems}</span>
           </div>
         </div>
         
@@ -335,37 +335,41 @@ export default function OfferCard({
           {propName}
         </h3>
         
+        {/* Адрес вместо километража */}
         <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
           {distance}
         </div>
         
+        {/* Рейтинг */}
         <div className="flex items-center gap-0.5 mt-0.5 mb-0.5">
           {renderStars()}
           {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
         </div>
         
+        {/* При клике на восклицательный знак - расширенная информация (без серого фона) */}
         {showExpanded && (
-          <div className="mt-0.5 mb-0.5 p-1 bg-gray-50 rounded-lg">
+          <div className="mt-0.5 mb-0.5">
+            {/* Состав */}
             {loading ? (
               <div className="flex justify-center py-1">
                 <div className="w-2.5 h-2.5 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : bagItems.length > 0 ? (
               <>
-                <p className="text-[8px] font-semibold text-gray-700 mb-0.5">Состав:</p>
+                <p className="text-[9px] font-semibold text-gray-700 mb-0.5">Состав:</p>
                 {bagItems.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-[8px] py-0.5">
+                  <div key={idx} className="flex items-center justify-between text-[9px] py-0.5">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px]">{getProductIcon(item.name)}</span>
+                      <span className="text-[11px]">{getProductIcon(item.name)}</span>
                       <span className="text-gray-600">{item.name} ×{item.quantity}</span>
                     </div>
                     <span className="font-medium">{(item.price * item.quantity).toLocaleString()} ₸</span>
                   </div>
                 ))}
-                {bagItems.length > 3 && <p className="text-[7px] text-gray-400 text-center pt-0.5">+{bagItems.length - 3} еще</p>}
+                {bagItems.length > 3 && <p className="text-[8px] text-gray-400 text-center pt-0.5">+{bagItems.length - 3} еще</p>}
               </>
             ) : (
-              <p className="text-[8px] text-gray-400 text-center py-1">Нет информации</p>
+              <p className="text-[9px] text-gray-400 text-center py-1">Нет информации</p>
             )}
           </div>
         )}

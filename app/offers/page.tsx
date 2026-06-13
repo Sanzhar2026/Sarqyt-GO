@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import SurpriseBagCard from './../components/SurCard';
+import SurpriseBagCard from '../components/SurCard';
+import { Gift } from 'lucide-react';
 
 interface SurpriseBag {
   id: number;
@@ -28,7 +29,6 @@ export default function OffersPage() {
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Получение токена
   const getAuthToken = () => sessionStorage.getItem('authToken');
 
   const fetchBags = async () => {
@@ -109,9 +109,12 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header - зеленый как в приложении */}
+      {/* Header с иконкой сюрприза справа */}
       <div className="bg-[#367666] text-white px-4 pt-12 pb-4">
-        <h1 className="text-xl font-bold">Сюрприз-пакеты</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Сюрприз-пакеты</h1>
+          <Gift size={28} className="text-white/80" />
+        </div>
         <p className="text-emerald-100 text-xs mt-0.5">Выберите свой сюрприз-пакет</p>
       </div>
 
