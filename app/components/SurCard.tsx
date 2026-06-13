@@ -242,19 +242,19 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Скидка и иконка подарка - top-2 left-2 */}
+        {/* Скидка и иконка подарка - top-2 left-2, одинаковый размер с сердечком */}
         <div className="absolute top-2 left-2 flex gap-1.5">
           {discount > 0 && (
             <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold shadow-sm">
               -{discount}%
             </div>
           )}
-          <div className="bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
-            <Gift size={16} className="text-gray-800" />
+          <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center w-8 h-8">
+            <Gift size={20} className="text-gray-800" />
           </div>
         </div>
         
-        {/* Сердечко (лайк) - на одном уровне с иконкой подарка top-2 right-2 */}
+        {/* Сердечко (лайк) - точно на одном уровне с иконкой подарка */}
         <button 
           onClick={toggleFavorite}
           className="absolute top-2 right-2 z-10"

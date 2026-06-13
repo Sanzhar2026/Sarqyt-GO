@@ -282,7 +282,7 @@ export default function OfferCard({
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      <div className="relative h-40">
+      <div className="relative h-32">
         <Image 
           src={propImageUrl || getImageByTitle(propName)} 
           alt={propName} 
@@ -290,106 +290,102 @@ export default function OfferCard({
           className="object-cover"
         />
         
-        {/* Скидка и иконка подарка */}
+        {/* Скидка и иконка подарка - top-2 left-2 */}
         <div className="absolute top-2 left-2 flex gap-1.5">
           {propDiscount > 0 && (
-            <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold shadow-sm">
+            <div className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold shadow-sm">
               -{propDiscount}%
             </div>
           )}
-          <div className="bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
-            <Gift size={16} className="text-gray-800" />
+          <div className="bg-white/90 backdrop-blur-sm rounded-full shadow-sm flex items-center justify-center w-6 h-6">
+            <Gift size={14} className="text-gray-800" />
           </div>
         </div>
         
-        {/* Сердечко (лайк) - на одном уровне с иконкой подарка (top-2) */}
+        {/* Сердечко (лайк) - точно на одном уровне с иконкой подарка */}
         <button
           onClick={toggleFavorite}
           className="absolute top-2 right-2 z-10"
         >
           <Heart 
-            size={20} 
+            size={16} 
             className={`transition ${isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-400/70 hover:text-red-400'}`}
             fill={isFavorite ? 'currentColor' : 'none'}
           />
         </button>
         
-        {/* Восклицательный знак */}
+        {/* Восклицательный знак - справа внизу */}
         <button 
           onClick={handleIconClick}
           className="absolute bottom-2 right-2 z-10"
         >
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
       </div>
       
-      <div className="p-3">
+      <div className="p-2">
         <Link href={`/supplier/${id}`}>
-          <p className="font-bold text-[#367666] text-sm hover:text-[#2a5a4d] transition mb-1">
+          <p className="font-bold text-[#367666] text-xs hover:text-[#2a5a4d] transition mb-0.5">
             {businessName}
           </p>
         </Link>
         
-        <h3 className="font-semibold text-gray-800 text-base mb-1 line-clamp-1">
+        <h3 className="font-semibold text-gray-800 text-sm mb-0.5 line-clamp-1">
           {propName}
         </h3>
         
-        {/* Адрес */}
-        <div className="text-gray-500 text-xs mb-1 leading-tight">
+        <div className="text-gray-500 text-[9px] mb-0.5 leading-tight">
           {distance}
         </div>
         
-        {/* Рейтинг */}
-        <div className="flex items-center gap-0.5 mt-1 mb-2">
+        <div className="flex items-center gap-0.5 mt-0.5 mb-1">
           {renderStars()}
-          {bagTotalReviews > 0 && <span className="text-[10px] text-gray-400">({bagTotalReviews})</span>}
+          {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
         </div>
         
-        {/* При клике на восклицательный знак - расширенная информация */}
         {showExpanded && (
           <div className="mt-0.5 mb-0.5">
             {loading ? (
               <div className="flex justify-center py-1">
-                <div className="w-2.5 h-2.5 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-2 h-2 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : bagItems.length > 0 ? (
               <>
-                <p className="text-[9px] font-semibold text-gray-700 mb-0.5">Состав:</p>
+                <p className="text-[8px] font-semibold text-gray-700 mb-0.5">Состав:</p>
                 {bagItems.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-[9px] py-0.5">
+                  <div key={idx} className="flex items-center justify-between text-[8px] py-0.5">
                     <div className="flex items-center gap-1">
-                      <span className="text-[11px]">{getProductIcon(item.name)}</span>
+                      <span className="text-[9px]">{getProductIcon(item.name)}</span>
                       <span className="text-gray-600">{item.name} ×{item.quantity}</span>
                     </div>
-                    <span className="font-medium">{(item.price * item.quantity).toLocaleString()} ₸</span>
+                    <span className="font-medium text-[10px]">{(item.price * item.quantity).toLocaleString()} ₸</span>
                   </div>
                 ))}
-                {bagItems.length > 3 && <p className="text-[8px] text-gray-400 text-center pt-0.5">+{bagItems.length - 3} еще</p>}
+                {bagItems.length > 3 && <p className="text-[7px] text-gray-400 text-center pt-0.5">+{bagItems.length - 3} еще</p>}
               </>
             ) : (
-              <p className="text-[9px] text-gray-400 text-center py-1">Нет информации</p>
+              <p className="text-[8px] text-gray-400 text-center py-1">Нет информации</p>
             )}
           </div>
         )}
         
-        {/* Цена и кнопка - увеличены на 35% (как в SurpriseBagCard) */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-1 pt-1 border-t border-gray-100">
           <div>
-            <span className="text-xl font-bold text-[#367666]">{formatPrice(propPrice)}</span>
+            <span className="text-sm font-bold text-[#367666]">{formatPrice(propPrice)}</span>
             {propOriginalPrice > propPrice && (
-              <span className="text-gray-400 line-through text-xs ml-1">{formatPrice(propOriginalPrice)}</span>
+              <span className="text-gray-400 line-through text-[8px] ml-0.5">{formatPrice(propOriginalPrice)}</span>
             )}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-10 py-1.5 rounded-xl text-xs font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition whitespace-nowrap"
+            className="bg-[#367666] text-white px-6 py-1 rounded-lg text-[9px] font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
