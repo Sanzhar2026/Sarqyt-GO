@@ -416,7 +416,7 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
-            {/* Мои заказы - без иконки */}
+            {/* Мои заказы */}
             <Link href="/orders">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
                 <span className="font-medium text-gray-700">{t[lang].myOrders}</span>
@@ -424,8 +424,8 @@ export default function ProfilePage() {
               </div>
             </Link>
             
-            {/* Стать курьером - без иконки */}
-            <Link href="/become-courier">
+            {/* Стать курьером - ведет на страницу курьера */}
+            <Link href="/courier">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
                 <span className="font-medium text-gray-700">{t[lang].becomeCourier}</span>
                 <span className="text-gray-400">→</span>
