@@ -476,6 +476,18 @@ export default function HomePage() {
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>
+            {/* Заголовок с иконкой Store */}
+            <div className="mb-4">
+              <h2 className="font-bold text-lg flex items-center gap-2">
+                <Store size={20} className="text-gray-400/60" />
+                {t[lang].nearbyShops}
+              </h2>
+              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
+                <Gift size={14} className="text-gray-400" />
+                Сюрприз-пакеты рядом с вами
+              </p>
+            </div>
+            
             {user && (
               <Link href="/orders">
                 <button className="w-full bg-[#367666]/10 text-[#367666] py-2.5 rounded-xl text-sm font-medium hover:bg-[#367666]/20 transition flex items-center justify-center gap-2 mb-4">
@@ -539,7 +551,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-
-
-
