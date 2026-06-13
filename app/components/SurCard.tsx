@@ -196,7 +196,6 @@ export default function SurpriseBagCard({
     return 'оценок';
   };
 
-  // Отображение звезд
   const renderStars = () => {
     const stars = [];
     const fullStars = Math.floor(bagRating);
@@ -224,7 +223,6 @@ export default function SurpriseBagCard({
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Изображение - по названию */}
       <div className="relative h-32">
         <Image 
           src={imageUrl || getImageByTitle(name)} 
@@ -233,10 +231,17 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Иконка сюрприза и количество (слева вверху) */}
-        <div className="absolute top-2 left-2 bg-black/50 rounded-full px-2 py-1 flex items-center gap-1" style={{ borderRadius: '9999px' }}>
-          <Gift size={14} className="text-gray-300/70" />
-          <span className="text-white text-[10px] font-bold">{availableQuantity}</span>
+        {/* Скидка слева от иконки подарка */}
+        <div className="absolute top-2 left-2 flex gap-1">
+          {discount > 0 && (
+            <div className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[8px] font-bold">
+              -{discount}%
+            </div>
+          )}
+          <div className="bg-black/50 rounded-full px-2 py-0.5 flex items-center gap-1" style={{ borderRadius: '9999px' }}>
+            <Gift size={12} className="text-gray-300/70" />
+            <span className="text-white text-[9px] font-bold">{availableQuantity}</span>
+          </div>
         </div>
       </div>
       
@@ -255,21 +260,18 @@ export default function SurpriseBagCard({
           {shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
-        {/* Расширенный адрес при клике */}
         {showExpanded && fullAddress !== shortAddress && (
           <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
-            📍 {fullAddress}
+            {fullAddress}
           </div>
         )}
         
-        {/* Рейтинг */}
         <div className="flex items-center justify-between mt-0.5 mb-0.5">
           <div className="flex items-center gap-0.5">
             {renderStars()}
             {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
           </div>
           
-          {/* Кнопка раскрытия адреса (вместо восклицательного знака) */}
           <button 
             onClick={() => setShowExpanded(!showExpanded)}
             className="text-[9px] text-gray-400 hover:text-[#367666] transition"
@@ -278,7 +280,6 @@ export default function SurpriseBagCard({
           </button>
         </div>
         
-        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-1 pt-0.5 border-t border-gray-100">
           <div>
             <span className="text-xs font-bold text-[#367666]">{formatPrice(price)}</span>

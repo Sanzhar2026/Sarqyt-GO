@@ -28,7 +28,6 @@ interface OfferCardProps {
   onOrderSuccess?: () => void;
 }
 
-// Функция для получения фото по названию
 const getImageByTitle = (title: string) => {
   const lowerTitle = title.toLowerCase();
   
@@ -47,19 +46,9 @@ const getImageByTitle = (title: string) => {
   if (lowerTitle.includes('десерт') || lowerTitle.includes('dessert') || lowerTitle.includes('торт')) {
     return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&h=400&fit=crop';
   }
-  if (lowerTitle.includes('крилс') || lowerTitle.includes('wings')) {
-    return 'https://images.unsplash.com/photo-1604908177453-130b5f9a4f36?w=600&h=400&fit=crop';
-  }
-  if (lowerTitle.includes('картошк') || lowerTitle.includes('fries')) {
-    return 'https://images.unsplash.com/photo-1585109649139-366815a0d713?w=600&h=400&fit=crop';
-  }
-  if (lowerTitle.includes('напит') || lowerTitle.includes('drink') || lowerTitle.includes('кола')) {
-    return 'https://images.unsplash.com/photo-1551024709-8f23befc30dd?w=600&h=400&fit=crop';
-  }
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
 };
 
-// Функция для иконки продукта
 const getProductIcon = (name: string) => {
   const lowerName = name.toLowerCase();
   if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
@@ -102,7 +91,6 @@ export default function OfferCard({
   const API_URL = 'https://toogood-2ncf.onrender.com';
   const isSearchPage = pathname === '/' || pathname === '/offers';
 
-  // Загружаем рейтинг
   useEffect(() => {
     const fetchRating = async () => {
       try {
@@ -123,7 +111,6 @@ export default function OfferCard({
     fetchRating();
   }, [id, API_URL]);
 
-  // Проверка авторизации
   useEffect(() => {
     const checkAuth = async () => {
       const token = sessionStorage.getItem('authToken');
@@ -146,7 +133,6 @@ export default function OfferCard({
     checkAuth();
   }, [API_URL]);
 
-  // Проверка избранного
   useEffect(() => {
     const favorites = localStorage.getItem('favorites');
     if (favorites) {
@@ -155,7 +141,6 @@ export default function OfferCard({
     }
   }, [id]);
 
-  // Загрузка состава
   const fetchBagItems = async () => {
     if (bagItems.length > 0) return;
     setLoading(true);
@@ -271,7 +256,6 @@ export default function OfferCard({
     return 'оценок';
   };
 
-  // Отображение звезд
   const renderStars = () => {
     const stars = [];
     const fullStars = Math.floor(bagRating);
@@ -298,7 +282,6 @@ export default function OfferCard({
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Изображение - по названию */}
       <div className="relative h-32">
         <Image 
           src={propImageUrl || getImageByTitle(propName)} 
@@ -307,33 +290,38 @@ export default function OfferCard({
           className="object-cover"
         />
         
-        {/* Сердечко (лайк) */}
+        {/* Скидка и иконка подарка */}
+        <div className="absolute top-2 left-2 flex gap-1">
+          {propDiscount > 0 && (
+            <div className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[8px] font-bold">
+              -{propDiscount}%
+            </div>
+          )}
+          <div className="bg-black/50 rounded-full px-2 py-0.5 flex items-center gap-1" style={{ borderRadius: '9999px' }}>
+            <Gift size={12} className="text-gray-300/70" />
+            <span className="text-white text-[9px] font-bold">{totalItems}</span>
+          </div>
+        </div>
+        
+        {/* Сердечко - БЕЗ окружения */}
         <button
           onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
-          style={{ borderRadius: '50%' }}
+          className="absolute top-2 right-2 z-10"
         >
-          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
-        {/* Восклицательный знак для раскрытия состава */}
+        {/* Восклицательный знак - БЕЗ окружения */}
         <button 
           onClick={handleIconClick}
-          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
-          style={{ borderRadius: '50%' }}
+          className="absolute bottom-2 right-2 z-10"
         >
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
-        
-        {/* Иконка сюрприза и количество */}
-        <div className="absolute top-2 left-2 bg-black/50 rounded-full px-2 py-1 flex items-center gap-1" style={{ borderRadius: '9999px' }}>
-          <Gift size={14} className="text-gray-300/70" />
-          <span className="text-white text-[10px] font-bold">{totalItems}</span>
-        </div>
       </div>
       
       <div className="p-2">
@@ -347,20 +335,15 @@ export default function OfferCard({
           {propName}
         </h3>
         
-        {/* Адрес БЕЗ иконки 📍 */}
-        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight line-clamp-1">
+        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
           {distance}
         </div>
         
-        {/* Рейтинг */}
-        <div className="flex items-center justify-between mt-0.5 mb-0.5">
-          <div className="flex items-center gap-0.5">
-            {renderStars()}
-            {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
-          </div>
+        <div className="flex items-center gap-0.5 mt-0.5 mb-0.5">
+          {renderStars()}
+          {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
         </div>
         
-        {/* Состав сюрприза (раскрывается при клике на восклицательный знак) */}
         {showExpanded && (
           <div className="mt-0.5 mb-0.5 p-1 bg-gray-50 rounded-lg">
             {loading ? (
@@ -387,7 +370,6 @@ export default function OfferCard({
           </div>
         )}
         
-        {/* Цена и кнопка */}
         <div className="flex items-center justify-between mt-0.5 pt-0.5 border-t border-gray-100">
           <div>
             <span className="text-xs font-bold text-[#367666]">{formatPrice(propPrice)}</span>
