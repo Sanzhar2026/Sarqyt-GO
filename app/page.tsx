@@ -472,7 +472,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Контейнер без белой карточки-обертки - как в /offers */}
+      {/* Контейнер без белой карточки-обертки */}
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>
@@ -539,3 +539,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+
+
+

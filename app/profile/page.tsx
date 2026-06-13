@@ -24,7 +24,8 @@ export default function ProfilePage() {
       welcome: 'Қош келдіңіз',
       login: 'Кіру',
       register: 'Тіркелу',
-      myOrders: 'Сюрприздер',
+      myOrders: 'Менің тапсырыстарым',
+      becomeCourier: 'Курьер болу',
       language: 'Тіл',
       changePhoto: 'Фотоны өзгерту',
       removePhoto: 'Фотоны өшіру',
@@ -37,7 +38,8 @@ export default function ProfilePage() {
       welcome: 'Добро пожаловать',
       login: 'Войти',
       register: 'Регистрация',
-      myOrders: 'Сюрпризы',
+      myOrders: 'Мои заказы',
+      becomeCourier: 'Стать курьером',
       language: 'Язык',
       changePhoto: 'Изменить фото',
       removePhoto: 'Удалить фото',
@@ -414,26 +416,28 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
+            {/* Мои заказы - без иконки */}
             <Link href="/orders">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
-                <span className="flex items-center gap-3">
-                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-                  </svg>
-                  <span className="font-medium text-gray-700">{t[lang].myOrders}</span>
-                </span>
+                <span className="font-medium text-gray-700">{t[lang].myOrders}</span>
                 <span className="text-gray-400">→</span>
               </div>
             </Link>
             
+            {/* Стать курьером - без иконки */}
+            <Link href="/become-courier">
+              <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
+                <span className="font-medium text-gray-700">{t[lang].becomeCourier}</span>
+                <span className="text-gray-400">→</span>
+              </div>
+            </Link>
+            
+            {/* Выйти */}
             <button
               onClick={handleLogout}
               className="w-full bg-red-50 p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer"
             >
-              <span className="flex items-center gap-3">
-                <LogOut size={24} className="text-red-500" />
-                <span className="font-medium text-red-600">{t[lang].logout}</span>
-              </span>
+              <span className="font-medium text-red-600">{t[lang].logout}</span>
               <span className="text-red-400">→</span>
             </button>
           </>
