@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
-import { Gift } from 'lucide-react';
+import { Gift, Heart } from 'lucide-react';
 
 interface SurpriseItem {
   product_id: number;
@@ -282,7 +282,7 @@ export default function OfferCard({
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      <div className="relative h-32">
+      <div className="relative h-40">
         <Image 
           src={propImageUrl || getImageByTitle(propName)} 
           alt={propName} 
@@ -290,30 +290,31 @@ export default function OfferCard({
           className="object-cover"
         />
         
-        {/* Скидка и иконка подарка - БЕЗ окружения, увеличены */}
-        <div className="absolute top-2 left-2 flex gap-1">
+        {/* Скидка и иконка подарка */}
+        <div className="absolute top-2 left-2 flex gap-1.5">
           {propDiscount > 0 && (
-            <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold">
+            <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold shadow-sm">
               -{propDiscount}%
             </div>
           )}
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 shadow-sm">
-  <Gift size={16} className="text-gray-800" />
-  <span className="text-gray-800 text-[11px] font-bold">{totalItems}</span>
-</div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-full p-1.5 shadow-sm">
+            <Gift size={16} className="text-gray-800" />
+          </div>
         </div>
         
-        {/* Сердечко - БЕЗ окружения */}
+        {/* Сердечко (лайк) - на одном уровне с иконкой подарка (top-2) */}
         <button
           onClick={toggleFavorite}
           className="absolute top-2 right-2 z-10"
         >
-          <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
+          <Heart 
+            size={20} 
+            className={`transition ${isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-400/70 hover:text-red-400'}`}
+            fill={isFavorite ? 'currentColor' : 'none'}
+          />
         </button>
         
-        {/* Восклицательный знак - БЕЗ окружения */}
+        {/* Восклицательный знак */}
         <button 
           onClick={handleIconClick}
           className="absolute bottom-2 right-2 z-10"
@@ -324,32 +325,31 @@ export default function OfferCard({
         </button>
       </div>
       
-      <div className="p-2">
+      <div className="p-3">
         <Link href={`/supplier/${id}`}>
-          <p className="font-bold text-[#367666] text-xs hover:text-[#2a5a4d] transition mb-0.5">
+          <p className="font-bold text-[#367666] text-sm hover:text-[#2a5a4d] transition mb-1">
             {businessName}
           </p>
         </Link>
         
-        <h3 className="font-semibold text-gray-800 text-sm mb-0.5 line-clamp-1">
+        <h3 className="font-semibold text-gray-800 text-base mb-1 line-clamp-1">
           {propName}
         </h3>
         
-        {/* Адрес вместо километража */}
-        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
+        {/* Адрес */}
+        <div className="text-gray-500 text-xs mb-1 leading-tight">
           {distance}
         </div>
         
         {/* Рейтинг */}
-        <div className="flex items-center gap-0.5 mt-0.5 mb-0.5">
+        <div className="flex items-center gap-0.5 mt-1 mb-2">
           {renderStars()}
-          {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
+          {bagTotalReviews > 0 && <span className="text-[10px] text-gray-400">({bagTotalReviews})</span>}
         </div>
         
-        {/* При клике на восклицательный знак - расширенная информация (без серого фона) */}
+        {/* При клике на восклицательный знак - расширенная информация */}
         {showExpanded && (
           <div className="mt-0.5 mb-0.5">
-            {/* Состав */}
             {loading ? (
               <div className="flex justify-center py-1">
                 <div className="w-2.5 h-2.5 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
@@ -374,21 +374,22 @@ export default function OfferCard({
           </div>
         )}
         
-        <div className="flex items-center justify-between mt-0.5 pt-0.5 border-t border-gray-100">
+        {/* Цена и кнопка - увеличены на 35% (как в SurpriseBagCard) */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
           <div>
-            <span className="text-xs font-bold text-[#367666]">{formatPrice(propPrice)}</span>
+            <span className="text-xl font-bold text-[#367666]">{formatPrice(propPrice)}</span>
             {propOriginalPrice > propPrice && (
-              <span className="text-gray-400 line-through text-[7px] ml-0.5">{formatPrice(propOriginalPrice)}</span>
+              <span className="text-gray-400 line-through text-xs ml-1">{formatPrice(propOriginalPrice)}</span>
             )}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-3 py-0.5 rounded-lg text-[9px] font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-10 py-1.5 rounded-xl text-xs font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition whitespace-nowrap"
           >
             {addingToCart ? (
-              <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
