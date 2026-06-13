@@ -4,7 +4,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useLanguage } from '../layout';
 import { Camera, X, Loader2, LogOut } from 'lucide-react';
 
@@ -14,7 +13,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
@@ -148,19 +147,18 @@ export default function ProfilePage() {
       }
       
       const data = await response.json();
-      const newAvatarUrl = data.avatar_url;
-      setAvatarUrl(newAvatarUrl);
+      console.log('✅ Upload response:', data);
+      
+      // Обновляем timestamp чтобы перезагрузить аватар
+      setAvatarTimestamp(Date.now());
       
       // Обновляем sessionStorage
       const storedUser = sessionStorage.getItem('user');
       if (storedUser) {
         const userData = JSON.parse(storedUser);
-        userData.avatar_url = newAvatarUrl;
+        userData.avatar_url = data.avatar_url;
         sessionStorage.setItem('user', JSON.stringify(userData));
       }
-      
-      // Обновляем user state
-      setUser((prev: any) => ({ ...prev, avatar_url: newAvatarUrl }));
       
       alert('✅ Аватар успешно обновлен!');
       
@@ -193,7 +191,8 @@ export default function ProfilePage() {
         throw new Error('Delete failed');
       }
       
-      setAvatarUrl(null);
+      // Обновляем timestamp чтобы перезагрузить аватар
+      setAvatarTimestamp(Date.now());
       
       // Обновляем sessionStorage
       const storedUser = sessionStorage.getItem('user');
@@ -202,9 +201,6 @@ export default function ProfilePage() {
         userData.avatar_url = null;
         sessionStorage.setItem('user', JSON.stringify(userData));
       }
-      
-      // Обновляем user state
-      setUser((prev: any) => ({ ...prev, avatar_url: null }));
       
       alert('✅ Аватар удален');
       
@@ -243,19 +239,6 @@ export default function ProfilePage() {
     
     const loadUserData = async () => {
       try {
-        // Сначала проверяем sessionStorage
-        const storedUser = sessionStorage.getItem('user');
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser);
-          setUser({
-            id: parsed.id,
-            full_name: parsed.full_name || parsed.name,
-            phone: parsed.phone,
-            avatar_url: parsed.avatar_url
-          });
-          setAvatarUrl(parsed.avatar_url || null);
-        }
-        
         // Запрашиваем свежие данные с сервера
         const response = await fetch(`${API_URL}/api/check-auth`, {
           headers: {
@@ -273,7 +256,6 @@ export default function ProfilePage() {
               avatar_url: data.avatar_url
             };
             setUser(userData);
-            setAvatarUrl(data.avatar_url);
             sessionStorage.setItem('user', JSON.stringify(userData));
           }
         }
@@ -328,15 +310,22 @@ export default function ProfilePage() {
           </div>
         </div>
         
-        {/* Аватар */}
+        {/* Аватар - используем прямой эндпоинт */}
         <div className="flex items-center gap-4">
           <div className="relative group">
             <div className="w-20 h-20 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
-              {avatarUrl ? (
+              {user?.id ? (
                 <img 
-                  src={avatarUrl} 
+                  src={`${API_URL}/users/avatar-file/${user.id}?t=${avatarTimestamp}`}
                   alt="Avatar" 
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.log('No avatar, using default');
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.parentElement) {
+                      e.currentTarget.parentElement.innerHTML = '<span class="text-4xl">👤</span>';
+                    }
+                  }}
                 />
               ) : (
                 <span className="text-4xl">👤</span>
@@ -357,7 +346,7 @@ export default function ProfilePage() {
                   )}
                 </button>
                 
-                {avatarUrl && !isUploading && (
+                {!isUploading && (
                   <button
                     onClick={removeAvatar}
                     className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 shadow-lg hover:bg-red-600 transition"
