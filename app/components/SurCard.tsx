@@ -212,6 +212,9 @@ export default function SurpriseBagCard({
     );
   }
 
+  // Сокращаем адрес для отображения в одну строку
+  const shortAddress = address && address.length > 30 ? address.substring(0, 30) + '...' : address;
+
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       {/* Изображение */}
@@ -223,24 +226,22 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Сердечко - ИДЕАЛЬНО КРУГЛОЕ */}
+        {/* Сердечко - круглое */}
         <button
           onClick={toggleFavorite}
-          className="absolute top-2 right-2 bg-black/50 rounded-full w-12 h-12 flex items-center justify-center z-10 hover:bg-black/70 transition"
-          style={{ borderRadius: '9999px' }}
+          className="absolute top-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
         >
-          <svg className={`w-6 h-6 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${isFavorite ? 'text-red-500 fill-current' : 'text-white'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
         
-        {/* Восклицательный знак - ИДЕАЛЬНО КРУГЛЫЙ */}
+        {/* Восклицательный знак - такого же размера, круглый */}
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-10 h-10 flex items-center justify-center z-10 hover:bg-black/70 transition"
-          style={{ borderRadius: '9999px' }}
+          className="absolute bottom-2 right-2 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center z-10 hover:bg-black/70 transition"
         >
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
@@ -263,15 +264,15 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
-        {/* Адрес и время */}
-        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
-          {address || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
+        {/* Адрес - по умолчанию 1 строка (обрезанный) */}
+        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight line-clamp-1">
+          {shortAddress || 'Адрес не указан'} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
-        {/* Расширенный адрес */}
-        {showExpanded && (
+        {/* При нажатии на "!" - показываем полный адрес (разворачивается) */}
+        {showExpanded && address && (
           <div className="text-gray-400 text-[10px] mb-0.5 leading-tight">
-            {address || 'Адрес не указан'}
+            {address}
           </div>
         )}
         
@@ -287,10 +288,10 @@ export default function SurpriseBagCard({
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-5 py-1.5 rounded-lg text-xs font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-4 py-1 rounded-lg text-[10px] font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
           >
             {addingToCart ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}
