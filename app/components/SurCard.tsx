@@ -1,32 +1,11 @@
-// app/components/OfferCard.tsx
+// app/components/SurpriseBagCard.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { usePathname } from 'next/navigation';
 import { Gift } from 'lucide-react';
-
-interface SurpriseItem {
-  product_id: number;
-  name: string;
-  price: number;
-  quantity: number;
-}
-
-interface OfferCardProps {
-  id: number;
-  name: string;
-  businessName: string;
-  distance: string;
-  price: number;
-  originalPrice: number;
-  discount: number;
-  imageUrl: string;
-  description?: string;
-  onOrderSuccess?: () => void;
-}
 
 const getImageByTitle = (title: string) => {
   const lowerTitle = title.toLowerCase();
@@ -49,47 +28,51 @@ const getImageByTitle = (title: string) => {
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
 };
 
-const getProductIcon = (name: string) => {
-  const lowerName = name.toLowerCase();
-  if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
-  if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
-  if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл')) return '🍣';
-  if (lowerName.includes('салат') || lowerName.includes('salad')) return '🥗';
-  if (lowerName.includes('кола') || lowerName.includes('coca') || lowerName.includes('cola')) return '🥤';
-  if (lowerName.includes('картошк') || lowerName.includes('fries')) return '🍟';
-  if (lowerName.includes('крилс') || lowerName.includes('wings')) return '🍗';
-  if (lowerName.includes('сыр') || lowerName.includes('cheese')) return '🧀';
-  if (lowerName.includes('десерт') || lowerName.includes('dessert')) return '🍰';
-  return '🍽️';
-};
+interface SurpriseBagCardProps {
+  id: number;
+  name: string;
+  supplierName: string;
+  price: number;
+  originalPrice: number;
+  discount: number;
+  imageUrl: string;
+  description?: string;
+  availableQuantity: number;
+  address?: string;
+  pickupStartTime?: string;
+  pickupEndTime?: string;
+  rating?: number;
+  totalReviews?: number;
+  onOrderSuccess?: () => void;
+}
 
-export default function OfferCard({
+export default function SurpriseBagCard({
   id,
-  name: propName,
-  businessName,
-  distance,
-  price: propPrice,
-  originalPrice: propOriginalPrice,
-  discount: propDiscount,
-  imageUrl: propImageUrl,
-  description: propDescription,
+  name,
+  supplierName,
+  price,
+  originalPrice,
+  discount,
+  imageUrl,
+  description,
+  availableQuantity,
+  address,
+  pickupStartTime,
+  pickupEndTime,
+  rating = 0,
+  totalReviews = 0,
   onOrderSuccess
-}: OfferCardProps) {
+}: SurpriseBagCardProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const [addingToCart, setAddingToCart] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [showExpanded, setShowExpanded] = useState(false);
   
-  const [bagRating, setBagRating] = useState(0);
-  const [bagTotalReviews, setBagTotalReviews] = useState(0);
+  const [bagRating, setBagRating] = useState(rating);
+  const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
-  const isSearchPage = pathname === '/' || pathname === '/offers';
 
   useEffect(() => {
     const fetchRating = async () => {
@@ -133,88 +116,36 @@ export default function OfferCard({
     checkAuth();
   }, [API_URL]);
 
-  useEffect(() => {
-    const favorites = localStorage.getItem('favorites');
-    if (favorites) {
-      const favList = JSON.parse(favorites);
-      setIsFavorite(favList.includes(id));
-    }
-  }, [id]);
-
-  const fetchBagItems = async () => {
-    if (bagItems.length > 0) return;
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setBagItems(data.items || []);
-      }
-    } catch (error) {
-      console.error('Error fetching bag items:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleIconClick = async () => {
-    if (isSearchPage) {
-      if (!showExpanded && bagItems.length === 0) {
-        await fetchBagItems();
-      }
-      setShowExpanded(!showExpanded);
-    }
-  };
-
-  const toggleFavorite = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const favorites = localStorage.getItem('favorites');
-    let favList: number[] = favorites ? JSON.parse(favorites) : [];
-    if (isFavorite) {
-      favList = favList.filter(favId => favId !== id);
-    } else {
-      favList.push(id);
-    }
-    localStorage.setItem('favorites', JSON.stringify(favList));
-    setIsFavorite(!isFavorite);
-  };
-
   const addToCart = async () => {
     if (!isAuthenticated) {
       alert('Пожалуйста, войдите в аккаунт');
       router.push('/login');
       return;
     }
-
+    if (availableQuantity <= 0) {
+      alert('Этот сюрприз закончился');
+      return;
+    }
     setAddingToCart(true);
     const token = sessionStorage.getItem('authToken');
-
     try {
       const response = await fetch(`${API_URL}/api/cart/add`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ bag_id: id, quantity: 1 })
       });
-
       const data = await response.json();
-
       if (response.ok && data.success) {
         const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === id);
-        
         const cartItem = {
-          id, name: propName, businessName,
-          price: propPrice, originalPrice: propOriginalPrice,
-          discount: propDiscount, imageUrl: getImageByTitle(propName),
-          quantity: 1, description: propDescription,
-          totalItems: bagItems.length || 1,
+          id, name, businessName: supplierName,
+          price, originalPrice, discount, imageUrl: getImageByTitle(name),
+          quantity: 1, description,
+          totalItems: 1,
           reservation_id: data.reservation_id,
           expires_at: data.expires_at
         };
-        
         if (existing) {
           existing.quantity += 1;
           existing.reservation_id = data.reservation_id;
@@ -222,10 +153,9 @@ export default function OfferCard({
         } else {
           cart.push(cartItem);
         }
-        
         sessionStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
-        showNotification(`✅ ${propName} добавлен в корзину!`, 'success');
+        showNotification(`✅ ${name} добавлен в корзину!`, 'success');
         if (onOrderSuccess) onOrderSuccess();
       } else {
         showNotification(data.detail || 'Ошибка при добавлении', 'error');
@@ -256,6 +186,7 @@ export default function OfferCard({
     return 'оценок';
   };
 
+  // Только отображение звезд, без кнопки оценки
   const renderStars = () => {
     const stars = [];
     const fullStars = Math.floor(bagRating);
@@ -278,113 +209,67 @@ export default function OfferCard({
     );
   }
 
-  const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
+  const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
-      <div className="relative h-32">
+      <div className="relative h-40">
         <Image 
-          src={propImageUrl || getImageByTitle(propName)} 
-          alt={propName} 
+          src={imageUrl || getImageByTitle(name)} 
+          alt={name} 
           fill 
           className="object-cover"
         />
         
-        {/* Скидка и иконка подарка - БЕЗ окружения */}
-        <div className="absolute top-2 left-2 flex gap-1">
-          {propDiscount > 0 && (
-            <div className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[8px] font-bold">
-              -{propDiscount}%
+        {/* Скидка и иконка подарка - увеличены, иконка ЧЕРНАЯ */}
+        <div className="absolute top-2 left-2 flex gap-1.5">
+          {discount > 0 && (
+            <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold shadow-sm">
+              -{discount}%
             </div>
           )}
-          <div className="flex items-center gap-1">
-            <Gift size={14} className="text-white drop-shadow-md" />
-            <span className="text-white text-[9px] font-bold">{totalItems}</span>
+          <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 shadow-sm">
+            <Gift size={16} className="text-gray-800" />
+            <span className="text-gray-800 text-[11px] font-bold">{availableQuantity}</span>
           </div>
         </div>
-        
-        {/* Сердечко - БЕЗ окружения */}
-        <button
-          onClick={toggleFavorite}
-          className="absolute top-2 right-2 z-10"
-        >
-          <svg className={`w-5 h-5 ${isFavorite ? 'text-red-500 fill-current' : 'text-gray-400'}`} fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </button>
-        
-        {/* Восклицательный знак - БЕЗ окружения */}
-        <button 
-          onClick={handleIconClick}
-          className="absolute bottom-2 right-2 z-10"
-        >
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
       </div>
       
-      <div className="p-2">
+      <div className="p-3">
         <Link href={`/supplier/${id}`}>
-          <p className="font-bold text-[#367666] text-xs hover:text-[#2a5a4d] transition mb-0.5">
-            {businessName}
+          <p className="font-bold text-[#367666] text-sm hover:text-[#2a5a4d] transition mb-1">
+            {supplierName}
           </p>
         </Link>
         
-        <h3 className="font-semibold text-gray-800 text-sm mb-0.5 line-clamp-1">
-          {propName}
+        <h3 className="font-semibold text-gray-800 text-base mb-1 line-clamp-1">
+          {name}
         </h3>
         
-        <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
-          {distance}
+        <div className="text-gray-500 text-xs mb-1 leading-tight">
+          {shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
-        <div className="flex items-center gap-0.5 mt-0.5 mb-0.5">
+        {/* Только отображение звезд, без кнопки "Подробнее" */}
+        <div className="flex items-center gap-1 mt-1 mb-2">
           {renderStars()}
-          {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
+          {bagTotalReviews > 0 && <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>}
         </div>
         
-        {showExpanded && (
-          <div className="mt-0.5 mb-0.5 p-1 bg-gray-50 rounded-lg">
-            {loading ? (
-              <div className="flex justify-center py-1">
-                <div className="w-2.5 h-2.5 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : bagItems.length > 0 ? (
-              <>
-                <p className="text-[8px] font-semibold text-gray-700 mb-0.5">Состав:</p>
-                {bagItems.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-[8px] py-0.5">
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px]">{getProductIcon(item.name)}</span>
-                      <span className="text-gray-600">{item.name} ×{item.quantity}</span>
-                    </div>
-                    <span className="font-medium">{(item.price * item.quantity).toLocaleString()} ₸</span>
-                  </div>
-                ))}
-                {bagItems.length > 3 && <p className="text-[7px] text-gray-400 text-center pt-0.5">+{bagItems.length - 3} еще</p>}
-              </>
-            ) : (
-              <p className="text-[8px] text-gray-400 text-center py-1">Нет информации</p>
-            )}
-          </div>
-        )}
-        
-        <div className="flex items-center justify-between mt-0.5 pt-0.5 border-t border-gray-100">
+        {/* Цена и кнопка - цена БОЛЬШЕ, кнопка В 2 РАЗА ДЛИННЕЕ */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
           <div>
-            <span className="text-xs font-bold text-[#367666]">{formatPrice(propPrice)}</span>
-            {propOriginalPrice > propPrice && (
-              <span className="text-gray-400 line-through text-[7px] ml-0.5">{formatPrice(propOriginalPrice)}</span>
-            )}
+            <span className="text-3xl font-bold text-[#367666]">{formatPrice(price)}</span>
+            {originalPrice > price && <span className="text-gray-400 line-through text-base ml-1">{formatPrice(originalPrice)}</span>}
           </div>
           
           <button
             onClick={addToCart}
             disabled={addingToCart}
-            className="bg-[#367666] text-white px-3 py-0.5 rounded-lg text-[9px] font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition"
+            className="bg-[#367666] text-white px-16 py-2 rounded-xl text-sm font-semibold hover:bg-[#2a5a4d] disabled:opacity-50 transition whitespace-nowrap"
           >
             {addingToCart ? (
-              <div className="w-2 h-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               'Заказать'
             )}

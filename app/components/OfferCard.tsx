@@ -297,10 +297,10 @@ export default function OfferCard({
               -{propDiscount}%
             </div>
           )}
-          <div className="flex items-center gap-1">
-            <Gift size={18} className="text-white drop-shadow-md" />
-            <span className="text-white text-[11px] font-bold">{totalItems}</span>
-          </div>
+          <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 shadow-sm">
+  <Gift size={16} className="text-gray-800" />
+  <span className="text-gray-800 text-[11px] font-bold">{totalItems}</span>
+</div>
         </div>
         
         {/* Сердечко - БЕЗ окружения */}

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { Store } from 'lucide-react';
+import { Store, Gift } from 'lucide-react';
 import OfferCard from './components/OfferCard';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -480,7 +480,10 @@ export default function HomePage() {
               <Store size={20} className="text-gray-400/60" />
               {t[lang].nearbyShops}
             </h2>
-            <p className="text-xs text-gray-500 mt-1">Сюрприз-пакеты рядом с вами</p>
+            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
+              <Gift size={14} className="text-gray-400" />
+              Сюрприз-пакеты рядом с вами
+            </p>
           </div>
           
           {viewMode === 'list' ? (
