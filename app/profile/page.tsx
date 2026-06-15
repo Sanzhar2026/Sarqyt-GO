@@ -1,11 +1,12 @@
-// app/profile/page.tsx
+// app/profile/page.tsx - исправленная версия
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '../layout';
-import { Camera, X, Loader2, LogOut } from 'lucide-react';
+import { Camera, X, Loader2 } from 'lucide-react';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -13,7 +14,8 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
+  const [avatarVersion, setAvatarVersion] = useState(0);
+  const [avatarError, setAvatarError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
@@ -49,7 +51,7 @@ export default function ProfilePage() {
     }
   };
 
-  // Супер-сжатие аватара (100x100, 70% качество = 5-8 KB!)
+  // Сжатие аватара
   const resizeAvatar = (file: File, targetSize: number = 100): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -70,7 +72,6 @@ export default function ProfilePage() {
             return;
           }
           
-          // Обрезаем в квадрат (берем центр)
           const minDimension = Math.min(img.width, img.height);
           const offsetX = (img.width - minDimension) / 2;
           const offsetY = (img.height - minDimension) / 2;
@@ -81,11 +82,10 @@ export default function ProfilePage() {
             0, 0, targetSize, targetSize
           );
           
-          // Конвертируем в WebP с качеством 70%
           canvas.toBlob(
             (blob) => {
               if (blob) {
-                console.log(`✅ Аватар сжат: ${(blob.size / 1024).toFixed(2)} KB`);
+                console.log(`✅ Avatar compressed: ${(blob.size / 1024).toFixed(2)} KB`);
                 resolve(blob);
               } else {
                 reject(new Error('Blob creation failed'));
@@ -113,28 +113,24 @@ export default function ProfilePage() {
     }
 
     setIsUploading(true);
+    setAvatarError(false);
     
     try {
-      // Проверка типа
       if (!file.type.startsWith('image/')) {
         alert('Пожалуйста, выберите изображение');
         return;
       }
       
-      // Проверка размера исходного файла (макс 5 MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('Файл не должен превышать 5 MB');
         return;
       }
       
-      // Сжимаем аватар
       const compressedBlob = await resizeAvatar(file, 100);
       
-      // Создаем FormData
       const formData = new FormData();
       formData.append('avatar', compressedBlob, `avatar_${user?.id}.webp`);
       
-      // Отправляем на сервер
       const response = await fetch(`${API_URL}/users/${user?.id}/avatar`, {
         method: 'POST',
         headers: {
@@ -148,19 +144,9 @@ export default function ProfilePage() {
         throw new Error(error.detail || 'Upload failed');
       }
       
-      const data = await response.json();
-      console.log('✅ Upload response:', data);
-      
-      // Обновляем timestamp чтобы перезагрузить аватар
-      setAvatarTimestamp(Date.now());
-      
-      // Обновляем sessionStorage
-      const storedUser = sessionStorage.getItem('user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        userData.avatar_url = data.avatar_url;
-        sessionStorage.setItem('user', JSON.stringify(userData));
-      }
+      // Обновляем версию аватара
+      setAvatarVersion(prev => prev + 1);
+      setAvatarError(false);
       
       alert('✅ Аватар успешно обновлен!');
       
@@ -193,16 +179,8 @@ export default function ProfilePage() {
         throw new Error('Delete failed');
       }
       
-      // Обновляем timestamp чтобы перезагрузить аватар
-      setAvatarTimestamp(Date.now());
-      
-      // Обновляем sessionStorage
-      const storedUser = sessionStorage.getItem('user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        userData.avatar_url = null;
-        sessionStorage.setItem('user', JSON.stringify(userData));
-      }
+      setAvatarVersion(prev => prev + 1);
+      setAvatarError(true);
       
       alert('✅ Аватар удален');
       
@@ -214,7 +192,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Обработчик выбора файла
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -225,7 +202,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Выход из аккаунта
   const handleLogout = () => {
     sessionStorage.clear();
     router.push('/login');
@@ -233,32 +209,28 @@ export default function ProfilePage() {
 
   // Загрузка данных пользователя
   useEffect(() => {
-    const token = sessionStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-    
     const loadUserData = async () => {
+      const token = sessionStorage.getItem('authToken');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+      
       try {
-        // Запрашиваем свежие данные с сервера
         const response = await fetch(`${API_URL}/api/check-auth`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         
         if (response.ok) {
           const data = await response.json();
           if (data.authenticated) {
-            const userData = {
+            setUser({
               id: data.user_id,
               full_name: data.user_name,
               phone: data.user_phone,
-              avatar_url: data.avatar_url
-            };
-            setUser(userData);
-            sessionStorage.setItem('user', JSON.stringify(userData));
+            });
+            // Проверяем есть ли аватар
+            setAvatarError(!data.avatar_url);
           }
         }
       } catch (error) {
@@ -312,21 +284,22 @@ export default function ProfilePage() {
           </div>
         </div>
         
-        {/* Аватар - используем прямой эндпоинт */}
+        {/* Аватар */}
         <div className="flex items-center gap-4">
           <div className="relative group">
             <div className="w-20 h-20 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
-              {user?.id ? (
+              {user?.id && !avatarError ? (
                 <img 
-                  src={`${API_URL}/users/avatar-file/${user.id}?t=${avatarTimestamp}`}
+                  src={`${API_URL}/users/avatar-file/${user.id}?v=${avatarVersion}`}
                   alt="Avatar" 
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.log('No avatar, using default');
-                    e.currentTarget.style.display = 'none';
-                    if (e.currentTarget.parentElement) {
-                      e.currentTarget.parentElement.innerHTML = '<span class="text-4xl">👤</span>';
-                    }
+                  onError={() => {
+                    console.log('Avatar not found, using default');
+                    setAvatarError(true);
+                  }}
+                  onLoad={() => {
+                    console.log('Avatar loaded successfully');
+                    setAvatarError(false);
                   }}
                 />
               ) : (
@@ -416,7 +389,6 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
-            {/* Мои заказы */}
             <Link href="/orders">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
                 <span className="font-medium text-gray-700">{t[lang].myOrders}</span>
@@ -424,7 +396,6 @@ export default function ProfilePage() {
               </div>
             </Link>
             
-            {/* Стать курьером - ведет на страницу курьера */}
             <Link href="/courier">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
                 <span className="font-medium text-gray-700">{t[lang].becomeCourier}</span>
@@ -432,7 +403,6 @@ export default function ProfilePage() {
               </div>
             </Link>
             
-            {/* Выйти */}
             <button
               onClick={handleLogout}
               className="w-full bg-red-50 p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer"
