@@ -19,6 +19,7 @@
     "postcss": "8.4.31",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-easy-crop": "^6.0.2",
     "react-leaflet": "^4.2.1",
     "react-usestateref": "^2.0.0",
     "sharp": "^0.32.6",

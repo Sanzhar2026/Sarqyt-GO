@@ -1,11 +1,13 @@
-// app/profile/page.tsx - ПОЛНАЯ ВЕРСИЯ
+// app/profile/page.tsx - с обрезкой аватара
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '../layout';
-import { Camera, X, Loader2, LogOut } from 'lucide-react';
+import { Camera, X, Loader2 } from 'lucide-react';
+import AvatarCropper from '../components/AvatarCropper';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,6 +17,8 @@ export default function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [avatarExists, setAvatarExists] = useState(false);
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
@@ -32,7 +36,8 @@ export default function ProfilePage() {
       removePhoto: 'Фотоны өшіру',
       uploading: 'Жүктелуде...',
       phone: 'Телефон',
-      logout: 'Шығу'
+      logout: 'Шығу',
+      cropAvatar: 'Аватарды қиып алу'
     },
     ru: {
       profile: 'Профиль',
@@ -46,66 +51,33 @@ export default function ProfilePage() {
       removePhoto: 'Удалить фото',
       uploading: 'Загрузка...',
       phone: 'Телефон',
-      logout: 'Выйти'
+      logout: 'Выйти',
+      cropAvatar: 'Обрезать аватар'
     }
   };
 
-  // Сжатие аватара (100x100, 70% качество = 5-8 KB)
-  const resizeAvatar = (file: File, targetSize: number = 100): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      
-      reader.onload = (event) => {
-        const img = new window.Image(); 
-        img.src = event.target?.result as string;
-        
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = targetSize;
-          canvas.height = targetSize;
-          
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Canvas error'));
-            return;
-          }
-          
-          // Обрезаем в квадрат (берем центр)
-          const minDimension = Math.min(img.width, img.height);
-          const offsetX = (img.width - minDimension) / 2;
-          const offsetY = (img.height - minDimension) / 2;
-          
-          ctx.drawImage(
-            img, 
-            offsetX, offsetY, minDimension, minDimension,
-            0, 0, targetSize, targetSize
-          );
-          
-          // Конвертируем в WebP с качеством 70%
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                console.log(`✅ Аватар сжат: ${(blob.size / 1024).toFixed(2)} KB`);
-                resolve(blob);
-              } else {
-                reject(new Error('Blob creation failed'));
-              }
-            },
-            'image/webp',
-            0.7
-          );
-        };
-        
-        img.onerror = () => reject(new Error('Image load failed'));
-      };
-      
-      reader.onerror = () => reject(new Error('File read failed'));
-    });
+  // Обработка выбора файла
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Пожалуйста, выберите изображение');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Файл не должен превышать 5 MB');
+        return;
+      }
+      setSelectedFile(file);
+      setShowCropper(true);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
-  // Загрузка аватара
-  const uploadAvatar = async (file: File) => {
+  // Загрузка обрезанного аватара
+  const uploadCroppedAvatar = async (croppedBlob: Blob) => {
     const token = sessionStorage.getItem('authToken');
     if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
@@ -114,22 +86,11 @@ export default function ProfilePage() {
     }
 
     setIsUploading(true);
+    setShowCropper(false);
     
     try {
-      if (!file.type.startsWith('image/')) {
-        alert('Пожалуйста, выберите изображение');
-        return;
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Файл не должен превышать 5 MB');
-        return;
-      }
-      
-      const compressedBlob = await resizeAvatar(file, 100);
-      
       const formData = new FormData();
-      formData.append('avatar', compressedBlob, `avatar_${user?.id}.webp`);
+      formData.append('avatar', croppedBlob, `avatar_${user?.id}.webp`);
       
       const response = await fetch(`${API_URL}/users/${user?.id}/avatar`, {
         method: 'POST',
@@ -144,7 +105,6 @@ export default function ProfilePage() {
         throw new Error(error.detail || 'Upload failed');
       }
       
-      // Обновляем версию аватара
       setAvatarVersion(prev => prev + 1);
       setAvatarExists(true);
       
@@ -155,6 +115,7 @@ export default function ProfilePage() {
       alert(error.message || 'Ошибка при загрузке аватара');
     } finally {
       setIsUploading(false);
+      setSelectedFile(null);
     }
   };
 
@@ -192,22 +153,12 @@ export default function ProfilePage() {
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      await uploadAvatar(file);
-    }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
   const handleLogout = () => {
     sessionStorage.clear();
     router.push('/login');
   };
 
-  // Загрузка данных пользователя и проверка аватара
+  // Загрузка данных пользователя
   useEffect(() => {
     const loadUserData = async () => {
       const token = sessionStorage.getItem('authToken');
@@ -230,7 +181,6 @@ export default function ProfilePage() {
               phone: data.user_phone,
             });
             
-            // Проверяем существует ли аватар
             const avatarCheck = await fetch(`${API_URL}/users/avatar-file/${data.user_id}`);
             setAvatarExists(avatarCheck.status === 200);
           }
@@ -295,31 +245,29 @@ export default function ProfilePage() {
                   src={`${API_URL}/users/avatar-file/${user.id}?v=${avatarVersion}`}
                   alt="Avatar" 
                   className="w-full h-full object-cover"
-                  onError={() => {
-                    console.log('Avatar load error, using default');
-                    setAvatarExists(false);
-                  }}
+                  onError={() => setAvatarExists(false)}
                 />
               ) : (
                 <span className="text-4xl">👤</span>
               )}
+              
+              {isUploading && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <Loader2 size={24} className="text-white animate-spin" />
+                </div>
+              )}
             </div>
             
-            {isLoggedIn && (
+            {isLoggedIn && !isUploading && (
               <>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
                   className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
-                  {isUploading ? (
-                    <Loader2 size={24} className="text-white animate-spin" />
-                  ) : (
-                    <Camera size={24} className="text-white" />
-                  )}
+                  <Camera size={24} className="text-white" />
                 </button>
                 
-                {!isUploading && avatarExists && (
+                {avatarExists && (
                   <button
                     onClick={removeAvatar}
                     className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 shadow-lg hover:bg-red-600 transition"
@@ -350,12 +298,6 @@ export default function ProfilePage() {
           onChange={handleFileSelect}
           className="hidden"
         />
-        
-        {isLoggedIn && (
-          <p className="text-white/50 text-[10px] mt-3">
-            📸 Аватар автоматически сжимается до ~5-8 KB
-          </p>
-        )}
       </div>
 
       {/* Menu */}
@@ -364,30 +306,19 @@ export default function ProfilePage() {
           <>
             <Link href="/login">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
-                <span className="flex items-center gap-3">
-                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                  </svg>
-                  <span className="font-medium text-gray-700">{t[lang].login}</span>
-                </span>
+                <span className="font-medium text-gray-700">{t[lang].login}</span>
                 <span className="text-gray-400">→</span>
               </div>
             </Link>
             <Link href="/signup">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
-                <span className="flex items-center gap-3">
-                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                  </svg>
-                  <span className="font-medium text-gray-700">{t[lang].register}</span>
-                </span>
+                <span className="font-medium text-gray-700">{t[lang].register}</span>
                 <span className="text-gray-400">→</span>
               </div>
             </Link>
           </>
         ) : (
           <>
-            {/* Мои заказы */}
             <Link href="/orders">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
                 <span className="font-medium text-gray-700">{t[lang].myOrders}</span>
@@ -395,7 +326,6 @@ export default function ProfilePage() {
               </div>
             </Link>
             
-            {/* Стать курьером */}
             <Link href="/courier">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
                 <span className="font-medium text-gray-700">{t[lang].becomeCourier}</span>
@@ -403,7 +333,6 @@ export default function ProfilePage() {
               </div>
             </Link>
             
-            {/* Выйти */}
             <button
               onClick={handleLogout}
               className="w-full bg-red-50 p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer"
@@ -414,6 +343,18 @@ export default function ProfilePage() {
           </>
         )}
       </div>
+
+      {/* Cropper Modal */}
+      {showCropper && selectedFile && (
+        <AvatarCropper
+          imageFile={selectedFile}
+          onCropComplete={uploadCroppedAvatar}
+          onCancel={() => {
+            setShowCropper(false);
+            setSelectedFile(null);
+          }}
+        />
+      )}
     </div>
   );
 }
