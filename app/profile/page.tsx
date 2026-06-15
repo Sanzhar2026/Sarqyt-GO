@@ -1,12 +1,11 @@
-// app/profile/page.tsx - исправленная версия
-
+// app/profile/page.tsx - ПОЛНАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '../layout';
-import { Camera, X, Loader2 } from 'lucide-react';
+import { Camera, X, Loader2, LogOut } from 'lucide-react';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,7 +14,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [avatarVersion, setAvatarVersion] = useState(0);
-  const [avatarError, setAvatarError] = useState(false);
+  const [avatarExists, setAvatarExists] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
@@ -51,7 +50,7 @@ export default function ProfilePage() {
     }
   };
 
-  // Сжатие аватара
+  // Сжатие аватара (100x100, 70% качество = 5-8 KB)
   const resizeAvatar = (file: File, targetSize: number = 100): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -72,6 +71,7 @@ export default function ProfilePage() {
             return;
           }
           
+          // Обрезаем в квадрат (берем центр)
           const minDimension = Math.min(img.width, img.height);
           const offsetX = (img.width - minDimension) / 2;
           const offsetY = (img.height - minDimension) / 2;
@@ -82,10 +82,11 @@ export default function ProfilePage() {
             0, 0, targetSize, targetSize
           );
           
+          // Конвертируем в WebP с качеством 70%
           canvas.toBlob(
             (blob) => {
               if (blob) {
-                console.log(`✅ Avatar compressed: ${(blob.size / 1024).toFixed(2)} KB`);
+                console.log(`✅ Аватар сжат: ${(blob.size / 1024).toFixed(2)} KB`);
                 resolve(blob);
               } else {
                 reject(new Error('Blob creation failed'));
@@ -113,7 +114,6 @@ export default function ProfilePage() {
     }
 
     setIsUploading(true);
-    setAvatarError(false);
     
     try {
       if (!file.type.startsWith('image/')) {
@@ -146,7 +146,7 @@ export default function ProfilePage() {
       
       // Обновляем версию аватара
       setAvatarVersion(prev => prev + 1);
-      setAvatarError(false);
+      setAvatarExists(true);
       
       alert('✅ Аватар успешно обновлен!');
       
@@ -180,7 +180,7 @@ export default function ProfilePage() {
       }
       
       setAvatarVersion(prev => prev + 1);
-      setAvatarError(true);
+      setAvatarExists(false);
       
       alert('✅ Аватар удален');
       
@@ -207,7 +207,7 @@ export default function ProfilePage() {
     router.push('/login');
   };
 
-  // Загрузка данных пользователя
+  // Загрузка данных пользователя и проверка аватара
   useEffect(() => {
     const loadUserData = async () => {
       const token = sessionStorage.getItem('authToken');
@@ -229,8 +229,10 @@ export default function ProfilePage() {
               full_name: data.user_name,
               phone: data.user_phone,
             });
-            // Проверяем есть ли аватар
-            setAvatarError(!data.avatar_url);
+            
+            // Проверяем существует ли аватар
+            const avatarCheck = await fetch(`${API_URL}/users/avatar-file/${data.user_id}`);
+            setAvatarExists(avatarCheck.status === 200);
           }
         }
       } catch (error) {
@@ -288,18 +290,14 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4">
           <div className="relative group">
             <div className="w-20 h-20 rounded-full overflow-hidden bg-white/20 flex items-center justify-center">
-              {user?.id && !avatarError ? (
+              {isLoggedIn && avatarExists ? (
                 <img 
                   src={`${API_URL}/users/avatar-file/${user.id}?v=${avatarVersion}`}
                   alt="Avatar" 
                   className="w-full h-full object-cover"
                   onError={() => {
-                    console.log('Avatar not found, using default');
-                    setAvatarError(true);
-                  }}
-                  onLoad={() => {
-                    console.log('Avatar loaded successfully');
-                    setAvatarError(false);
+                    console.log('Avatar load error, using default');
+                    setAvatarExists(false);
                   }}
                 />
               ) : (
@@ -321,7 +319,7 @@ export default function ProfilePage() {
                   )}
                 </button>
                 
-                {!isUploading && (
+                {!isUploading && avatarExists && (
                   <button
                     onClick={removeAvatar}
                     className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 shadow-lg hover:bg-red-600 transition"
@@ -389,6 +387,7 @@ export default function ProfilePage() {
           </>
         ) : (
           <>
+            {/* Мои заказы */}
             <Link href="/orders">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
                 <span className="font-medium text-gray-700">{t[lang].myOrders}</span>
@@ -396,6 +395,7 @@ export default function ProfilePage() {
               </div>
             </Link>
             
+            {/* Стать курьером */}
             <Link href="/courier">
               <div className="bg-white p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer">
                 <span className="font-medium text-gray-700">{t[lang].becomeCourier}</span>
@@ -403,6 +403,7 @@ export default function ProfilePage() {
               </div>
             </Link>
             
+            {/* Выйти */}
             <button
               onClick={handleLogout}
               className="w-full bg-red-50 p-5 rounded-3xl flex items-center justify-between shadow-sm hover:shadow-md transition cursor-pointer"
