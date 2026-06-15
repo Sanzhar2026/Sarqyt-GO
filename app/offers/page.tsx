@@ -33,7 +33,7 @@ export default function OffersPage() {
 
   const fetchBags = async () => {
     try {
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
+      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags/surprise');
       const data = await response.json();
       
       const bagsWithDetails = await Promise.all(
