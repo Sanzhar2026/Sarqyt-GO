@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/page.tsx - ПОЛНАЯ ВЕРСИЯ С ИСПРАВЛЕННОЙ ГЕОЛОКАЦИЕЙ
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -72,11 +72,18 @@ export default function HomePage() {
     }
     
     try {
-      // ✅ Получаем координаты из геолокации
-      const lat = location.lat || 43.238;
-      const lon = location.lon || 76.945;
+      // ✅ Используем реальные координаты из хука useGeolocation
+      // Если координаты еще не загружены - используем Актобе как fallback
+      let lat = location.lat || 50.283;  // Актобе по умолчанию
+      let lon = location.lon || 57.167;  // Актобе по умолчанию
       
-      // ✅ Добавляем координаты в запрос
+      // ✅ Сохраняем координаты в sessionStorage
+      sessionStorage.setItem('user_lat', String(lat));
+      sessionStorage.setItem('user_lon', String(lon));
+      
+      console.log(`📍 Ваше местоположение: ${lat}, ${lon}`);
+      
+      // ✅ Относительный путь (без CORS проблем)
       const response = await fetch(`/api/surprise-bags?lat=${lat}&lon=${lon}`, {
         credentials: 'include'
       });
