@@ -72,7 +72,12 @@ export default function HomePage() {
     }
     
     try {
-      const response = await fetch(`/api/surprise-bags`, {
+      // ✅ Получаем координаты из геолокации
+      const lat = location.lat || 43.238;
+      const lon = location.lon || 76.945;
+      
+      // ✅ Добавляем координаты в запрос
+      const response = await fetch(`/api/surprise-bags?lat=${lat}&lon=${lon}`, {
         credentials: 'include'
       });
       
@@ -98,7 +103,7 @@ export default function HomePage() {
         if (isInitial) setLoading(false);
       }
     }
-  }, []);
+  }, [location.lat, location.lon]);
 
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
     const toast = document.createElement('div');

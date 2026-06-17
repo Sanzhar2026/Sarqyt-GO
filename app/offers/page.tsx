@@ -1,10 +1,11 @@
-// app/offers/page.tsx
+// app/offers/page.tsx - С ИСПОЛЬЗОВАНИЕМ SurpriseBagCard
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SurpriseBagCard from '../components/SurCard';
 import { Gift } from 'lucide-react';
+import { useLanguage } from '../../layout';
 
 interface SurpriseBag {
   id: number;
@@ -26,19 +27,64 @@ interface SurpriseBag {
 
 export default function OffersPage() {
   const router = useRouter();
+  const { lang, setLang } = useLanguage();
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
 
   const getAuthToken = () => sessionStorage.getItem('authToken');
 
+  // ✅ Функция для получения координат
+  const getUserLocation = (): Promise<{ lat: number; lon: number }> => {
+    return new Promise((resolve) => {
+      const savedLat = sessionStorage.getItem('user_lat');
+      const savedLon = sessionStorage.getItem('user_lon');
+      
+      if (savedLat && savedLon) {
+        resolve({ lat: parseFloat(savedLat), lon: parseFloat(savedLon) });
+        return;
+      }
+      
+      if (!navigator.geolocation) {
+        resolve({ lat: 43.238, lon: 76.945 });
+        return;
+      }
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          sessionStorage.setItem('user_lat', String(lat));
+          sessionStorage.setItem('user_lon', String(lon));
+          resolve({ lat, lon });
+        },
+        () => {
+          const lat = parseFloat(sessionStorage.getItem('user_lat') || '43.238');
+          const lon = parseFloat(sessionStorage.getItem('user_lon') || '76.945');
+          resolve({ lat, lon });
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    });
+  };
+
   const fetchBags = async () => {
     try {
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags/surprise');
+      // ✅ Получаем координаты
+      const { lat, lon } = await getUserLocation();
+      console.log(`📍 Запрос сюрпризов для координат: ${lat}, ${lon}`);
+      
+      // ✅ Добавляем координаты в запрос
+      const response = await fetch(
+        `https://toogood-2ncf.onrender.com/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
+        { credentials: 'include' }
+      );
       const data = await response.json();
       
+      // ✅ Добавляем недостающие поля для SurpriseBagCard
       const bagsWithDetails = await Promise.all(
         data.map(async (bag: SurpriseBag) => {
           try {
+            // Получаем рейтинг
             const ratingRes = await fetch(`https://toogood-2ncf.onrender.com/api/surprise-bags/${bag.id}/rating`);
             let rating = 0, total_reviews = 0;
             if (ratingRes.ok) {
@@ -47,6 +93,7 @@ export default function OffersPage() {
               total_reviews = ratingData.total_reviews || 0;
             }
             
+            // Получаем адрес и время
             const supplierRes = await fetch(`https://toogood-2ncf.onrender.com/api/suppliers/${bag.supplier_id}`);
             let address = '', pickupStart = '', pickupEnd = '';
             if (supplierRes.ok) {
@@ -109,25 +156,56 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header - уменьшен на 35% */}
+      {/* Header */}
       <div className="bg-[#367666] text-white px-4 pt-12 pb-5">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Сюрприз-пакеты</h1>
-          <Gift size={24} className="text-white/80" />
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">
+              {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
+            </h1>
+            <Gift size={24} className="text-white/80" />
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={() => setLang('kz')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                lang === 'kz' 
+                  ? 'bg-white text-[#367666]' 
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              Қаз
+            </button>
+            <button
+              onClick={() => setLang('ru')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                lang === 'ru' 
+                  ? 'bg-white text-[#367666]' 
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              Рус
+            </button>
+          </div>
         </div>
-        <p className="text-emerald-100 text-sm mt-1">Выберите свой сюрприз-пакет</p>
+        <p className="text-emerald-100 text-sm mt-1">
+          {lang === 'kz' ? 'Өзіңізге сюрприз-пакетті таңдаңыз' : 'Выберите свой сюрприз-пакет'}
+        </p>
       </div>
 
       <div className="p-3">
         {bags.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-5xl mb-3">🎁</div>
-            <p className="text-gray-500 text-sm">Все пакеты временно забронированы</p>
+            <p className="text-gray-500 text-sm">
+              {lang === 'kz' ? 'Барлық пакеттер уақытша броньдалған' : 'Все пакеты временно забронированы'}
+            </p>
             <button 
               onClick={fetchBags}
               className="mt-3 text-[#367666] underline text-sm"
             >
-              Обновить
+              {lang === 'kz' ? 'Жаңарту' : 'Обновить'}
             </button>
           </div>
         ) : (
@@ -149,6 +227,7 @@ export default function OffersPage() {
                 pickupEndTime={bag.pickup_end_time}
                 rating={bag.rating}
                 totalReviews={bag.total_reviews}
+                onOrderSuccess={fetchBags}
               />
             ))}
           </div>
