@@ -27,7 +27,6 @@ export function GeolocationProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
 
-    // ✅ Проверяем sessionStorage
     const savedLat = sessionStorage.getItem('user_lat');
     const savedLon = sessionStorage.getItem('user_lon');
     const savedCity = sessionStorage.getItem('user_city');
@@ -54,11 +53,9 @@ export function GeolocationProvider({ children }: { children: ReactNode }) {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
         
-        // Сохраняем координаты
         sessionStorage.setItem('user_lat', String(lat));
         sessionStorage.setItem('user_lon', String(lon));
         
-        // Получаем город
         let city = 'Не определен';
         try {
           const response = await fetch(

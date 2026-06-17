@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import './globals.css';
 import BottomNav from './components/BottomNav';
 import { GeolocationProvider } from './context/GeolocationContext';
-import GeolocationRequest from './components/GeolocationRequest';
+import GeolocationRequest from './components/GeolocationRequest'; // ← ДОБАВИТЬ!
 
 type Language = 'kz' | 'ru';
 
@@ -115,7 +115,7 @@ export default function RootLayout({
                 {children}
               </div>
               <WebSocketListener />
-              <GeolocationRequest /> 
+              <GeolocationRequest />  {/* ← ДОБАВИТЬ! */}
               {!hideBottomNav && <BottomNav />}
             </div>
           </body>
