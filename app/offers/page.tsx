@@ -1,11 +1,10 @@
-// app/offers/page.tsx - С ИСПОЛЬЗОВАНИЕМ SurpriseBagCard
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SurpriseBagCard from '../components/SurCard';
 import { Gift } from 'lucide-react';
-import { useLanguage } from '../layout';
+import { useLanguage } from './../layout';
 
 interface SurpriseBag {
   id: number;
@@ -33,7 +32,6 @@ export default function OffersPage() {
 
   const getAuthToken = () => sessionStorage.getItem('authToken');
 
-  // ✅ Функция для получения координат
   const getUserLocation = (): Promise<{ lat: number; lon: number }> => {
     return new Promise((resolve) => {
       const savedLat = sessionStorage.getItem('user_lat');
@@ -69,23 +67,20 @@ export default function OffersPage() {
 
   const fetchBags = async () => {
     try {
-      // ✅ Получаем координаты
       const { lat, lon } = await getUserLocation();
       console.log(`📍 Запрос сюрпризов для координат: ${lat}, ${lon}`);
       
-      // ✅ Добавляем координаты в запрос
+      // ✅ ИСПОЛЬЗУЙТЕ ОТНОСИТЕЛЬНЫЙ ПУТЬ!
       const response = await fetch(
-        `https://toogood-2ncf.onrender.com/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
+        `/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
         { credentials: 'include' }
       );
       const data = await response.json();
       
-      // ✅ Добавляем недостающие поля для SurpriseBagCard
       const bagsWithDetails = await Promise.all(
         data.map(async (bag: SurpriseBag) => {
           try {
-            // Получаем рейтинг
-            const ratingRes = await fetch(`https://toogood-2ncf.onrender.com/api/surprise-bags/${bag.id}/rating`);
+            const ratingRes = await fetch(`/api/surprise-bags/${bag.id}/rating`);
             let rating = 0, total_reviews = 0;
             if (ratingRes.ok) {
               const ratingData = await ratingRes.json();
@@ -93,8 +88,7 @@ export default function OffersPage() {
               total_reviews = ratingData.total_reviews || 0;
             }
             
-            // Получаем адрес и время
-            const supplierRes = await fetch(`https://toogood-2ncf.onrender.com/api/suppliers/${bag.supplier_id}`);
+            const supplierRes = await fetch(`/api/suppliers/${bag.supplier_id}`);
             let address = '', pickupStart = '', pickupEnd = '';
             if (supplierRes.ok) {
               const supplierData = await supplierRes.json();
@@ -156,7 +150,6 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
       <div className="bg-[#367666] text-white px-4 pt-12 pb-5">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
