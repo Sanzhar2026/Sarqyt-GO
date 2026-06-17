@@ -38,7 +38,6 @@ export function GeolocationProvider({ children }: { children: ReactNode }) {
         city: savedCity || ''
       });
       setLoading(false);
-      console.log(`📍 Используем сохраненные координаты: ${savedCity || ''}`);
       return;
     }
 
@@ -70,7 +69,6 @@ export function GeolocationProvider({ children }: { children: ReactNode }) {
         
         setLocation({ lat, lon, city });
         setLoading(false);
-        console.log(`📍 Текущее положение: ${city} (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
       },
       (err) => {
         console.error('Геолокация ошибка:', err);

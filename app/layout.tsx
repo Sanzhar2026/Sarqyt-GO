@@ -1,11 +1,10 @@
+// app/layout.tsx
 'use client';
 import { WebSocketListener } from './components/WebSocketListener';
 import { useState, useEffect, createContext, useContext } from 'react';
-import { usePathname } from 'next/navigation';
 import './globals.css';
 import BottomNav from './components/BottomNav';
 import { GeolocationProvider } from './context/GeolocationContext';
-import GeolocationRequest from './components/GeolocationRequest'; // ← ДОБАВИТЬ!
 
 type Language = 'kz' | 'ru';
 
@@ -48,7 +47,6 @@ const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
 };
 // =======================================================
 
-// Глобальное состояние для скрытия BottomNav
 let globalHideBottomNav = false;
 export const setGlobalHideBottomNav = (value: boolean) => {
   globalHideBottomNav = value;
@@ -69,38 +67,6 @@ export default function RootLayout({
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ ЗАПРАШИВАЕМ ГЕОЛОКАЦИЮ ПРИ ЗАГРУЗКЕ
-  useEffect(() => {
-    // Проверяем есть ли уже сохраненные координаты
-    const savedLat = sessionStorage.getItem('user_lat');
-    const savedLon = sessionStorage.getItem('user_lon');
-    
-    if (savedLat && savedLon) {
-      console.log('📍 Уже есть сохраненные координаты');
-      return;
-    }
-
-    // Если нет - запрашиваем
-    if (navigator.geolocation) {
-      console.log('📍 Запрашиваем геолокацию...');
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          sessionStorage.setItem('user_lat', String(lat));
-          sessionStorage.setItem('user_lon', String(lon));
-          console.log(`📍 Геолокация получена: ${lat}, ${lon}`);
-        },
-        (error) => {
-          console.warn('❌ Геолокация запрещена или недоступна:', error.message);
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
-    } else {
-      console.warn('❌ Геолокация не поддерживается браузером');
-    }
-  }, []);
-
   return (
     <LanguageProvider>
       <GeolocationProvider>
@@ -115,7 +81,6 @@ export default function RootLayout({
                 {children}
               </div>
               <WebSocketListener />
-              <GeolocationRequest />  {/* ← ДОБАВИТЬ! */}
               {!hideBottomNav && <BottomNav />}
             </div>
           </body>
