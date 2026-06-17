@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import SurpriseBagCard from '../components/SurCard';
 import { Gift, Store } from 'lucide-react';
 import { useLanguage } from './../layout';
+import { useGeolocation } from '../context/GeolocationContext';
+import GeolocationRequest from '../components/GeolocationRequest';
 
 interface SurpriseBag {
   id: number;
@@ -28,41 +29,12 @@ interface SurpriseBag {
 export default function OffersPage() {
   const router = useRouter();
   const { lang, setLang } = useLanguage();
+  const { location, loading: locationLoading, error: locationError, refreshLocation } = useGeolocation();
+  
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
 
   const getAuthToken = () => sessionStorage.getItem('authToken');
-
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationError('Геолокация не поддерживается');
-      setLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        setLocation({ lat, lon });
-        sessionStorage.setItem('user_lat', String(lat));
-        sessionStorage.setItem('user_lon', String(lon));
-        setLocationError(null);
-      },
-      (error) => {
-        console.error('Geolocation error:', error);
-        let errorMsg = 'Не удалось определить местоположение';
-        if (error.code === 1) errorMsg = 'Доступ к геолокации запрещен';
-        if (error.code === 2) errorMsg = 'Позиция недоступна';
-        if (error.code === 3) errorMsg = 'Таймаут геолокации';
-        setLocationError(errorMsg);
-        setLoading(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  }, []);
 
   const fetchBags = async () => {
     if (!location) {
@@ -74,76 +46,30 @@ export default function OffersPage() {
       const { lat, lon } = location;
       console.log(`📍 Текущее положение: ${lat}, ${lon}`);
       
+      // ✅ ТОЛЬКО ОДИН ЗАПРОС! БЕЗ ВСЯКИХ РЕЙТИНГОВ!
       const response = await fetch(
         `/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
         { credentials: 'include' }
       );
       
+      console.log('📡 Статус:', response.status);
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        console.error('❌ Ошибка:', await response.text());
+        setBags([]);
+        setLoading(false);
+        return;
       }
       
       const data = await response.json();
-      console.log('📦 Bags received:', data.length);
+      console.log('📦 Получено сюрпризов:', data.length);
       
-      // ✅ Получаем детали для каждого бага
-      const bagsWithDetails = await Promise.all(
-        data.map(async (bag: SurpriseBag) => {
-          try {
-            // ✅ ПРАВИЛЬНЫЙ URL - без "surprise" в пути!
-            const ratingUrl = `/api/surprise-bags/${bag.id}/rating`;
-            const supplierUrl = `/api/suppliers/${bag.supplier_id}`;
-            
-            console.log(`🔍 Fetching rating: ${ratingUrl}`);
-            console.log(`🔍 Fetching supplier: ${supplierUrl}`);
-            
-            const [ratingRes, supplierRes] = await Promise.all([
-              fetch(ratingUrl, { credentials: 'include' }),
-              fetch(supplierUrl, { credentials: 'include' })
-            ]);
-            
-            let rating = 0, total_reviews = 0;
-            if (ratingRes.ok) {
-              const ratingData = await ratingRes.json();
-              rating = ratingData.rating || 0;
-              total_reviews = ratingData.total_reviews || 0;
-            }
-            
-            let address = '', pickupStart = '', pickupEnd = '';
-            if (supplierRes.ok) {
-              const supplierData = await supplierRes.json();
-              address = supplierData.address || '';
-              pickupStart = supplierData.pickup_start_time || '19:30';
-              pickupEnd = supplierData.pickup_end_time || '20:30';
-            }
-            
-            return { 
-              ...bag, 
-              rating, 
-              total_reviews,
-              address,
-              pickup_start_time: pickupStart,
-              pickup_end_time: pickupEnd
-            };
-          } catch (e) {
-            console.error('Error fetching details for bag:', bag.id, e);
-            return { 
-              ...bag, 
-              rating: 0, 
-              total_reviews: 0,
-              address: '',
-              pickup_start_time: '19:30',
-              pickup_end_time: '20:30'
-            };
-          }
-        })
-      );
+      // ✅ ПРОСТО УСТАНАВЛИВАЕМ ДАННЫЕ
+      setBags(data);
       
-      setBags(bagsWithDetails);
     } catch (error) {
-      console.error('❌ Error fetching bags:', error);
+      console.error('❌ Error:', error);
+      setBags([]);
     } finally {
       setLoading(false);
     }
@@ -162,7 +88,7 @@ export default function OffersPage() {
     }
   }, [router]);
 
-  if (loading) {
+  if (loading || locationLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
@@ -178,7 +104,7 @@ export default function OffersPage() {
           <h2 className="text-xl font-bold mb-2">Геолокация недоступна</h2>
           <p className="text-gray-500 text-sm">{locationError}</p>
           <button 
-            onClick={() => window.location.reload()}
+            onClick={refreshLocation}
             className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl"
           >
             Попробовать снова
@@ -201,79 +127,31 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">
-              <span className="text-white">SARQYT</span>{' '}
-              <span className="text-[#FFD700]">GO</span>
-            </h1>
-            <p className="text-emerald-100 text-sm mt-1">
-              {lang === 'kz' ? 'Сюрприз-пакеттер' : 'Сюрприз-пакеты'}
-            </p>
-          </div>
-          
-          <div className="flex gap-2 mt-1">
-            <button
-              onClick={() => setLang('kz')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                lang === 'kz' 
-                  ? 'bg-white text-[#367666]' 
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
-            >
-              Қаз
-            </button>
-            <button
-              onClick={() => setLang('ru')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                lang === 'ru' 
-                  ? 'bg-white text-[#367666]' 
-                  : 'bg-white/20 text-white hover:bg-white/30'
-              }`}
-            >
-              Рус
-            </button>
-          </div>
+      <GeolocationRequest />
+      
+      <div className="bg-[#367666] text-white px-4 pt-12 pb-5">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Сюрприз-пакеты</h1>
+          <Gift size={24} className="text-white/80" />
         </div>
+        <p className="text-emerald-100 text-sm mt-1">Выберите свой сюрприз-пакет</p>
       </div>
 
-      <div className="px-6 -mt-4">
-        <input 
-          type="text" 
-          placeholder={lang === 'kz' ? 'Сюрприз-пакет іздеу...' : 'Поиск сюрприз-пакетов...'} 
-          className="w-full px-6 py-4 rounded-2xl bg-white shadow-md text-base focus:outline-none focus:ring-2 focus:ring-[#367666] placeholder:text-gray-400"
-        />
-      </div>
-
-      <div className="px-3 mt-6">
-        <div className="mb-4">
-          <h2 className="font-bold text-lg flex items-center gap-2">
-            <Store size={20} className="text-gray-400/60" />
-            {lang === 'kz' ? 'Жақын маңдағы ұсыныстар' : 'Предложения рядом'}
-          </h2>
-          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
-            <Gift size={14} className="text-gray-400" />
-            {lang === 'kz' ? 'Сюрприз-пакеттер сізге жақын' : 'Сюрприз-пакеты рядом с вами'}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {bags.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-5xl mb-3">🎁</div>
-              <p className="text-gray-500 text-sm">
-                {lang === 'kz' ? 'Барлық пакеттер уақытша броньдалған' : 'Все пакеты временно забронированы'}
-              </p>
-              <button 
-                onClick={fetchBags}
-                className="mt-3 text-[#367666] underline text-sm"
-              >
-                {lang === 'kz' ? 'Жаңарту' : 'Обновить'}
-              </button>
-            </div>
-          ) : (
-            bags.map((bag) => (
+      <div className="p-3">
+        {bags.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-5xl mb-3">🎁</div>
+            <p className="text-gray-500 text-sm">Все пакеты временно забронированы</p>
+            <button 
+              onClick={fetchBags}
+              className="mt-3 text-[#367666] underline text-sm"
+            >
+              Обновить
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {bags.map((bag) => (
               <SurpriseBagCard
                 key={bag.id}
                 id={bag.id}
@@ -285,16 +163,16 @@ export default function OffersPage() {
                 imageUrl={bag.image_url}
                 description={bag.description}
                 availableQuantity={bag.available_quantity}
-                address={bag.address}
-                pickupStartTime={bag.pickup_start_time}
-                pickupEndTime={bag.pickup_end_time}
-                rating={bag.rating}
-                totalReviews={bag.total_reviews}
+                address={bag.address || ''}
+                pickupStartTime={bag.pickup_start_time || ''}
+                pickupEndTime={bag.pickup_end_time || ''}
+                rating={0}
+                totalReviews={0}
                 onOrderSuccess={fetchBags}
               />
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
