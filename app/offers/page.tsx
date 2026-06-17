@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SurpriseBagCard from '../components/SurCard';
 import { Gift } from 'lucide-react';
-import { useLanguage } from '../../layout';
+import { useLanguage } from '../layout';
 
 interface SurpriseBag {
   id: number;
