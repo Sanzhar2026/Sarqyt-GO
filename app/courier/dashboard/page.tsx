@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ТОЧНО КАК inDRIVER
+// app/courier/dashboard/page.tsx - ЧУТЬ СВЕТЛЕЙ ТЕМА
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -8,30 +8,27 @@ import Link from 'next/link';
 
 const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: false });
 
-// ============ ИКОНКИ (ТОЛЬКО SVG) ============
+// ============ ИКОНКИ ============
 const CarIcon = ({ size = 24, className = "" }) => (
   <div className={`inline-flex items-center justify-center ${className}`}>
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500/70">
       <path d="M5 17h14M5 17a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2M5 17a2 2 0 1 0 4 0M19 17a2 2 0 1 0-4 0" />
       <path d="M7 9V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
     </svg>
   </div>
 );
 
+const LocationIcon = ({ size = 24, className = "" }) => (
+  <div className={`inline-flex items-center justify-center ${className}`}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500/70">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  </div>
+);
+
 const OnlineIcon = ({ isOnline = false }) => (
-  <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-gray-600'}`} />
-);
-
-const CloseIcon = () => (
-  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-
-const MenuIcon = () => (
-  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-  </svg>
+  <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
 );
 
 export default function CourierDashboard() {
@@ -42,7 +39,8 @@ export default function CourierDashboard() {
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [switching, setSwitching] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);
   
   const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -52,7 +50,7 @@ export default function CourierDashboard() {
   const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
   const [wsFailed, setWsFailed] = useState(false);
 
-  // ============ ВСЕ ФУНКЦИИ ============
+  // ============ ВСЕ ФУНКЦИИ (БЕЗ ИЗМЕНЕНИЙ) ============
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371;
     const dlat = (lat2 - lat1) * Math.PI / 180;
@@ -95,6 +93,7 @@ export default function CourierDashboard() {
             
             setStatus(data);
             setIsOnline(data.is_online);
+            setOrderStatus(data.current_order_status);
             
             sessionStorage.setItem('courier', JSON.stringify(data));
             
@@ -249,6 +248,31 @@ export default function CourierDashboard() {
     }, 3000);
   };
 
+  const centerToMyLocation = () => {
+    setLocating(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lon: longitude });
+          window.dispatchEvent(new CustomEvent('centerMap', { 
+            detail: { lat: latitude, lon: longitude, zoom: 16 }
+          }));
+          setLocating(false);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          alert('Не удалось определить местоположение');
+          setLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      alert('Геолокация не поддерживается');
+      setLocating(false);
+    }
+  };
+
   const fetchStatus = async () => {
     const token = sessionStorage.getItem('courierToken');
     if (!token) return;
@@ -260,6 +284,7 @@ export default function CourierDashboard() {
       if (data.success) {
         setIsOnline(data.is_online);
         setStatus(data);
+        setOrderStatus(data.current_order_status);
         if (data.current_order_id) {
           fetchCurrentOrder(data.current_order_id);
         }
@@ -347,6 +372,16 @@ export default function CourierDashboard() {
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'almost_done': return '🔔 Почти закончил';
+      case 'delivering': return '🚚 Доставка';
+      case 'assigned': return '📦 Заказ назначен';
+      case 'nearby': return '📍 Рядом с клиентом';
+      default: return '✅ На линии';
+    }
+  };
+
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const toast = document.createElement('div');
     toast.className = `fixed bottom-24 left-4 right-4 z-50 p-3 rounded-xl text-white text-center text-sm ${
@@ -361,146 +396,161 @@ export default function CourierDashboard() {
     router.push('/profile');
   };
 
+  // ============ ЗАГРУЗКА ============
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
-          <p className="text-gray-400 text-sm">Загрузка...</p>
+          <p className="text-gray-500 text-sm">Загрузка...</p>
         </div>
       </div>
     );
   }
 
-  // ============ ОСНОВНОЙ JSX - КАРТА НА ВСЮ СТРАНИЦУ ============
+  // ============ ОСНОВНОЙ JSX - ЧУТЬ СВЕТЛЕЙ ============
   return (
-    <div className="fixed inset-0 bg-gray-900">
-      {/* КАРТА НА ВСЮ СТРАНИЦУ */}
-      <CourierMap
-        orderId={currentOrder?.id}
-        restaurantLocation={currentOrder?.supplier ? { 
-          lat: currentOrder.supplier.lat, 
-          lon: currentOrder.supplier.lon 
-        } : undefined}
-        customerLocation={currentOrder?.customer_lat ? { 
-          lat: currentOrder.customer_lat, 
-          lon: currentOrder.customer_lon 
-        } : undefined}
-        height="100vh"
-      />
-
-      {/* ============ ВЕРХНЯЯ ПАНЕЛЬ (как inDriver) ============ */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-4 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
-        <div className="flex justify-between items-center pointer-events-auto">
-          <button onClick={goToProfile} className="w-10 h-10 bg-gray-800/80 backdrop-blur rounded-full flex items-center justify-center border border-gray-600/50">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="min-h-screen bg-gray-100 pb-32">
+      {/* HEADER */}
+      <div className="bg-white/95 backdrop-blur border-b border-gray-200 px-6 pt-12 pb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3 text-gray-800">
+              <CarIcon size={28} />
+              Панель курьера
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">
+              {status?.first_name} {status?.last_name}
+            </p>
+            {userLocation && (
+              <p className="text-gray-400 text-xs mt-1 flex items-center gap-1">
+                <span className="text-emerald-500">●</span>
+                {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}
+              </p>
+            )}
+          </div>
+          <button onClick={goToProfile} className="bg-gray-100 hover:bg-gray-200 rounded-full p-2.5 transition">
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </button>
-          
-          <div className="flex items-center gap-3 pointer-events-auto">
-            <div className="flex items-center gap-2 bg-gray-800/80 backdrop-blur rounded-full px-3 py-1.5 border border-gray-600/50">
-              <OnlineIcon isOnline={isOnline} />
-              <span className="text-white text-xs font-medium">
-                {isOnline ? 'На линии' : 'Офлайн'}
-              </span>
+        </div>
+      </div>
+
+      {/* КАРТА */}
+      <div className="relative h-72 mx-4 mt-4 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+        <CourierMap
+          orderId={currentOrder?.id}
+          restaurantLocation={currentOrder?.supplier ? { lat: currentOrder.supplier.lat, lon: currentOrder.supplier.lon } : undefined}
+          customerLocation={currentOrder?.customer_lat ? { lat: currentOrder.customer_lat, lon: currentOrder.customer_lon } : undefined}
+          height="100%"
+        />
+        
+        <button
+          onClick={centerToMyLocation}
+          disabled={locating}
+          className="absolute bottom-4 right-4 z-[1000] bg-white/90 backdrop-blur rounded-full shadow-lg p-3 hover:bg-gray-100 transition-all active:scale-95 disabled:opacity-50 border border-gray-200"
+        >
+          {locating ? (
+            <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <LocationIcon size={20} />
+          )}
+        </button>
+      </div>
+
+      {/* СТАТУС ОНЛАЙН */}
+      <div className="px-4 mt-4">
+        <div className="bg-white/95 backdrop-blur rounded-2xl p-5 shadow-lg border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <OnlineIcon isOnline={isOnline} />
+                {isOnline && <div className="absolute -inset-1 bg-emerald-400/20 rounded-full animate-ping" />}
+              </div>
+              <div>
+                <p className={`font-semibold text-lg ${isOnline ? 'text-gray-800' : 'text-gray-400'}`}>
+                  {isOnline ? 'На линии' : 'Офлайн'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {isOnline ? 'Готов принимать заказы' : 'Включите режим'}
+                </p>
+              </div>
             </div>
             <button
               onClick={toggleOnlineMode}
               disabled={switching}
-              className={`pointer-events-auto px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                isOnline 
-                  ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
-                  : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
-              }`}
+              className={`relative w-14 h-8 rounded-full transition-all duration-300 ${isOnline ? 'bg-emerald-500' : 'bg-gray-300'} ${switching ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
             >
-              {isOnline ? 'Выключить' : 'Включить'}
+              <span className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 flex items-center justify-center text-xs font-bold ${isOnline ? 'translate-x-6' : 'translate-x-0'}`}>
+                {isOnline ? '✓' : '✕'}
+              </span>
             </button>
           </div>
-        </div>
-        
-        {userLocation && (
-          <div className="pointer-events-auto mt-2">
-            <p className="text-gray-400 text-xs">
-              📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ============ НИЖНЯЯ ПАНЕЛЬ (как inDriver) ============ */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
-        <div className="max-w-md mx-auto space-y-3 pointer-events-auto">
-          {/* СТАТУС ОНЛАЙН */}
-          <div className="bg-gray-800/90 backdrop-blur rounded-2xl p-4 border border-gray-700/50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <OnlineIcon isOnline={isOnline} />
-                  {isOnline && <div className="absolute -inset-1 bg-emerald-400/20 rounded-full animate-ping" />}
-                </div>
-                <div>
-                  <p className={`font-semibold text-sm ${isOnline ? 'text-white' : 'text-gray-400'}`}>
-                    {isOnline ? 'На линии' : 'Офлайн'}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {isOnline ? 'Принимаю заказы' : 'Не принимаю заказы'}
-                  </p>
-                </div>
+          
+          {isOnline && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">Статус:</span>
+                <span className="text-emerald-500 font-medium flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                  Принимаю заказы
+                </span>
               </div>
-              <button
-                onClick={toggleOnlineMode}
-                disabled={switching}
-                className={`relative w-12 h-7 rounded-full transition-all duration-300 ${
-                  isOnline ? 'bg-emerald-500' : 'bg-gray-600'
-                } ${switching ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
-              >
-                <span className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-300 ${
-                  isOnline ? 'translate-x-5' : 'translate-x-0'
-                }`} />
-              </button>
+              {orderStatus && (
+                <div className="flex items-center justify-between text-sm mt-2">
+                  <span className="text-gray-500">Текущий статус:</span>
+                  <span className="text-blue-500 font-medium">{getStatusText(orderStatus)}</span>
+                </div>
+              )}
             </div>
-            
-            {isOnline && (
-              <div className="mt-3 pt-3 border-t border-gray-700/50">
-                <p className="text-emerald-400 text-xs font-medium flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                  Ожидание заказов...
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* ИНФОРМАЦИЯ О ЗАКАЗЕ (если есть) */}
-          {currentOrder && (
-            <div className="bg-gray-800/90 backdrop-blur rounded-2xl p-4 border border-gray-700/50 animate-slide-up">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Текущий заказ</p>
-                  <p className="text-white font-semibold text-sm">#{currentOrder.order_number}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-emerald-400 font-bold text-sm">{currentOrder.amount_paid} ₸</p>
-                  <p className="text-xs text-gray-500">{currentOrder.status}</p>
-                </div>
-              </div>
-              
-              <div className="mt-3 flex gap-2">
-                <div className="flex-1 bg-emerald-500/20 rounded-xl p-2 text-center">
-                  <p className="text-emerald-400 text-xs font-medium">
-                    {currentOrder.supplier?.business_name || 'Ресторан'}
-                  </p>
-                </div>
-                <div className="flex-1 bg-blue-500/20 rounded-xl p-2 text-center">
-                  <p className="text-blue-400 text-xs font-medium">
-                    {currentOrder.customer_address || 'Клиент'}
-                  </p>
-                </div>
-              </div>
+          )}
+          
+          {!isOnline && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-400 text-center">💤 Нажмите на ползунок чтобы выйти на линию</p>
             </div>
           )}
         </div>
       </div>
+
+      {/* ТЕКУЩИЙ ЗАКАЗ */}
+      {currentOrder && currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
+        <div className="px-4 mt-4 pb-32">
+          <div className="bg-white/95 backdrop-blur rounded-2xl p-5 shadow-lg border border-gray-200">
+            <h2 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
+              📦 Текущий заказ #{currentOrder.order_number}
+            </h2>
+            
+            <div className="space-y-3 mb-4">
+              <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                <span className="text-gray-500">Ресторан:</span>
+                <span className="font-medium text-gray-800 text-right">{currentOrder.supplier?.business_name}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                <span className="text-gray-500">Клиент:</span>
+                <span className="font-medium text-gray-800 text-right">{currentOrder.customer_address || 'Адрес не указан'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">Сумма:</span>
+                <span className="font-bold text-emerald-500 text-lg">{currentOrder.amount_paid} ₸</span>
+              </div>
+            </div>
+            
+            {currentOrder.status === 'ready_for_pickup' && (
+              <button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-xl font-semibold transition disabled:opacity-50">
+                📦 Забрал заказ из ресторана
+              </button>
+            )}
+            
+            {currentOrder.status === 'picked_up' && (
+              <button className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-xl font-semibold transition disabled:opacity-50">
+                🚗 Я приехал
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
