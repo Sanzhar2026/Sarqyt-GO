@@ -80,16 +80,25 @@ export default function OffersPage() {
         { credentials: 'include' }
       );
       
+      console.log('📡 Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
       
       const data = await response.json();
+      console.log('📦 Bags received:', data.length);
       
       const bagsWithDetails = await Promise.all(
         data.map(async (bag: SurpriseBag) => {
           try {
-            const ratingRes = await fetch(`/api/surprise-bags/${bag.id}/rating`);
+            const [ratingRes, supplierRes] = await Promise.all([
+              fetch(`/api/surprise-bags/${bag.id}/rating`, { credentials: 'include' }),
+              fetch(`/api/suppliers/${bag.supplier_id}`, { credentials: 'include' })
+            ]);
+            
             let rating = 0, total_reviews = 0;
             if (ratingRes.ok) {
               const ratingData = await ratingRes.json();
@@ -97,7 +106,6 @@ export default function OffersPage() {
               total_reviews = ratingData.total_reviews || 0;
             }
             
-            const supplierRes = await fetch(`/api/suppliers/${bag.supplier_id}`);
             let address = '', pickupStart = '', pickupEnd = '';
             if (supplierRes.ok) {
               const supplierData = await supplierRes.json();
@@ -115,16 +123,16 @@ export default function OffersPage() {
               pickup_end_time: pickupEnd
             };
           } catch (e) {
-            console.error('Error fetching details:', e);
+            console.error('Error fetching details for bag:', bag.id, e);
+            return { 
+              ...bag, 
+              rating: 0, 
+              total_reviews: 0,
+              address: '',
+              pickup_start_time: '19:30',
+              pickup_end_time: '20:30'
+            };
           }
-          return { 
-            ...bag, 
-            rating: 0, 
-            total_reviews: 0,
-            address: '',
-            pickup_start_time: '19:30',
-            pickup_end_time: '20:30'
-          };
         })
       );
       
