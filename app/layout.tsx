@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import './globals.css';
 import BottomNav from './components/BottomNav';
 import { GeolocationProvider } from './context/GeolocationContext';
+import GeolocationRequest from './components/GeolocationRequest';
 
 type Language = 'kz' | 'ru';
 
@@ -68,6 +69,38 @@ export default function RootLayout({
     return () => clearInterval(interval);
   }, []);
 
+  // ✅ ЗАПРАШИВАЕМ ГЕОЛОКАЦИЮ ПРИ ЗАГРУЗКЕ
+  useEffect(() => {
+    // Проверяем есть ли уже сохраненные координаты
+    const savedLat = sessionStorage.getItem('user_lat');
+    const savedLon = sessionStorage.getItem('user_lon');
+    
+    if (savedLat && savedLon) {
+      console.log('📍 Уже есть сохраненные координаты');
+      return;
+    }
+
+    // Если нет - запрашиваем
+    if (navigator.geolocation) {
+      console.log('📍 Запрашиваем геолокацию...');
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          sessionStorage.setItem('user_lat', String(lat));
+          sessionStorage.setItem('user_lon', String(lon));
+          console.log(`📍 Геолокация получена: ${lat}, ${lon}`);
+        },
+        (error) => {
+          console.warn('❌ Геолокация запрещена или недоступна:', error.message);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    } else {
+      console.warn('❌ Геолокация не поддерживается браузером');
+    }
+  }, []);
+
   return (
     <LanguageProvider>
       <GeolocationProvider>
@@ -82,6 +115,7 @@ export default function RootLayout({
                 {children}
               </div>
               <WebSocketListener />
+              <GeolocationRequest /> 
               {!hideBottomNav && <BottomNav />}
             </div>
           </body>
