@@ -1,4 +1,3 @@
-// app/page.tsx - ПОЛНАЯ ВЕРСИЯ С ИСПРАВЛЕННОЙ ГЕОЛОКАЦИЕЙ
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -8,7 +7,6 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Store, Gift } from 'lucide-react';
 import OfferCard from './components/OfferCard';
-import { useGeolocation } from './hooks/useGeolocation';
 import { useWebSocket } from './hooks/useWebSocket';
 import { setGlobalHideBottomNav } from './layout';
 import { useLanguage } from './layout';
@@ -33,7 +31,6 @@ interface SurpriseBag {
 
 export default function HomePage() {
   const router = useRouter();
-  const location = useGeolocation();
   const { lang, setLang } = useLanguage(); 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [bags, setBags] = useState<SurpriseBag[]>([]);
@@ -43,9 +40,41 @@ export default function HomePage() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
+
+  // ✅ ТОЛЬКО ГЕОЛОКАЦИЯ!
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationError('Геолокация не поддерживается');
+      setLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        setLocation({ lat, lon });
+        sessionStorage.setItem('user_lat', String(lat));
+        sessionStorage.setItem('user_lon', String(lon));
+        setLocationError(null);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        let errorMsg = 'Не удалось определить местоположение';
+        if (error.code === 1) errorMsg = 'Доступ к геолокации запрещен';
+        if (error.code === 2) errorMsg = 'Позиция недоступна';
+        if (error.code === 3) errorMsg = 'Таймаут геолокации';
+        setLocationError(errorMsg);
+        setLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, []);
 
   // Получаем токен
   useEffect(() => {
@@ -71,19 +100,17 @@ export default function HomePage() {
       setIsRefreshing(true);
     }
     
+    if (!location) {
+      console.log('⏳ Ожидание геолокации...');
+      if (isInitial) setLoading(false);
+      return;
+    }
+    
     try {
-      // ✅ Используем реальные координаты из хука useGeolocation
-      // Если координаты еще не загружены - используем Актобе как fallback
-      let lat = location.lat || 50.283;  // Актобе по умолчанию
-      let lon = location.lon || 57.167;  // Актобе по умолчанию
-      
-      // ✅ Сохраняем координаты в sessionStorage
-      sessionStorage.setItem('user_lat', String(lat));
-      sessionStorage.setItem('user_lon', String(lon));
-      
+      const { lat, lon } = location;
       console.log(`📍 Ваше местоположение: ${lat}, ${lon}`);
       
-      // ✅ Относительный путь (без CORS проблем)
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ!
       const response = await fetch(`/api/surprise-bags?lat=${lat}&lon=${lon}`, {
         credentials: 'include'
       });
@@ -110,7 +137,14 @@ export default function HomePage() {
         if (isInitial) setLoading(false);
       }
     }
-  }, [location.lat, location.lon]);
+  }, [location]);
+
+  // Загружаем сюрпризы когда есть геолокация
+  useEffect(() => {
+    if (location && !loading) {
+      fetchBags(true, true);
+    }
+  }, [location]);
 
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
     const toast = document.createElement('div');
@@ -316,14 +350,6 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (showSplash) return;
-    if (!initialLoadDoneRef.current) {
-      initialLoadDoneRef.current = true;
-      fetchBags(true, true);
-    }
-  }, [showSplash, fetchBags]);
-
-  useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
@@ -426,9 +452,37 @@ export default function HomePage() {
     );
   }
 
+  if (locationError) {
+    return (
+      <div className="min-h-dvh bg-gray-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl p-8 text-center max-w-md">
+          <div className="text-5xl mb-4">📍</div>
+          <h2 className="text-xl font-bold mb-2">Геолокация недоступна</h2>
+          <p className="text-gray-500 text-sm">{locationError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!location) {
+    return (
+      <div className="min-h-dvh bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full mx-auto"></div>
+          <p className="mt-4 text-gray-500">Определение местоположения...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header с логотипом и номером телефона */}
       <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">
@@ -443,7 +497,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Search Bar */}
       <div className="px-6 -mt-4">
         <input 
           type="text" 
@@ -452,7 +505,6 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Toggle Buttons */}
       <div className="px-6 mt-4">
         <div className="bg-gray-100 p-1 rounded-2xl flex gap-1">
           <button
@@ -484,11 +536,9 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Контейнер без белой карточки-обертки */}
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>
-            {/* Заголовок с иконкой Store */}
             <div className="mb-4">
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <Store size={20} className="text-gray-400/60" />

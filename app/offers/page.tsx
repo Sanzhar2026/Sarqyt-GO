@@ -1,4 +1,3 @@
-// app/offers/page.tsx - ТОЛЬКО ГЕОЛОКАЦИЯ!
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -35,7 +34,7 @@ export default function OffersPage() {
 
   const getAuthToken = () => sessionStorage.getItem('authToken');
 
-  // ✅ ТОЛЬКО ГЕОЛОКАЦИЯ, БЕЗ ДЕФОЛТНЫХ ЗНАЧЕНИЙ!
+  // ТОЛЬКО ГЕОЛОКАЦИЯ
   useEffect(() => {
     if (!navigator.geolocation) {
       setLocationError('Геолокация не поддерживается');
@@ -75,10 +74,16 @@ export default function OffersPage() {
       const { lat, lon } = location;
       console.log(`📍 Текущее положение: ${lat}, ${lon}`);
       
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ!
       const response = await fetch(
         `/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
         { credentials: 'include' }
       );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
       const data = await response.json();
       
       const bagsWithDetails = await Promise.all(
@@ -153,7 +158,6 @@ export default function OffersPage() {
     );
   }
 
-  // Показываем ошибку если геолокация не доступна
   if (locationError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -185,7 +189,6 @@ export default function OffersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header - уменьшен на 35% */}
       <div className="bg-[#367666] text-white px-4 pt-12 pb-5">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">Сюрприз-пакеты</h1>
