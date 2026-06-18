@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ
+// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ (с компактными уведомлениями)
 
 'use client';
 
@@ -45,7 +45,6 @@ export default function CourierDashboard() {
   const [switching, setSwitching] = useState(false);
   const [locating, setLocating] = useState(false);
   
-  // ✅ Состояния заказа
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [orderStage, setOrderStage] = useState<'list' | 'details' | 'to_restaurant' | 'to_customer' | 'arrived' | 'waiting_confirmation' | 'completed'>('list');
   const [showOrdersList, setShowOrdersList] = useState(true);
@@ -60,11 +59,21 @@ export default function CourierDashboard() {
   
   const MAX_WS_RECONNECT_ATTEMPTS = 3;
 
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('courierToken') || 
+           sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') ||
+           null;
+  };
+
   // ============ ПРОВЕРКА АВТОРИЗАЦИИ ============
   useEffect(() => {
     const checkAuth = async () => {
-      const token = sessionStorage.getItem('courierToken');
+      const token = getAuthToken();
       const courierData = sessionStorage.getItem('courier');
+      
+      console.log('🔑 Токен на дашборде:', token ? 'Есть ✅' : 'Нет ❌');
       
       if (!token || !courierData) {
         router.push('/courier/login');
@@ -79,6 +88,7 @@ export default function CourierDashboard() {
         if (response.status === 401) {
           sessionStorage.removeItem('courierToken');
           sessionStorage.removeItem('courier');
+          sessionStorage.removeItem('userToken');
           router.push('/courier/login');
           return;
         }
@@ -95,7 +105,10 @@ export default function CourierDashboard() {
             setStatus(data);
             setIsOnline(data.is_online);
             
-            sessionStorage.setItem('courier', JSON.stringify(data));
+            sessionStorage.setItem('courier', JSON.stringify({
+              ...data,
+              role: 'courier'
+            }));
             
             if (data.is_online && !locationIntervalRef.current) {
               startLocationTracking();
@@ -128,7 +141,7 @@ export default function CourierDashboard() {
 
   // ============ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ============
   const connectWebSocket = () => {
-    const token = sessionStorage.getItem('courierToken');
+    const token = getAuthToken();
     if (!token || wsFailed || wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) return;
     
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -170,18 +183,17 @@ export default function CourierDashboard() {
         }
         
         if (data.type === 'new_order') {
-          showNotification('🆕 Новый заказ доступен!', 'info');
+          showCompactNotification('🆕 Новый заказ доступен!', 'info');
           fetchAvailableOrders();
         }
         
         if (data.type === 'order_assigned') {
-          showNotification('✅ Заказ назначен вам!', 'success');
+          showCompactNotification('✅ Заказ назначен вам!', 'success');
           if (data.order_id) fetchCurrentOrder(data.order_id);
         }
         
-        // ✅ ОБРАБОТКА ПОДТВЕРЖДЕНИЯ ОТ КЛИЕНТА
         if (data.type === 'delivery_confirmed_by_customer') {
-          showNotification('✅ Клиент подтвердил получение заказа!', 'success');
+          showCompactNotification('✅ Клиент подтвердил получение!', 'success');
           setOrderStage('completed');
           setCurrentOrder(null);
           setSelectedOrder(null);
@@ -190,7 +202,7 @@ export default function CourierDashboard() {
         }
         
         if (data.type === 'order_cancelled') {
-          showNotification('❌ Заказ отменен!', 'error');
+          showCompactNotification('❌ Заказ отменен!', 'error');
           setOrderStage('list');
           setCurrentOrder(null);
           setSelectedOrder(null);
@@ -223,7 +235,7 @@ export default function CourierDashboard() {
             const lon = position.coords.longitude;
             setUserLocation({ lat, lon });
             
-            const token = sessionStorage.getItem('courierToken');
+            const token = getAuthToken();
             try {
               await fetch(`/api/courier/update-location`, {
                 method: 'POST',
@@ -251,7 +263,7 @@ export default function CourierDashboard() {
   };
 
   const fetchAvailableOrders = async () => {
-    const token = sessionStorage.getItem('courierToken');
+    const token = getAuthToken();
     try {
       const res = await fetch(`/api/courier/available-orders`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -266,7 +278,7 @@ export default function CourierDashboard() {
   };
 
   const fetchCurrentOrder = async (orderId: number) => {
-    const token = sessionStorage.getItem('courierToken');
+    const token = getAuthToken();
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -276,15 +288,16 @@ export default function CourierDashboard() {
       setSelectedOrder(data);
       setShowOrdersList(false);
       
-      if (data.status === 'ready_for_pickup') {
+      const status = data.status;
+      if (status === 'ready_for_pickup') {
         setOrderStage('to_restaurant');
-      } else if (data.status === 'picked_up') {
+      } else if (status === 'picked_up') {
         setOrderStage('to_customer');
-      } else if (data.status === 'nearby') {
+      } else if (status === 'nearby') {
         setOrderStage('arrived');
-      } else if (data.status === 'waiting_confirmation') {
+      } else if (status === 'waiting_confirmation') {
         setOrderStage('waiting_confirmation');
-      } else if (data.status === 'delivered') {
+      } else if (status === 'delivered') {
         setOrderStage('completed');
       } else {
         setOrderStage('to_restaurant');
@@ -295,7 +308,7 @@ export default function CourierDashboard() {
   };
 
   const takeOrder = async (order: any) => {
-    const token = sessionStorage.getItem('courierToken');
+    const token = getAuthToken();
     
     try {
       const response = await fetch(`/api/courier/take-order/${order.order_id}`, {
@@ -308,7 +321,7 @@ export default function CourierDashboard() {
       
       const data = await response.json();
       if (response.ok && data.success) {
-        showNotification('✅ Заказ взят в работу! Едем в ресторан.', 'success');
+        showCompactNotification('✅ Заказ взят! Едем в ресторан.', 'success');
         setSelectedOrder(order);
         setOrderStage('to_restaurant');
         setShowOrdersList(false);
@@ -325,7 +338,7 @@ export default function CourierDashboard() {
   const pickupOrder = async () => {
     if (!currentOrder) return;
     
-    const token = sessionStorage.getItem('courierToken');
+    const token = getAuthToken();
     try {
       const res = await fetch(`/api/courier/pickup-order/${currentOrder.id}`, {
         method: 'POST',
@@ -334,7 +347,7 @@ export default function CourierDashboard() {
       
       const data = await res.json();
       if (data.success) {
-        showNotification('📦 Заказ забран! Едем к клиенту.', 'success');
+        showCompactNotification('📦 Заказ забран! Едем к клиенту.', 'success');
         setOrderStage('to_customer');
         await fetchCurrentOrder(currentOrder.id);
       } else {
@@ -349,7 +362,7 @@ export default function CourierDashboard() {
   const courierArrived = async () => {
     if (!currentOrder) return;
     
-    const token = sessionStorage.getItem('courierToken');
+    const token = getAuthToken();
     try {
       const res = await fetch(`/api/courier/arrived/${currentOrder.id}`, {
         method: 'POST',
@@ -358,7 +371,7 @@ export default function CourierDashboard() {
       
       const data = await res.json();
       if (data.success) {
-        showNotification(`✅ Уведомление отправлено клиенту!`, 'success');
+        showCompactNotification('✅ Уведомление отправлено клиенту!', 'success');
         setOrderStage('arrived');
         await fetchCurrentOrder(currentOrder.id);
       } else {
@@ -370,13 +383,11 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ completeDelivery с проверкой статуса
   const completeDelivery = async () => {
     if (!currentOrder) return;
     
-    // ✅ Проверяем статус перед отправкой
     if (currentOrder.status === 'delivered') {
-      showNotification('❌ Заказ уже доставлен', 'error');
+      showCompactNotification('❌ Заказ уже доставлен', 'error');
       setOrderStage('completed');
       setCurrentOrder(null);
       setSelectedOrder(null);
@@ -386,16 +397,16 @@ export default function CourierDashboard() {
     }
     
     if (currentOrder.status === 'waiting_confirmation') {
-      showNotification('⏳ Заказ уже ожидает подтверждения', 'info');
+      showCompactNotification('⏳ Заказ ожидает подтверждения', 'info');
       return;
     }
     
     if (currentOrder.status !== 'nearby') {
-      showNotification(`❌ Заказ в статусе ${currentOrder.status}. Нужно 'nearby'`, 'error');
+      showCompactNotification(`❌ Статус: ${currentOrder.status}. Нужно 'nearby'`, 'error');
       return;
     }
     
-    const token = sessionStorage.getItem('courierToken');
+    const token = getAuthToken();
     try {
       const res = await fetch(`/api/courier/complete-order/${currentOrder.id}`, {
         method: 'POST',
@@ -404,20 +415,19 @@ export default function CourierDashboard() {
       
       const data = await res.json();
       if (data.success) {
-        showNotification('📦 Заказ передан клиенту! Ожидайте подтверждения.', 'info');
+        showCompactNotification('📦 Заказ передан! Ожидайте подтверждения.', 'info');
         setOrderStage('waiting_confirmation');
         await fetchCurrentOrder(currentOrder.id);
       } else {
-        // ✅ Обработка ошибок от сервера
         if (data.status === 'delivered') {
-          showNotification('❌ Заказ уже доставлен', 'error');
+          showCompactNotification('❌ Заказ уже доставлен', 'error');
           setOrderStage('completed');
           setCurrentOrder(null);
           setSelectedOrder(null);
           setShowOrdersList(true);
           fetchAvailableOrders();
         } else if (data.status === 'waiting_confirmation') {
-          showNotification('⏳ Заказ уже ожидает подтверждения', 'info');
+          showCompactNotification('⏳ Заказ уже ожидает подтверждения', 'info');
           setOrderStage('waiting_confirmation');
           await fetchCurrentOrder(currentOrder.id);
         } else {
@@ -434,7 +444,7 @@ export default function CourierDashboard() {
     if (switching) return;
     setSwitching(true);
     
-    const token = sessionStorage.getItem('courierToken');
+    const token = getAuthToken();
     
     if (!isOnline) {
       if (!navigator.geolocation) {
@@ -521,15 +531,26 @@ export default function CourierDashboard() {
     }
   };
 
-  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  // ✅ КОМПАКТНОЕ УВЕДОМЛЕНИЕ
+  const showCompactNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-24 left-4 right-4 z-50 p-3 rounded-xl text-white text-center text-sm ${
-      type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-    } animate-slide-up`;
+    const colors = {
+      success: 'bg-emerald-500',
+      error: 'bg-red-500',
+      info: 'bg-blue-500'
+    };
+    
+    toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-white text-center text-sm max-w-[90%] ${colors[type]} shadow-lg`;
     toast.textContent = message;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => {
+      toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+      setTimeout(() => toast.remove(), 300);
+    }, 2500);
   };
+
+  // ============ СТАРОЕ УВЕДОМЛЕНИЕ (удалено) ============
+  // const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => { ... }
 
   const goToProfile = () => {
     router.push('/profile');
@@ -621,6 +642,9 @@ export default function CourierDashboard() {
             lon: order.customer_lon 
           } : undefined}
           height="100%"
+          showRoute={true}
+          routeColor="#94a3b8"
+          routeWidth={3}
         />
         
         <button
@@ -734,6 +758,10 @@ export default function CourierDashboard() {
               lon: currentOrder.customer_lon 
             } : undefined}
             height="100%"
+            showRoute={true}
+            routeColor="#94a3b8"
+            routeWidth={3}
+            courierLocation={userLocation || undefined}
           />
           
           <button
@@ -859,7 +887,6 @@ export default function CourierDashboard() {
             <p className="text-gray-400">Включите режим "На линии" чтобы видеть заказы</p>
           </div>
         ) : orderStage === 'waiting_confirmation' && currentOrder ? (
-          // ✅ ОЖИДАНИЕ ПОДТВЕРЖДЕНИЯ
           <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-8 text-center shadow-lg">
             <div className="text-6xl mb-4">⏳</div>
             <h3 className="font-bold text-2xl text-yellow-700 mb-2">Ожидание подтверждения</h3>
@@ -871,7 +898,6 @@ export default function CourierDashboard() {
             </div>
           </div>
         ) : orderStage === 'completed' ? (
-          // ✅ ЗАВЕРШЕН
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-200 bg-green-50 text-center">
             <div className="text-5xl mb-4">✅</div>
             <h3 className="font-bold text-green-600 text-xl mb-2">Доставка завершена!</h3>
@@ -890,7 +916,6 @@ export default function CourierDashboard() {
             </button>
           </div>
         ) : orderStage === 'list' ? (
-          // СПИСОК ЗАКАЗОВ
           <div>
             <h2 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
               <span>📋 Доступные заказы</span>

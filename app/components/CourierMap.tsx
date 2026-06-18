@@ -1,4 +1,5 @@
-// app/components/CourierMap.tsx - СВЕТЛАЯ ВЕРСИЯ
+// app/components/CourierMap.tsx - С СЕРОВАТО-ПРОЗРАЧНЫМИ ИКОНКАМИ
+
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -65,6 +66,10 @@ interface CourierMapProps {
   customerLocation?: { lat: number; lon: number };
   showAllCouriers?: boolean;
   height?: string;
+  showRoute?: boolean;
+  routeColor?: string;
+  routeWidth?: number;
+  courierLocation?: { lat: number; lon: number };
 }
 
 export default function CourierMap({ 
@@ -72,7 +77,11 @@ export default function CourierMap({
   restaurantLocation, 
   customerLocation,
   showAllCouriers = true,
-  height = "100%"
+  height = "100%",
+  showRoute = false,
+  routeColor = "#94a3b8",
+  routeWidth = 3,
+  courierLocation,
 }: CourierMapProps) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [couriers, setCouriers] = useState<Map<number, CourierLocation>>(new Map());
@@ -90,6 +99,7 @@ export default function CourierMap({
   const markersRef = useRef<Map<number, any>>(new Map());
   const supplierMarkersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
+  const routeLayerRef = useRef<any>(null);
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -159,7 +169,6 @@ export default function CourierMap({
       zoomControl: false
     }).setView([centerLat, centerLon], 13);
     
-    // ✅ СВЕТЛЫЙ ТАЙЛ
     L.tileLayer(LIGHT_MAP_TILE, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
       subdomains: 'abcd',
@@ -167,7 +176,6 @@ export default function CourierMap({
       minZoom: 3
     }).addTo(mapInstanceRef.current);
     
-    // Кастомный зум контрол
     L.control.zoom({
       position: 'bottomright'
     }).addTo(mapInstanceRef.current);
@@ -175,19 +183,45 @@ export default function CourierMap({
     console.log(`🗺️ Карта инициализирована (светлая тема)`);
   }, [mapLoaded, mapCenter]);
 
-  // ============ КАСТОМНЫЕ ИКОНКИ ДЛЯ СВЕТЛОЙ ТЕМЫ ============
+  // ============ МАРШРУТ ============
+  useEffect(() => {
+    if (!mapInstanceRef.current || !showRoute) return;
+    
+    if (routeLayerRef.current) {
+      routeLayerRef.current.remove();
+      routeLayerRef.current = null;
+    }
+    
+    if (restaurantLocation?.lat && restaurantLocation?.lon && 
+        customerLocation?.lat && customerLocation?.lon) {
+      
+      const points: [number, number][] = [
+        [restaurantLocation.lat, restaurantLocation.lon],
+        [customerLocation.lat, customerLocation.lon]
+      ];
+      
+      routeLayerRef.current = L.polyline(points, {
+        color: routeColor,
+        weight: routeWidth,
+        opacity: 0.8,
+        dashArray: null,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(mapInstanceRef.current);
+      
+      console.log(`✅ Маршрут добавлен (${routeColor}, ${routeWidth}px)`);
+    }
+  }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded]);
+
+  // ============ СЕРОВАТО-ПРОЗРАЧНЫЕ ИКОНКИ ============
   
   const getCourierIcon = (status?: string) => {
-    const color = status === 'almost_done' ? '#f59e0b' : 
-                  status === 'delivering' ? '#3b82f6' : 
-                  status === 'assigned' ? '#8b5cf6' : '#10b981';
-    
     return L.divIcon({
       html: `<div class="relative">
-               <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white" style="background-color: ${color}">
+               <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(156, 163, 175, 0.6); backdrop-filter: blur(4px);">
                  🚚
                </div>
-               <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full" style="background-color: ${color}"></div>
+               <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full" style="background-color: rgba(156, 163, 175, 0.6);"></div>
              </div>`,
       className: 'custom-div-icon',
       iconSize: [40, 40],
@@ -197,7 +231,9 @@ export default function CourierMap({
 
   const getSupplierIcon = () => {
     return L.divIcon({
-      html: `<div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🏪</div>`,
+      html: `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(156, 163, 175, 0.6); backdrop-filter: blur(4px);">
+               🏪
+             </div>`,
       iconSize: [40, 40],
       className: 'custom-div-icon',
       popupAnchor: [0, -20]
@@ -207,8 +243,8 @@ export default function CourierMap({
   const getUserLocationIcon = () => {
     return L.divIcon({
       html: `<div class="relative">
-               <div class="w-5 h-5 bg-blue-500 rounded-full shadow-lg" style="border: 2px solid #3b82f6;"></div>
-               <div class="absolute -top-1 -left-1 w-7 h-7 bg-blue-500 rounded-full opacity-30 animate-ping"></div>
+               <div class="w-5 h-5 rounded-full shadow-lg" style="background-color: rgba(59, 130, 246, 0.5); border: 2px solid rgba(255,255,255,0.5);"></div>
+               <div class="absolute -top-1 -left-1 w-7 h-7 rounded-full opacity-30 animate-ping" style="background-color: rgba(59, 130, 246, 0.3);"></div>
              </div>`,
       className: 'custom-div-icon',
       iconSize: [20, 20]
@@ -217,7 +253,9 @@ export default function CourierMap({
 
   const getRestaurantIcon = () => {
     return L.divIcon({
-      html: `<div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🍽️</div>`,
+      html: `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(156, 163, 175, 0.6); backdrop-filter: blur(4px);">
+               🍽️
+             </div>`,
       className: 'custom-div-icon',
       iconSize: [40, 40],
       popupAnchor: [0, -20]
@@ -226,7 +264,9 @@ export default function CourierMap({
 
   const getCustomerIcon = () => {
     return L.divIcon({
-      html: `<div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🏠</div>`,
+      html: `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(156, 163, 175, 0.6); backdrop-filter: blur(4px);">
+               🏠
+             </div>`,
       className: 'custom-div-icon',
       iconSize: [40, 40],
       popupAnchor: [0, -20]
@@ -432,13 +472,13 @@ export default function CourierMap({
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     
-    if (restaurantLocation) {
+    if (restaurantLocation?.lat && restaurantLocation?.lon) {
       L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon: getRestaurantIcon() })
         .addTo(mapInstanceRef.current)
         .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow border border-gray-200">🍽️ Ресторан</div>');
     }
     
-    if (customerLocation) {
+    if (customerLocation?.lat && customerLocation?.lon) {
       L.marker([customerLocation.lat, customerLocation.lon], { icon: getCustomerIcon() })
         .addTo(mapInstanceRef.current)
         .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow border border-gray-200">🏠 Клиент</div>');
@@ -580,35 +620,34 @@ export default function CourierMap({
       {/* Индикатор WebSocket */}
       <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-sm border border-gray-200">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
-          <span className="text-xs text-gray-600">{wsConnected ? 'Live' : 'Connecting...'}</span>
+          <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-500/50 animate-pulse' : 'bg-red-400/50'}`}></div>
+          <span className="text-xs text-gray-500">{wsConnected ? 'Live' : 'Connecting...'}</span>
         </div>
       </div>
       
-      {/* Индикатор статуса геолокации */}
       {locationError && (
-        <div className="absolute top-4 left-4 z-10 bg-yellow-50/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-yellow-700 border border-yellow-200">
-          📍 {locationError}. Показаны магазины в радиусе 100 км
+        <div className="absolute top-4 left-4 z-10 bg-yellow-50/80 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-yellow-600 border border-yellow-200">
+          📍 {locationError}
         </div>
       )}
       
       {isLoadingLocation && (
-        <div className="absolute top-4 left-4 z-10 bg-blue-50/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-blue-700 border border-blue-200">
+        <div className="absolute top-4 left-4 z-10 bg-blue-50/80 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-blue-600 border border-blue-200">
           📍 Определение местоположения...
         </div>
       )}
       
-      {/* Кнопка центрирования на пользователе */}
+      {/* Кнопка центрирования */}
       <button
         onClick={() => {
           if (userLocation && mapInstanceRef.current) {
             mapInstanceRef.current.setView([userLocation.lat, userLocation.lon], 15);
           }
         }}
-        className="absolute bottom-4 right-4 z-10 bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-all border border-gray-200"
+        className="absolute bottom-4 right-4 z-10 bg-white/80 backdrop-blur rounded-full shadow-lg p-3 hover:bg-gray-100/80 transition-all border border-gray-200/50"
         title="Мое местоположение"
       >
-        <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 text-blue-500/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
             d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -616,7 +655,6 @@ export default function CourierMap({
         </svg>
       </button>
       
-      {/* Контейнер карты */}
       <div ref={mapRef} className="w-full h-full rounded-2xl" style={{ height: '100%' }} />
     </div>
   );
