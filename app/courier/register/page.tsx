@@ -1,4 +1,4 @@
-// app/courier/register/page.tsx - С НОВЫМ ДИЗАЙНОМ
+// app/courier/register/page.tsx - С ПРОЗРАЧНЫМИ ИКОНКАМИ
 
 'use client';
 
@@ -15,9 +15,11 @@ import {
   ArrowLeft,
   CheckCircle 
 } from 'lucide-react';
+import { useLanguage } from '../../layout';
 
 export default function CourierRegisterPage() {
   const router = useRouter();
+  const { lang } = useLanguage();
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -34,22 +36,83 @@ export default function CourierRegisterPage() {
   
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
+  const t = {
+    kz: {
+      title: 'Курьер тіркеу',
+      subtitle: 'Жеткізу түрін таңдаңыз',
+      firstName: 'Аты *',
+      lastName: 'Тегі *',
+      courierType: 'Курьер түрі *',
+      pedestrian: 'Жаяу',
+      pedestrianRadius: 'Радиус 3 км',
+      driver: 'Көлікпен',
+      driverRadius: 'Радиус 15 км',
+      carModel: 'Көлік моделі',
+      carNumber: 'Мемлекеттік нөмір',
+      phone: 'Телефон *',
+      password: 'Құпия сөз *',
+      confirmPassword: 'Құпия сөзді растау *',
+      register: 'Тіркелу',
+      registering: 'Тіркелу...',
+      haveAccount: 'Аккаунтыңыз бар ма?',
+      login: 'Кіру',
+      back: 'Басты бетке',
+      errorPasswordMatch: 'Құпия сөздер сәйкес келмейді',
+      errorPasswordLength: 'Құпия сөз кемінде 6 таңба болуы керек',
+      errorCarModel: 'Көлік моделін көрсетіңіз',
+      errorConnection: 'Сервермен байланыс қатесі',
+      errorRegistration: 'Тіркеу қатесі',
+      successTitle: 'Өтініш жіберілді!',
+      successText: 'Курьер ретінде тіркелу өтінішіңіз қарауға жіберілді.',
+      dashboard: 'Курьер панеліне'
+    },
+    ru: {
+      title: 'Регистрация курьера',
+      subtitle: 'Выберите тип доставки',
+      firstName: 'Имя *',
+      lastName: 'Фамилия *',
+      courierType: 'Тип курьера *',
+      pedestrian: 'Пеший',
+      pedestrianRadius: 'Радиус 3 км',
+      driver: 'На машине',
+      driverRadius: 'Радиус 15 км',
+      carModel: 'Модель автомобиля',
+      carNumber: 'Госномер',
+      phone: 'Телефон *',
+      password: 'Пароль *',
+      confirmPassword: 'Подтверждение пароля *',
+      register: 'Зарегистрироваться',
+      registering: 'Регистрация...',
+      haveAccount: 'Уже есть аккаунт?',
+      login: 'Войти',
+      back: 'На главную',
+      errorPasswordMatch: 'Пароли не совпадают',
+      errorPasswordLength: 'Пароль должен быть не менее 6 символов',
+      errorCarModel: 'Укажите модель автомобиля',
+      errorConnection: 'Ошибка соединения с сервером',
+      errorRegistration: 'Ошибка регистрации',
+      successTitle: 'Заявка отправлена!',
+      successText: 'Ваша заявка на регистрацию курьера отправлена на рассмотрение.',
+      dashboard: 'В панель курьера'
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
     if (formData.password !== formData.confirm_password) {
-      setError('Пароли не совпадают');
+      setError(t[lang].errorPasswordMatch);
       return;
     }
     
     if (formData.password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов');
+      setError(t[lang].errorPasswordLength);
       return;
     }
     
     if (formData.courier_type === 'driver' && !formData.car_model) {
-      setError('Укажите модель автомобиля');
+      setError(t[lang].errorCarModel);
       return;
     }
     
@@ -75,10 +138,10 @@ export default function CourierRegisterPage() {
       if (res.ok && data.success) {
         setRegistered(true);
       } else {
-        setError(data.detail || 'Ошибка регистрации');
+        setError(data.detail || t[lang].errorRegistration);
       }
     } catch (err) {
-      setError('Ошибка соединения с сервером');
+      setError(t[lang].errorConnection);
     } finally {
       setLoading(false);
     }
@@ -91,13 +154,11 @@ export default function CourierRegisterPage() {
           <div className="w-20 h-20 rounded-full bg-emerald-50/50 flex items-center justify-center mx-auto mb-4">
             <CheckCircle size={40} className="text-emerald-600/60" strokeWidth={1.5} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Заявка отправлена!</h1>
-          <p className="text-gray-400 text-sm mb-6">
-            Ваша заявка на регистрацию курьера отправлена на рассмотрение.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].successTitle}</h1>
+          <p className="text-gray-400 text-sm mb-6">{t[lang].successText}</p>
           <Link href="/courier/dashboard">
             <button className="w-full bg-emerald-600 text-white py-3 rounded-2xl font-semibold hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20">
-              В панель курьера
+              {t[lang].dashboard}
             </button>
           </Link>
         </div>
@@ -118,8 +179,8 @@ export default function CourierRegisterPage() {
           </div>
           
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Регистрация курьера</h1>
-            <p className="text-gray-400 text-sm mt-1">Выберите тип доставки</p>
+            <h1 className="text-2xl font-bold text-gray-800">{t[lang].title}</h1>
+            <p className="text-gray-400 text-sm mt-1">{t[lang].subtitle}</p>
           </div>
           
           {error && (
@@ -131,13 +192,12 @@ export default function CourierRegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Имя */}
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Имя *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">{t[lang].firstName}</label>
               <div className="relative">
-                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50" strokeWidth={1.5} />
                 <input
                   type="text"
                   required
-                  placeholder="Иван"
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
                   value={formData.first_name}
                   onChange={(e) => setFormData({...formData, first_name: e.target.value})}
@@ -147,13 +207,12 @@ export default function CourierRegisterPage() {
             
             {/* Фамилия */}
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Фамилия *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">{t[lang].lastName}</label>
               <div className="relative">
-                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50" strokeWidth={1.5} />
                 <input
                   type="text"
                   required
-                  placeholder="Петров"
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
                   value={formData.last_name}
                   onChange={(e) => setFormData({...formData, last_name: e.target.value})}
@@ -163,7 +222,7 @@ export default function CourierRegisterPage() {
             
             {/* Тип курьера */}
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-3">Тип курьера *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-3">{t[lang].courierType}</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -174,9 +233,9 @@ export default function CourierRegisterPage() {
                       : 'border-gray-200 hover:border-emerald-300'
                   }`}
                 >
-                  <Footprints size={28} className={`mx-auto mb-1 ${formData.courier_type === 'pedestrian' ? 'text-emerald-600/80' : 'text-gray-400/60'}`} strokeWidth={1.5} />
-                  <div className="text-sm font-medium text-gray-700">Пеший</div>
-                  <div className="text-xs text-gray-400 mt-1">Радиус 3 км</div>
+                  <Footprints size={28} className={`mx-auto mb-1 ${formData.courier_type === 'pedestrian' ? 'text-emerald-600/60' : 'text-gray-400/50'}`} strokeWidth={1.5} />
+                  <div className="text-sm font-medium text-gray-700">{t[lang].pedestrian}</div>
+                  <div className="text-xs text-gray-400 mt-1">{t[lang].pedestrianRadius}</div>
                 </button>
                 
                 <button
@@ -188,9 +247,9 @@ export default function CourierRegisterPage() {
                       : 'border-gray-200 hover:border-emerald-300'
                   }`}
                 >
-                  <Car size={28} className={`mx-auto mb-1 ${formData.courier_type === 'driver' ? 'text-emerald-600/80' : 'text-gray-400/60'}`} strokeWidth={1.5} />
-                  <div className="text-sm font-medium text-gray-700">На машине</div>
-                  <div className="text-xs text-gray-400 mt-1">Радиус 15 км</div>
+                  <Car size={28} className={`mx-auto mb-1 ${formData.courier_type === 'driver' ? 'text-emerald-600/60' : 'text-gray-400/50'}`} strokeWidth={1.5} />
+                  <div className="text-sm font-medium text-gray-700">{t[lang].driver}</div>
+                  <div className="text-xs text-gray-400 mt-1">{t[lang].driverRadius}</div>
                 </button>
               </div>
             </div>
@@ -199,12 +258,11 @@ export default function CourierRegisterPage() {
             {formData.courier_type === 'driver' && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Модель автомобиля</label>
+                  <label className="block text-sm font-medium text-gray-600 mb-1.5">{t[lang].carModel}</label>
                   <div className="relative">
-                    <Car size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+                    <Car size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50" strokeWidth={1.5} />
                     <input
                       type="text"
-                      placeholder="Toyota Camry"
                       className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
                       value={formData.car_model}
                       onChange={(e) => setFormData({...formData, car_model: e.target.value})}
@@ -213,12 +271,11 @@ export default function CourierRegisterPage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1.5">Госномер</label>
+                  <label className="block text-sm font-medium text-gray-600 mb-1.5">{t[lang].carNumber}</label>
                   <div className="relative">
-                    <Car size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+                    <Car size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50" strokeWidth={1.5} />
                     <input
                       type="text"
-                      placeholder="A123BC"
                       className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
                       value={formData.car_number}
                       onChange={(e) => setFormData({...formData, car_number: e.target.value})}
@@ -230,13 +287,12 @@ export default function CourierRegisterPage() {
             
             {/* Телефон */}
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Телефон *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">{t[lang].phone}</label>
               <div className="relative">
-                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+                <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50" strokeWidth={1.5} />
                 <input
                   type="tel"
                   required
-                  placeholder="+7 777 123 4567"
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
@@ -246,13 +302,12 @@ export default function CourierRegisterPage() {
             
             {/* Пароль */}
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Пароль *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">{t[lang].password}</label>
               <div className="relative">
-                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50" strokeWidth={1.5} />
                 <input
                   type="password"
                   required
-                  placeholder="••••••••"
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
@@ -262,13 +317,12 @@ export default function CourierRegisterPage() {
             
             {/* Подтверждение пароля */}
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Подтверждение пароля *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">{t[lang].confirmPassword}</label>
               <div className="relative">
-                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400/50" strokeWidth={1.5} />
                 <input
                   type="password"
                   required
-                  placeholder="••••••••"
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
                   value={formData.confirm_password}
                   onChange={(e) => setFormData({...formData, confirm_password: e.target.value})}
@@ -284,17 +338,17 @@ export default function CourierRegisterPage() {
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Регистрация...
+                  {t[lang].registering}
                 </span>
-              ) : 'Зарегистрироваться'}
+              ) : t[lang].register}
             </button>
           </form>
           
           <div className="text-center mt-6">
             <p className="text-sm text-gray-400">
-              Уже есть аккаунт?{' '}
+              {t[lang].haveAccount}{' '}
               <Link href="/courier/login" className="text-emerald-600 font-medium hover:text-emerald-700 transition">
-                Войти
+                {t[lang].login}
               </Link>
             </p>
           </div>
@@ -302,7 +356,7 @@ export default function CourierRegisterPage() {
           <div className="text-center mt-4">
             <Link href="/" className="text-xs text-gray-300 hover:text-gray-500 transition inline-flex items-center gap-1">
               <ArrowLeft size={12} className="opacity-50" />
-              На главную
+              {t[lang].back}
             </Link>
           </div>
         </div>
