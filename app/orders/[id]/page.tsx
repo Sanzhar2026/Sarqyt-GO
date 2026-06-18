@@ -38,6 +38,7 @@ interface Order {
   delivery_deadline?: string;
   delivery_started_at?: string;
   auto_refund_processed?: boolean;
+  is_owner?: boolean;
   assigned_courier?: {
     first_name: string;
     last_name: string;
@@ -59,6 +60,7 @@ export default function OrderDetailPage() {
   const [confirming, setConfirming] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [location, setLocation] = useState<{ lat: number; lon: number; city: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
 
@@ -71,6 +73,36 @@ export default function OrderDetailPage() {
            sessionStorage.getItem('courierToken') ||
            null;
   };
+
+  // ✅ Проверка роли пользователя
+  useEffect(() => {
+    const userStr = sessionStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setUserRole(user.role || 'customer');
+        console.log('👤 Роль пользователя:', user.role || 'customer');
+      } catch (e) {
+        console.error('Ошибка парсинга user:', e);
+        setUserRole('customer');
+      }
+    } else {
+      // Если нет user в sessionStorage, пробуем получить из токена
+      const token = getAuthToken();
+      if (token) {
+        try {
+          // Декодируем JWT токен
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setUserRole(payload.role || 'customer');
+          console.log('👤 Роль из токена:', payload.role || 'customer');
+        } catch (e) {
+          setUserRole('customer');
+        }
+      } else {
+        setUserRole('customer');
+      }
+    }
+  }, []);
 
   // Проверка авторизации
   useEffect(() => {
@@ -208,8 +240,14 @@ export default function OrderDetailPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ
+  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ (ТОЛЬКО ДЛЯ КЛИЕНТА)
   const handleConfirmDelivery = async () => {
+    // ✅ Проверяем, что это клиент, а не курьер
+    if (userRole === 'courier') {
+      alert('Только клиент может подтвердить получение заказа.');
+      return;
+    }
+    
     setConfirmLoading(true);
     try {
       const token = getAuthToken();
@@ -358,6 +396,9 @@ export default function OrderDetailPage() {
     );
   }
 
+  // ✅ Проверяем, может ли пользователь подтвердить заказ
+  const canConfirmDelivery = order.status === 'nearby' && userRole === 'customer';
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
@@ -367,6 +408,11 @@ export default function OrderDetailPage() {
         </button>
         <h1 className="text-2xl font-bold">Заказ #{order.order_number}</h1>
         <p className="opacity-90 mt-1">от {new Date(order.created_at).toLocaleDateString()}</p>
+        {userRole && (
+          <p className="text-xs opacity-70 mt-1">
+            {userRole === 'courier' ? '🚚 Вы вошли как курьер' : '👤 Вы вошли как клиент'}
+          </p>
+        )}
       </div>
 
       <div className="px-6 py-8">
@@ -397,8 +443,8 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА - ПОЯВЛЯЕТСЯ ПРИ СТАТУСЕ 'nearby' */}
-        {order.status === 'nearby' && (
+        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА - ПОЯВЛЯЕТСЯ ТОЛЬКО ДЛЯ КЛИЕНТА ПРИ СТАТУСЕ 'nearby' */}
+        {canConfirmDelivery && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm animate-pulse">
             <div className="text-5xl mb-3">🚪</div>
             <h2 className="font-bold text-xl text-green-700 mb-2">Курьер рядом!</h2>
@@ -416,6 +462,15 @@ export default function OrderDetailPage() {
             >
               ✅ ПОЛУЧИЛ ЗАКАЗ
             </button>
+          </div>
+        )}
+
+        {/* ⚠️ Сообщение для курьера, если заказ в статусе 'nearby' */}
+        {order.status === 'nearby' && userRole === 'courier' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6 text-center shadow-sm">
+            <div className="text-4xl mb-2">⏳</div>
+            <p className="text-blue-700 font-medium">Ожидайте подтверждения от клиента</p>
+            <p className="text-blue-600 text-sm">Клиент получит уведомление и подтвердит получение</p>
           </div>
         )}
 
@@ -517,8 +572,8 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Кнопка возврата */}
-        {order.status === 'out_for_delivery' && order.payment_status !== 'refunded' && (
+        {/* Кнопка возврата - только для клиента */}
+        {userRole === 'customer' && order.status === 'out_for_delivery' && order.payment_status !== 'refunded' && (
           <button
             onClick={() => setShowRefundModal(true)}
             className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition"
@@ -528,8 +583,8 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      {/* ✅ МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ПОЛУЧЕНИЯ */}
-      {showConfirmModal && (
+      {/* ✅ МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ПОЛУЧЕНИЯ - только для клиента */}
+      {showConfirmModal && userRole === 'customer' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 animate-fade-in">
             <div className="text-center mb-6">
@@ -571,8 +626,8 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Модальное окно отказа от заказа */}
-      {showRefundModal && (
+      {/* Модальное окно отказа от заказа - только для клиента */}
+      {showRefundModal && userRole === 'customer' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="text-center mb-4">
