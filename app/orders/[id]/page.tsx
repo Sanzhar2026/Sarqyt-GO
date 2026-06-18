@@ -1,4 +1,4 @@
-// app/orders/[id]/page.tsx - ДОБАВЛЯЕМ МОДАЛЬНОЕ ОКНО
+// app/orders/[id]/page.tsx - ПОЛНАЯ ВЕРСИЯ
 
 'use client';
 
@@ -59,15 +59,46 @@ export default function OrderDetailPage() {
   const [refundReason, setRefundReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  
-  // ✅ НОВЫЕ СОСТОЯНИЯ ДЛЯ ПОДТВЕРЖДЕНИЯ
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  
   const [location, setLocation] = useState<{ lat: number; lon: number; city: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
+
+  // ✅ Функция для получения токена
+  const getAuthToken = () => {
+    // Пробуем все возможные варианты
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') || 
+           sessionStorage.getItem('courierToken') ||
+           null;
+  };
+
+  // Проверка авторизации
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = getAuthToken();
+      console.log('🔑 Проверка авторизации:', token ? 'Есть ✅' : 'Нет ❌');
+      
+      if (!token) {
+        // Если нет токена, пробуем через cookie
+        fetch(`${API_URL}/api/auth/me`, {
+          credentials: 'include'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.authenticated) {
+            router.push('/login');
+          }
+        })
+        .catch(() => {
+          router.push('/login');
+        });
+      }
+    };
+    checkAuth();
+  }, [API_URL, router]);
 
   // Получаем геолокацию
   useEffect(() => {
@@ -100,13 +131,18 @@ export default function OrderDetailPage() {
   // Загрузка заказа
   const fetchOrder = async () => {
     const orderId = params?.id;
-    
     if (!orderId) return;
     
     try {
+      const token = getAuthToken();
       const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         credentials: 'include'
       });
+      
       if (!response.ok) throw new Error('Order not found');
       const data = await response.json();
       setOrder(data);
@@ -122,7 +158,7 @@ export default function OrderDetailPage() {
     fetchOrder();
   }, [params?.id]);
 
-  // WebSocket для получения уведомлений о прибытии курьера
+  // WebSocket для получения уведомлений
   useEffect(() => {
     const orderId = params?.id;
     if (!orderId) return;
@@ -151,7 +187,7 @@ export default function OrderDetailPage() {
     return () => ws.close();
   }, [params?.id]);
 
-  // Таймер обратного отсчета для доставки
+  // Таймер обратного отсчета
   useEffect(() => {
     if (order?.status === 'out_for_delivery' && order?.delivery_deadline) {
       const interval = setInterval(() => {
@@ -176,75 +212,80 @@ export default function OrderDetailPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ ЗАКАЗА (с модальным окном)
-const handleConfirmDelivery = async () => {
+  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ
+  const handleConfirmDelivery = async () => {
     setConfirmLoading(true);
     try {
-        // ✅ Получаем токен из sessionStorage
-        const token = sessionStorage.getItem('userToken');
-        
-        const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order?.id}`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            }
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            showToast('✅ Спасибо! Заказ получен.', 'success');
-            setShowConfirmModal(false);
-            fetchOrder();
-        } else {
-            alert(data.message || 'Ошибка');
+      const token = getAuthToken();
+      console.log('🔑 Токен перед подтверждением:', token ? 'Есть ✅' : 'Нет ❌');
+      
+      if (!token) {
+        alert('Вы не авторизованы. Пожалуйста, войдите.');
+        router.push('/login');
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order?.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        showToast('✅ Спасибо! Заказ получен.', 'success');
+        setShowConfirmModal(false);
+        fetchOrder();
+      } else {
+        alert(data.message || 'Ошибка');
+      }
     } catch (error) {
-        console.error('Error:', error);
-        alert('Ошибка при подтверждении');
+      console.error('Error:', error);
+      alert('Ошибка при подтверждении');
     } finally {
-        setConfirmLoading(false);
+      setConfirmLoading(false);
     }
-};
+  };
 
-  // КЛИЕНТ ЗАПРАШИВАЕТ ВОЗВРАТ
+  // ЗАПРОС ВОЗВРАТА
   const handleRequestRefund = async () => {
     if (!refundReason.trim()) {
-        alert('Укажите причину возврата');
-        return;
+      alert('Укажите причину возврата');
+      return;
     }
     
     setSubmitting(true);
     try {
-        // ✅ Добавляем токен
-        const token = sessionStorage.getItem('userToken');
-        
-        const response = await fetch(`${API_URL}/api/order/${order?.id}/reject`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            },
-            credentials: 'include',
-            body: JSON.stringify({ reason: refundReason })
-        });
-        
-        if (response.ok) {
-            alert('Запрос на возврат отправлен. Администратор рассмотрит его в ближайшее время.');
-            setShowRefundModal(false);
-            setRefundReason('');
-            fetchOrder();
-        } else {
-            const error = await response.json();
-            alert(`Ошибка: ${error.detail || 'Ошибка'}`);
-        }
+      const token = getAuthToken();
+      const response = await fetch(`${API_URL}/api/order/${order?.id}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reason: refundReason })
+      });
+      
+      if (response.ok) {
+        alert('Запрос на возврат отправлен. Администратор рассмотрит его в ближайшее время.');
+        setShowRefundModal(false);
+        setRefundReason('');
+        fetchOrder();
+      } else {
+        const error = await response.json();
+        alert(`Ошибка: ${error.detail || 'Ошибка'}`);
+      }
     } catch (err) {
-        alert('Ошибка при отправке запроса');
+      alert('Ошибка при отправке запроса');
     } finally {
-        setSubmitting(false);
+      setSubmitting(false);
     }
-};  const getStatusColor = (status: string) => {
+  };
+
+  const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-500',
       confirmed: 'bg-blue-500',
@@ -358,7 +399,7 @@ const handleConfirmDelivery = async () => {
           </div>
         </div>
 
-        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА - ОТКРЫВАЕТ МОДАЛЬНОЕ ОКНО */}
+        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА */}
         {order.status === 'nearby' && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
             <div className="text-5xl mb-3">🚪</div>
@@ -489,7 +530,7 @@ const handleConfirmDelivery = async () => {
         )}
       </div>
 
-      {/* ✅ МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ПОЛУЧЕНИЯ ЗАКАЗА */}
+      {/* ✅ МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ПОЛУЧЕНИЯ */}
       {showConfirmModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 animate-fade-in">
