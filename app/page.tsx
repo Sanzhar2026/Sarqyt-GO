@@ -1,5 +1,4 @@
-// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (без иконки грузовика)
-
+// app/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -48,13 +47,13 @@ export default function HomePage() {
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
+  // Получаем токен
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('userToken');
-      setAuthToken(token);
-    }
+    const token = sessionStorage.getItem('authToken');
+    setAuthToken(token);
   }, []);
 
+  // WebSocket URL только если есть токен
   const wsUrl = authToken 
     ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
     : null;
@@ -73,12 +72,8 @@ export default function HomePage() {
     }
     
     try {
-      const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('userToken');
       const response = await fetch(`/api/surprise-bags`, {
-        credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        credentials: 'include'
       });
       
       if (!response.ok) {
@@ -106,8 +101,6 @@ export default function HomePage() {
   }, []);
 
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
-    if (typeof window === 'undefined') return;
-    
     const toast = document.createElement('div');
     toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
       type === 'success' ? 'bg-[#367666]' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
@@ -134,8 +127,6 @@ export default function HomePage() {
   };
 
   const showCourierArrivedNotification = (data: any) => {
-    if (typeof window === 'undefined') return;
-    
     const { order_id, order_number, courier_name } = data;
     
     const toast = document.createElement('div');
@@ -196,6 +187,7 @@ export default function HomePage() {
     router.push(`/supplier/${supplierId}`);
   };
 
+  // Обработка WebSocket сообщений
   useEffect(() => {
     if (!lastMessage) return;
     
@@ -424,7 +416,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header - БЕЗ ИКОНКИ ГРУЗОВИКА */}
+      {/* Header с логотипом и номером телефона */}
       <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">
@@ -480,11 +472,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Контейнер */}
+      {/* Контейнер без белой карточки-обертки */}
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>
-            {/* Заголовок */}
+            {/* Заголовок с иконкой Store */}
             <div className="mb-4">
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <Store size={20} className="text-gray-400/60" />
