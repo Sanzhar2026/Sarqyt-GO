@@ -44,6 +44,8 @@ export default function CourierDashboard() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [switching, setSwitching] = useState(false);
   const [locating, setLocating] = useState(false);
+  
+  // ✅ Состояния заказа
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [orderStage, setOrderStage] = useState<'list' | 'details' | 'to_restaurant' | 'to_customer' | 'arrived' | 'waiting_confirmation' | 'completed'>('list');
   const [showOrdersList, setShowOrdersList] = useState(true);
@@ -183,8 +185,8 @@ export default function CourierDashboard() {
           setOrderStage('completed');
           setCurrentOrder(null);
           setSelectedOrder(null);
-          fetchAvailableOrders();
           setShowOrdersList(true);
+          fetchAvailableOrders();
         }
         
         if (data.type === 'order_cancelled') {
@@ -192,8 +194,8 @@ export default function CourierDashboard() {
           setOrderStage('list');
           setCurrentOrder(null);
           setSelectedOrder(null);
-          fetchAvailableOrders();
           setShowOrdersList(true);
+          fetchAvailableOrders();
         }
       } catch (error) {
         console.error('Ошибка обработки WebSocket:', error);
@@ -368,8 +370,30 @@ export default function CourierDashboard() {
     }
   };
 
+  // ✅ completeDelivery с проверкой статуса
   const completeDelivery = async () => {
     if (!currentOrder) return;
+    
+    // ✅ Проверяем статус перед отправкой
+    if (currentOrder.status === 'delivered') {
+      showNotification('❌ Заказ уже доставлен', 'error');
+      setOrderStage('completed');
+      setCurrentOrder(null);
+      setSelectedOrder(null);
+      setShowOrdersList(true);
+      fetchAvailableOrders();
+      return;
+    }
+    
+    if (currentOrder.status === 'waiting_confirmation') {
+      showNotification('⏳ Заказ уже ожидает подтверждения', 'info');
+      return;
+    }
+    
+    if (currentOrder.status !== 'nearby') {
+      showNotification(`❌ Заказ в статусе ${currentOrder.status}. Нужно 'nearby'`, 'error');
+      return;
+    }
     
     const token = sessionStorage.getItem('courierToken');
     try {
@@ -384,7 +408,21 @@ export default function CourierDashboard() {
         setOrderStage('waiting_confirmation');
         await fetchCurrentOrder(currentOrder.id);
       } else {
-        alert(data.message || 'Ошибка');
+        // ✅ Обработка ошибок от сервера
+        if (data.status === 'delivered') {
+          showNotification('❌ Заказ уже доставлен', 'error');
+          setOrderStage('completed');
+          setCurrentOrder(null);
+          setSelectedOrder(null);
+          setShowOrdersList(true);
+          fetchAvailableOrders();
+        } else if (data.status === 'waiting_confirmation') {
+          showNotification('⏳ Заказ уже ожидает подтверждения', 'info');
+          setOrderStage('waiting_confirmation');
+          await fetchCurrentOrder(currentOrder.id);
+        } else {
+          alert(data.message || 'Ошибка при завершении доставки');
+        }
       }
     } catch (error) {
       console.error('Error completing delivery:', error);
