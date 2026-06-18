@@ -1,5 +1,3 @@
-// app/courier/login/page.tsx - ПОЛНАЯ ВЕРСИЯ
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -15,7 +13,7 @@ export default function CourierLogin() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   
-  const redirectingRef = useRef(false);
+  const redirectingRef = useRef(false); // ← Флаг для предотвращения повторных редиректов
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -24,6 +22,7 @@ export default function CourierLogin() {
     let isMounted = true;
     
     const checkAlreadyLoggedIn = async () => {
+      // Если уже редиректим - выходим
       if (redirectingRef.current) return;
       
       try {
@@ -34,7 +33,7 @@ export default function CourierLogin() {
           console.log('✅ Найдены данные в sessionStorage');
           redirectingRef.current = true;
           if (isMounted) {
-            window.location.href = '/courier/dashboard';
+            router.replace('/courier/dashboard');
           }
           return;
         }
@@ -50,13 +49,10 @@ export default function CourierLogin() {
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.is_verified === true) {
-              sessionStorage.setItem('courier', JSON.stringify({
-                ...data,
-                role: 'courier'
-              }));
+              sessionStorage.setItem('courier', JSON.stringify(data));
               redirectingRef.current = true;
               if (isMounted) {
-                window.location.href = '/courier/dashboard';
+                router.replace('/courier/dashboard');
               }
               return;
             }
@@ -81,6 +77,7 @@ export default function CourierLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Если уже редиректим - не делаем новый запрос
     if (redirectingRef.current) return;
     
     setLoading(true);
@@ -100,39 +97,22 @@ export default function CourierLogin() {
       console.log('📥 Ответ сервера:', response.status, data);
 
       if (response.ok && data.success) {
-        // ✅ Сохраняем токен
+        // Сохраняем данные
         if (data.token) {
           sessionStorage.setItem('courierToken', data.token);
         }
         
-        // ✅ Сохраняем данные курьера с РОЛЬЮ
-        const courierData = {
-          id: data.courier.id,
-          first_name: data.courier.first_name,
-          last_name: data.courier.last_name,
-          phone: data.courier.phone,
-          is_verified: data.courier.is_verified,
-          courier_type: data.courier.courier_type,
-          role: 'courier' // ← ЯВНО УКАЗЫВАЕМ РОЛЬ
-        };
-        sessionStorage.setItem('courier', JSON.stringify(courierData));
-        
-        // ✅ Также сохраняем в 'user' для единообразия
-        sessionStorage.setItem('user', JSON.stringify({
-          id: data.courier.id,
-          full_name: `${data.courier.first_name} ${data.courier.last_name}`,
-          phone: data.courier.phone,
-          role: 'courier'
+        sessionStorage.setItem('courier', JSON.stringify({
+          ...data.courier,
+          is_verified: true
         }));
-        
         sessionStorage.setItem('isCourierLoggedIn', 'true');
         
         console.log('✅ Успешный вход, данные сохранены');
-        console.log('👤 Роль:', JSON.parse(sessionStorage.getItem('user')!).role);
         
-        // ✅ Используем window.location для принудительного редиректа
+        // ✅ Устанавливаем флаг и делаем редирект
         redirectingRef.current = true;
-        window.location.href = '/courier/dashboard';
+        router.replace('/courier/dashboard');
         
       } else if (response.status === 403) {
         setPendingVerification(true);
@@ -148,6 +128,7 @@ export default function CourierLogin() {
     }
   };
 
+  // Если проверяем авторизацию - показываем загрузку
   if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -163,7 +144,7 @@ export default function CourierLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-lg">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🚚</div>
+          
           <h1 className="text-2xl font-bold text-emerald-600">Sarqyt GO</h1>
           <p className="text-gray-500 mt-2">Вход для курьеров</p>
         </div>

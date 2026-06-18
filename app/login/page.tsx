@@ -1,8 +1,6 @@
-// app/login/page.tsx - ПОЛНАЯ ВЕРСИЯ
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -15,23 +13,12 @@ export default function LoginPage() {
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // Проверка, уже залогинен ли пользователь
-  useEffect(() => {
-    const token = sessionStorage.getItem('userToken');
-    const user = sessionStorage.getItem('user');
-    if (token && user) {
-      router.push('/');
-    }
-  }, [router]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      console.log('🔐 Попытка входа:', phone);
-      
       const response = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,71 +27,47 @@ export default function LoginPage() {
       });
 
       const data = await response.json();
-      console.log('📥 Ответ сервера:', response.status, data);
-
+      
       if (response.ok && data.success) {
-        // ✅ Сохраняем данные пользователя
-        const userData = {
+        sessionStorage.setItem('user', JSON.stringify({
           id: data.user.id,
           name: data.user.full_name,
           full_name: data.user.full_name,
-          phone: data.user.phone,
-          role: data.user.role || 'customer'
-        };
-        sessionStorage.setItem('user', JSON.stringify(userData));
+          phone: data.user.phone
+        }));
         
-        // ✅ Сохраняем токен КАК 'userToken' (важно!)
         if (data.token) {
-          sessionStorage.setItem('userToken', data.token);
-          console.log('✅ Токен сохранен как userToken');
-        } else {
-          console.error('❌ Токен не получен от сервера!');
+          sessionStorage.setItem('authToken', data.token);
         }
         
         sessionStorage.setItem('isLoggedIn', 'true');
         
-        // Проверяем, что сохранилось
-        console.log('🔑 userToken:', sessionStorage.getItem('userToken'));
-        console.log('👤 user:', sessionStorage.getItem('user'));
-        
-        // Перенаправляем
         const redirectTo = sessionStorage.getItem('redirectAfterLogin') || '/';
         sessionStorage.removeItem('redirectAfterLogin');
         
-        // Используем window.location для полной перезагрузки
         window.location.href = redirectTo;
       } else {
         setError(data.error || 'Неверный телефон или пароль');
       }
     } catch (error) {
-      console.error('❌ Login error:', error);
-      setError('Ошибка подключения к серверу');
+      console.error('Login error:', error);
+      setError('Неверный телефон или пароль');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#367666]/10 to-white p-6">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#367666]/10 to-white">
+      <div className="w-full max-w-md px-6">
         <div className="bg-white rounded-3xl shadow-lg p-8">
-          <div className="text-center mb-8">
-            <div className="text-4xl mb-3">🍽️</div>
-            <h1 className="text-3xl font-bold text-[#367666]">Добро пожаловать</h1>
-            <p className="text-gray-500 text-sm mt-2">Войдите в свой аккаунт</p>
-          </div>
+          <h1 className="text-3xl font-bold text-center text-[#367666] mb-8">Войти</h1>
           
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">
-              {error}
-            </div>
-          )}
+          {error && <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">{error}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Номер телефона
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Номер телефона</label>
               <input 
                 type="tel" 
                 value={phone} 
@@ -114,11 +77,8 @@ export default function LoginPage() {
                 required 
               />
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Пароль
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
               <input 
                 type="password" 
                 value={password} 
@@ -128,7 +88,6 @@ export default function LoginPage() {
                 required 
               />
             </div>
-            
             <button 
               type="submit" 
               disabled={loading} 
@@ -143,20 +102,9 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-500 text-sm">
-              Нет аккаунта?{' '}
-              <Link href="/signup" className="text-[#367666] font-semibold hover:underline">
-                Зарегистрироваться
-              </Link>
-            </p>
-          </div>
-          
-          <div className="mt-4 text-center">
-            <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">
-              ← На главную
-            </Link>
-          </div>
+          <p className="text-center text-gray-500 mt-8">
+            Нет аккаунта? <Link href="/signup" className="text-[#367666] font-semibold hover:underline">Зарегистрироваться</Link>
+          </p>
         </div>
       </div>
     </div>
