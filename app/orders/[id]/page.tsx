@@ -74,24 +74,23 @@ export default function OrderDetailPage() {
            null;
   };
 
-  // ✅ Проверка роли пользователя
+  // ✅ Проверка роли пользователя (ВАЖНО!)
   useEffect(() => {
     const userStr = sessionStorage.getItem('user');
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
         setUserRole(user.role || 'customer');
-        console.log('👤 Роль пользователя:', user.role || 'customer');
+        console.log('👤 Роль пользователя из sessionStorage:', user.role || 'customer');
       } catch (e) {
         console.error('Ошибка парсинга user:', e);
         setUserRole('customer');
       }
     } else {
-      // Если нет user в sessionStorage, пробуем получить из токена
+      // Если нет user в sessionStorage, пробуем из токена
       const token = getAuthToken();
       if (token) {
         try {
-          // Декодируем JWT токен
           const payload = JSON.parse(atob(token.split('.')[1]));
           setUserRole(payload.role || 'customer');
           console.log('👤 Роль из токена:', payload.role || 'customer');
@@ -101,58 +100,6 @@ export default function OrderDetailPage() {
       } else {
         setUserRole('customer');
       }
-    }
-  }, []);
-
-  // Проверка авторизации
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = getAuthToken();
-      console.log('🔑 Проверка авторизации:', token ? 'Есть ✅' : 'Нет ❌');
-      
-      if (!token) {
-        fetch(`${API_URL}/api/auth/me`, {
-          credentials: 'include'
-        })
-        .then(res => res.json())
-        .then(data => {
-          if (!data.authenticated) {
-            router.push('/login');
-          }
-        })
-        .catch(() => {
-          router.push('/login');
-        });
-      }
-    };
-    checkAuth();
-  }, [API_URL, router]);
-
-  // Получаем геолокацию
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          setLocation({ lat: latitude, lon: longitude, city: 'Актобе' });
-          
-          try {
-            const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`);
-            const geoData = await geoRes.json();
-            const city = geoData.address?.city || geoData.address?.town || geoData.address?.village || 'Актобе';
-            setLocation(prev => prev ? { ...prev, city } : null);
-          } catch (e) {
-            console.error('Geocoding error:', e);
-          }
-          setLocationLoading(false);
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-          setLocationLoading(false);
-        }
-      );
-    } else {
-      setLocationLoading(false);
     }
   }, []);
 
@@ -240,18 +187,11 @@ export default function OrderDetailPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ (ТОЛЬКО ДЛЯ КЛИЕНТА)
+  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ
   const handleConfirmDelivery = async () => {
-    // ✅ Проверяем, что это клиент, а не курьер
-    if (userRole === 'courier') {
-      alert('Только клиент может подтвердить получение заказа.');
-      return;
-    }
-    
     setConfirmLoading(true);
     try {
       const token = getAuthToken();
-      console.log('🔑 Токен перед подтверждением:', token ? 'Есть ✅' : 'Нет ❌');
       
       if (!token) {
         alert('Вы не авторизованы. Пожалуйста, войдите.');
@@ -268,8 +208,6 @@ export default function OrderDetailPage() {
       });
       
       const data = await response.json();
-      console.log('📡 Ответ сервера:', data);
-      
       if (data.success) {
         showToast('✅ Спасибо! Заказ получен.', 'success');
         setShowConfirmModal(false);
@@ -396,8 +334,9 @@ export default function OrderDetailPage() {
     );
   }
 
-  // ✅ Проверяем, может ли пользователь подтвердить заказ
-  const canConfirmDelivery = order.status === 'nearby' && userRole === 'customer';
+  // ✅ Проверяем роль
+  const isCustomer = userRole === 'customer';
+  const isCourier = userRole === 'courier';
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -408,11 +347,9 @@ export default function OrderDetailPage() {
         </button>
         <h1 className="text-2xl font-bold">Заказ #{order.order_number}</h1>
         <p className="opacity-90 mt-1">от {new Date(order.created_at).toLocaleDateString()}</p>
-        {userRole && (
-          <p className="text-xs opacity-70 mt-1">
-            {userRole === 'courier' ? '🚚 Вы вошли как курьер' : '👤 Вы вошли как клиент'}
-          </p>
-        )}
+        <p className="text-xs opacity-70 mt-1">
+          {isCourier ? '🚚 Вы вошли как курьер' : '👤 Вы вошли как клиент'}
+        </p>
       </div>
 
       <div className="px-6 py-8">
@@ -443,8 +380,8 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА - ПОЯВЛЯЕТСЯ ТОЛЬКО ДЛЯ КЛИЕНТА ПРИ СТАТУСЕ 'nearby' */}
-        {canConfirmDelivery && (
+        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА - ПОЯВЛЯЕТСЯ ТОЛЬКО ДЛЯ КЛИЕНТА */}
+        {order.status === 'nearby' && isCustomer && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm animate-pulse">
             <div className="text-5xl mb-3">🚪</div>
             <h2 className="font-bold text-xl text-green-700 mb-2">Курьер рядом!</h2>
@@ -465,8 +402,8 @@ export default function OrderDetailPage() {
           </div>
         )}
 
-        {/* ⚠️ Сообщение для курьера, если заказ в статусе 'nearby' */}
-        {order.status === 'nearby' && userRole === 'courier' && (
+        {/* ⚠️ ДЛЯ КУРЬЕРА - показывает что клиент должен подтвердить */}
+        {order.status === 'nearby' && isCourier && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6 text-center shadow-sm">
             <div className="text-4xl mb-2">⏳</div>
             <p className="text-blue-700 font-medium">Ожидайте подтверждения от клиента</p>
@@ -572,8 +509,8 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Кнопка возврата - только для клиента */}
-        {userRole === 'customer' && order.status === 'out_for_delivery' && order.payment_status !== 'refunded' && (
+        {/* Кнопка возврата - ТОЛЬКО ДЛЯ КЛИЕНТА */}
+        {isCustomer && order.status === 'out_for_delivery' && order.payment_status !== 'refunded' && (
           <button
             onClick={() => setShowRefundModal(true)}
             className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition"
@@ -583,8 +520,8 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      {/* ✅ МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ПОЛУЧЕНИЯ - только для клиента */}
-      {showConfirmModal && userRole === 'customer' && (
+      {/* ✅ МОДАЛЬНОЕ ОКНО - ТОЛЬКО ДЛЯ КЛИЕНТА */}
+      {showConfirmModal && isCustomer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 animate-fade-in">
             <div className="text-center mb-6">
@@ -626,8 +563,8 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Модальное окно отказа от заказа - только для клиента */}
-      {showRefundModal && userRole === 'customer' && (
+      {/* Модальное окно отказа - ТОЛЬКО ДЛЯ КЛИЕНТА */}
+      {showRefundModal && isCustomer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="text-center mb-4">
