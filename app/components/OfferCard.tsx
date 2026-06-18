@@ -1,4 +1,5 @@
-// app/components/OfferCard.tsx
+// app/components/OfferCard.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -91,10 +92,19 @@ export default function OfferCard({
   const API_URL = 'https://toogood-2ncf.onrender.com';
   const isSearchPage = pathname === '/' || pathname === '/offers';
 
+  // ✅ Функция для получения токена (единый подход)
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') || 
+           sessionStorage.getItem('courierToken') ||
+           null;
+  };
+
   useEffect(() => {
     const fetchRating = async () => {
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = getAuthToken();
         const headers: HeadersInit = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
@@ -113,7 +123,7 @@ export default function OfferCard({
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = sessionStorage.getItem('authToken');
+      const token = getAuthToken();
       if (token) {
         setIsAuthenticated(true);
         setAuthChecked(true);
@@ -123,7 +133,7 @@ export default function OfferCard({
         const response = await fetch(`${API_URL}/api/auth/me`);
         const data = await response.json();
         setIsAuthenticated(data.authenticated);
-        if (data.token) sessionStorage.setItem('authToken', data.token);
+        if (data.token) sessionStorage.setItem('userToken', data.token);
       } catch (error) {
         setIsAuthenticated(false);
       } finally {
@@ -179,15 +189,18 @@ export default function OfferCard({
     setIsFavorite(!isFavorite);
   };
 
+  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ addToCart
   const addToCart = async () => {
-    if (!isAuthenticated) {
+    const token = getAuthToken();
+    console.log('🔑 Токен в addToCart:', token ? 'Есть ✅' : 'Нет ❌');
+    
+    if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
       router.push('/login');
       return;
     }
 
     setAddingToCart(true);
-    const token = sessionStorage.getItem('authToken');
 
     try {
       const response = await fetch(`${API_URL}/api/cart/add`, {
@@ -200,6 +213,13 @@ export default function OfferCard({
       });
 
       const data = await response.json();
+      console.log('📡 Ответ /api/cart/add:', response.status, data);
+
+      if (response.status === 401) {
+        alert('Сессия истекла. Пожалуйста, войдите заново.');
+        router.push('/login');
+        return;
+      }
 
       if (response.ok && data.success) {
         const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
@@ -290,7 +310,6 @@ export default function OfferCard({
           className="object-cover"
         />
         
-        {/* Скидка и иконка подарка */}
         <div className="absolute top-2 left-2 flex gap-1.5">
           {propDiscount > 0 && (
             <div className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[9px] font-bold shadow-sm">
@@ -302,7 +321,6 @@ export default function OfferCard({
           </div>
         </div>
         
-        {/* Сердечко (лайк) */}
         <button
           onClick={toggleFavorite}
           className="absolute top-2 right-2 z-10"
@@ -314,7 +332,6 @@ export default function OfferCard({
           />
         </button>
         
-        {/* Восклицательный знак - справа внизу */}
         <button 
           onClick={handleIconClick}
           className="absolute bottom-2 right-2 z-10"
@@ -371,7 +388,6 @@ export default function OfferCard({
           </div>
         )}
         
-        {/* Цена и кнопка - увеличены в длину на 60% */}
         <div className="flex items-center justify-between mt-1 pt-1 border-t border-gray-100">
           <div>
             <span className="text-base font-bold text-[#367666]">{formatPrice(propPrice)}</span>
