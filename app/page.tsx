@@ -1,4 +1,5 @@
-// app/page.tsx
+// app/page.tsx - ПОЛНАЯ ВЕРСИЯ
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -43,17 +44,42 @@ export default function HomePage() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
-  // Получаем токен
-  useEffect(() => {
-    const token = sessionStorage.getItem('authToken');
-    setAuthToken(token);
+  // ✅ Функция для получения токена
+  const getAuthToken = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') || 
+           sessionStorage.getItem('courierToken') ||
+           null;
   }, []);
 
-  // WebSocket URL только если есть токен
+  // ✅ Получаем токен при монтировании
+  useEffect(() => {
+    setIsClient(true);
+    const token = getAuthToken();
+    setAuthToken(token);
+    console.log('🔑 Токен на главной:', token ? 'Есть ✅' : 'Нет ❌');
+    
+    // Проверяем пользователя
+    const userStr = sessionStorage.getItem('user');
+    if (userStr) {
+      try {
+        const parsed = JSON.parse(userStr);
+        setUser({
+          name: parsed.full_name || parsed.name,
+          id: parsed.id,
+          phone: parsed.phone
+        });
+      } catch(e) {}
+    }
+  }, [getAuthToken]);
+
+  // ✅ WebSocket URL только если есть токен
   const wsUrl = authToken 
     ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
     : null;
@@ -72,8 +98,12 @@ export default function HomePage() {
     }
     
     try {
+      const token = getAuthToken();
       const response = await fetch(`/api/surprise-bags`, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       
       if (!response.ok) {
@@ -98,9 +128,11 @@ export default function HomePage() {
         if (isInitial) setLoading(false);
       }
     }
-  }, []);
+  }, [getAuthToken]);
 
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
+    if (typeof window === 'undefined') return;
+    
     const toast = document.createElement('div');
     toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
       type === 'success' ? 'bg-[#367666]' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
@@ -127,6 +159,8 @@ export default function HomePage() {
   };
 
   const showCourierArrivedNotification = (data: any) => {
+    if (typeof window === 'undefined') return;
+    
     const { order_id, order_number, courier_name } = data;
     
     const toast = document.createElement('div');
@@ -187,7 +221,7 @@ export default function HomePage() {
     router.push(`/supplier/${supplierId}`);
   };
 
-  // Обработка WebSocket сообщений
+  // ✅ Обработка WebSocket сообщений
   useEffect(() => {
     if (!lastMessage) return;
     
@@ -239,12 +273,16 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     isMountedRef.current = true;
     
     const hasLoaded = sessionStorage.getItem('has_loaded');
@@ -267,6 +305,8 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
@@ -281,16 +321,20 @@ export default function HomePage() {
     
     const fetchUser = async () => {
       try {
+        const token = getAuthToken();
         const res = await fetch(`/api/check-auth`, { 
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
         });
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated) {
             const userData = {
-              name: data.user_name,
-              id: data.user_id,
-              phone: data.user_phone
+              name: data.user_name || data.user?.full_name,
+              id: data.user_id || data.user?.id,
+              phone: data.user_phone || data.user?.phone
             };
             setUser(userData);
             sessionStorage.setItem('user', JSON.stringify(userData));
@@ -301,7 +345,7 @@ export default function HomePage() {
       }
     };
     fetchUser();
-  }, []);
+  }, [getAuthToken]);
 
   useEffect(() => {
     if (showSplash) return;
@@ -472,7 +516,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Контейнер без белой карточки-обертки */}
+      {/* Контейнер */}
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>

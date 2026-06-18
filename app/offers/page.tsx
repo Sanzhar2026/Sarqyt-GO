@@ -1,3 +1,5 @@
+// app/offers/page.jsx - ПОЛНАЯ ВЕРСИЯ
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -33,8 +35,28 @@ export default function OffersPage() {
   
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
-  const getAuthToken = () => sessionStorage.getItem('authToken');
+  // ✅ Единая функция для получения токена
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') || 
+           sessionStorage.getItem('courierToken') ||
+           null;
+  };
+
+  // ✅ Проверка авторизации при монтировании
+  useEffect(() => {
+    setIsClient(true);
+    const token = getAuthToken();
+    console.log('🔑 Токен на странице offers:', token ? 'Есть ✅' : 'Нет ❌');
+    
+    if (!token) {
+      console.log('❌ Нет токена, редирект на логин');
+      router.push('/login');
+    }
+  }, [router]);
 
   const fetchBags = async () => {
     if (!location) {
@@ -46,13 +68,24 @@ export default function OffersPage() {
       const { lat, lon } = location;
       console.log(`📍 Текущее положение: ${lat}, ${lon}`);
       
-      // ✅ ТОЛЬКО ОДИН ЗАПРОС! БЕЗ ВСЯКИХ РЕЙТИНГОВ!
+      const token = getAuthToken();
       const response = await fetch(
         `/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
-        { credentials: 'include' }
+        {
+          credentials: 'include',
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        }
       );
       
       console.log('📡 Статус:', response.status);
+      
+      if (response.status === 401) {
+        console.log('❌ Не авторизован, редирект на логин');
+        router.push('/login');
+        return;
+      }
       
       if (!response.ok) {
         console.error('❌ Ошибка:', await response.text());
@@ -63,8 +96,6 @@ export default function OffersPage() {
       
       const data = await response.json();
       console.log('📦 Получено сюрпризов:', data.length);
-      
-      // ✅ ПРОСТО УСТАНАВЛИВАЕМ ДАННЫЕ
       setBags(data);
       
     } catch (error) {
@@ -76,19 +107,12 @@ export default function OffersPage() {
   };
 
   useEffect(() => {
-    if (location) {
+    if (location && isClient) {
       fetchBags();
     }
-  }, [location]);
+  }, [location, isClient]);
 
-  useEffect(() => {
-    const token = getAuthToken();
-    if (!token) {
-      router.push('/login');
-    }
-  }, [router]);
-
-  if (loading || locationLoading) {
+  if (!isClient || loading || locationLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
