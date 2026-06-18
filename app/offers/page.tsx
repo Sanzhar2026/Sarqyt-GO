@@ -1,4 +1,4 @@
-// app/offers/page.jsx - ПОЛНАЯ ВЕРСИЯ
+// app/offers/page.jsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 

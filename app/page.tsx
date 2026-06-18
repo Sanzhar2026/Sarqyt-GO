@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ВЕРСИЯ
+// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -43,8 +43,9 @@ export default function HomePage() {
   const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [authToken, setAuthToken] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  
+  // ✅ ИСПРАВЛЕНО: используем userToken вместо authToken
+  const [userToken, setUserToken] = useState<string | null>(null);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
@@ -60,10 +61,10 @@ export default function HomePage() {
 
   // ✅ Получаем токен при монтировании
   useEffect(() => {
-    setIsClient(true);
     const token = getAuthToken();
-    setAuthToken(token);
+    setUserToken(token);
     console.log('🔑 Токен на главной:', token ? 'Есть ✅' : 'Нет ❌');
+    console.log('🔑 userToken из sessionStorage:', sessionStorage.getItem('userToken'));
     
     // Проверяем пользователя
     const userStr = sessionStorage.getItem('user');
@@ -79,9 +80,9 @@ export default function HomePage() {
     }
   }, [getAuthToken]);
 
-  // ✅ WebSocket URL только если есть токен
-  const wsUrl = authToken 
-    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
+  // ✅ ИСПОЛЬЗУЕМ userToken ДЛЯ WEBSOCKET
+  const wsUrl = userToken 
+    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(userToken)}` 
     : null;
   
   const { isConnected, lastMessage } = useWebSocket(wsUrl);
