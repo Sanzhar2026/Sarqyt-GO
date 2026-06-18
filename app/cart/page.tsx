@@ -1,3 +1,5 @@
+// app/cart/page.tsx - ИСПРАВЛЕНА ТОЛЬКО ЛОГИКА ТОКЕНА
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,10 +38,9 @@ export default function CartPage() {
   const [showTimerWarning, setShowTimerWarning] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [customerAddress, setCustomerAddress] = useState('');
-  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('pickup'); // По умолчанию самовывоз
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('pickup');
 
-  const DELIVERY_FEE = 400; // Стоимость доставки
-
+  const DELIVERY_FEE = 400;
   const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
   const t = {
@@ -107,13 +108,18 @@ export default function CartPage() {
     }
   };
 
-  const getAuthToken = () => sessionStorage.getItem('authToken');
+  // ✅ ИСПРАВЛЕНА ФУНКЦИЯ - ИЩЕТ ТОЛЬКО userToken
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken');
+  };
 
+  // ✅ ИСПРАВЛЕНА ФУНКЦИЯ - ИСПОЛЬЗУЕТ getAuthToken()
   const authFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     
     if (!token) {
-      console.error('❌ Нет токена');
+      console.error('❌ Нет токена userToken');
       router.push('/login');
       throw new Error('No token');
     }
@@ -418,7 +424,7 @@ export default function CartPage() {
 
       {/* Контент корзины */}
       <div className="px-4 pt-4 pb-20">
-        {/* Способ получения - сначала самовывоз, потом курьер */}
+        {/* Способ получения */}
         <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-3">
             {t[lang].deliveryType}
@@ -446,7 +452,6 @@ export default function CartPage() {
             </button>
           </div>
           
-          {/* Адрес доставки (только для доставки) */}
           {deliveryType === 'delivery' && (
             <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -462,7 +467,6 @@ export default function CartPage() {
             </div>
           )}
           
-          {/* Информация о самовывозе */}
           {deliveryType === 'pickup' && (
             <div className="mt-4 p-3 bg-blue-50 rounded-xl">
               <p className="text-sm text-blue-700">
@@ -540,7 +544,6 @@ export default function CartPage() {
                   className="object-cover"
                 />
               </div>
-              
               <div className="flex-1">
                 <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
                 <p className="text-gray-500 text-xs">{item.businessName}</p>
@@ -551,7 +554,6 @@ export default function CartPage() {
                       <span className="text-gray-400 line-through text-xs ml-2">{item.originalPrice} ₸</span>
                     )}
                   </div>
-                  
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
