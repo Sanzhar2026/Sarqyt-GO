@@ -1,4 +1,5 @@
-// app/orders/[id]/page.tsx
+// app/orders/[id]/page.tsx - ДОБАВЛЯЕМ МОДАЛЬНОЕ ОКНО
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -58,6 +59,11 @@ export default function OrderDetailPage() {
   const [refundReason, setRefundReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  
+  // ✅ НОВЫЕ СОСТОЯНИЯ ДЛЯ ПОДТВЕРЖДЕНИЯ
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  
   const [location, setLocation] = useState<{ lat: number; lon: number; city: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
 
@@ -170,20 +176,19 @@ export default function OrderDetailPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ ЗАКАЗА
-  const confirmDelivery = async () => {
-    if (!order) return;
-    
-    setConfirming(true);
+  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ ЗАКАЗА (с модальным окном)
+  const handleConfirmDelivery = async () => {
+    setConfirmLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order.id}`, {
+      const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order?.id}`, {
         method: 'POST',
         credentials: 'include'
       });
       
       const data = await response.json();
       if (data.success) {
-        showToast('Спасибо! Заказ получен.', 'success');
+        showToast('✅ Спасибо! Заказ получен.', 'success');
+        setShowConfirmModal(false);
         fetchOrder();
       } else {
         alert(data.message || 'Ошибка');
@@ -192,7 +197,7 @@ export default function OrderDetailPage() {
       console.error('Error:', error);
       alert('Ошибка при подтверждении');
     } finally {
-      setConfirming(false);
+      setConfirmLoading(false);
     }
   };
 
@@ -289,7 +294,7 @@ export default function OrderDetailPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
         <div className="text-center">
-          <div className="text-6xl mb-4"></div>
+          <div className="text-6xl mb-4">📦</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Заказ не найден</h1>
           <p className="text-gray-500 mb-6">Проверьте номер заказа или вернитесь на главную</p>
           <button
@@ -342,10 +347,10 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* КНОПКА ДЛЯ КЛИЕНТА - ПОДТВЕРЖДЕНИЕ ПОЛУЧЕНИЯ */}
+        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА - ОТКРЫВАЕТ МОДАЛЬНОЕ ОКНО */}
         {order.status === 'nearby' && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3"></div>
+            <div className="text-5xl mb-3">🚪</div>
             <h2 className="font-bold text-xl text-green-700 mb-2">Курьер рядом!</h2>
             {order.assigned_courier && (
               <p className="text-green-600 text-sm mb-2">
@@ -353,14 +358,13 @@ export default function OrderDetailPage() {
               </p>
             )}
             <p className="text-green-600 text-sm mb-4">
-              Курьер уже у вашей двери. Подтвердите получение заказа.
+              Подтвердите получение заказа, чтобы завершить доставку.
             </p>
             <button
-              onClick={confirmDelivery}
-              disabled={confirming}
-              className="w-full bg-[#367666] text-white py-3 rounded-xl font-semibold text-lg hover:bg-[#2a5a4d] transition"
+              onClick={() => setShowConfirmModal(true)}
+              className="w-full bg-[#367666] text-white py-3 rounded-xl font-semibold text-lg hover:bg-[#2a5a4d] transition shadow-md"
             >
-              {confirming ? 'Подтверждение...' : 'ПОЛУЧИЛ ЗАКАЗ'}
+              ✅ ПОЛУЧИЛ ЗАКАЗ
             </button>
           </div>
         )}
@@ -368,7 +372,7 @@ export default function OrderDetailPage() {
         {/* Заказ в пути */}
         {order.status === 'out_for_delivery' && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3"></div>
+            <div className="text-5xl mb-3">🚗</div>
             <h2 className="font-bold text-xl text-blue-700 mb-2">Ваш заказ в пути!</h2>
             <p className="text-blue-600 text-sm">Курьер уже выехал к вам</p>
             <div className="mt-4">
@@ -383,7 +387,7 @@ export default function OrderDetailPage() {
         {/* Заказ доставлен */}
         {order.status === 'delivered' && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3"></div>
+            <div className="text-5xl mb-3">✅</div>
             <h2 className="font-bold text-xl text-green-700 mb-2">Заказ успешно доставлен!</h2>
             <p className="text-green-600 text-sm mt-1">Спасибо, что выбрали нас</p>
           </div>
@@ -392,7 +396,7 @@ export default function OrderDetailPage() {
         {/* Запрос на возврат отправлен */}
         {order.refund_status === 'requested' && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3"></div>
+            <div className="text-5xl mb-3">⏳</div>
             <h2 className="font-bold text-xl text-yellow-700 mt-2">Запрос на возврат отправлен</h2>
             <p className="text-yellow-600 text-sm mt-1">Администратор рассмотрит ваш запрос</p>
           </div>
@@ -474,12 +478,55 @@ export default function OrderDetailPage() {
         )}
       </div>
 
+      {/* ✅ МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ПОЛУЧЕНИЯ ЗАКАЗА */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 animate-fade-in">
+            <div className="text-center mb-6">
+              <div className="text-6xl mb-3">📦</div>
+              <h2 className="text-2xl font-bold text-gray-800">Подтвердите получение</h2>
+              <p className="text-gray-500 text-sm mt-2">
+                Вы уверены, что получили заказ?<br />
+                После подтверждения заказ будет считаться доставленным.
+              </p>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-gray-600">Заказ #{order?.order_number}</p>
+              <p className="font-medium text-gray-800">{order?.bag_name}</p>
+              <p className="text-sm text-gray-500">Сумма: {order?.amount_paid} ₸</p>
+              {order?.assigned_courier && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Курьер: {order.assigned_courier.first_name} {order.assigned_courier.last_name}
+                </p>
+              )}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleConfirmDelivery}
+                disabled={confirmLoading}
+                className="flex-1 bg-[#367666] text-white py-3 rounded-xl font-semibold hover:bg-[#2a5a4d] transition disabled:opacity-50"
+              >
+                {confirmLoading ? 'Подтверждение...' : '✅ Да, получил'}
+              </button>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Модальное окно отказа от заказа */}
       {showRefundModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="text-center mb-4">
-              <div className="text-5xl mb-2"></div>
+              <div className="text-5xl mb-2">❌</div>
               <h2 className="text-xl font-bold">Отказ от заказа</h2>
               <p className="text-gray-500 text-sm mt-1">
                 Укажите причину отказа. Администратор рассмотрит ваш запрос.
