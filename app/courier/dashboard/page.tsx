@@ -44,11 +44,9 @@ export default function CourierDashboard() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [switching, setSwitching] = useState(false);
   const [locating, setLocating] = useState(false);
-  
-  // ✅ setSelectedOrder ДОБАВЛЕНА
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  
   const [orderStage, setOrderStage] = useState<'list' | 'details' | 'to_restaurant' | 'to_customer' | 'arrived' | 'waiting_confirmation' | 'completed'>('list');
+  const [showOrdersList, setShowOrdersList] = useState(true);
   
   const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
   const [wsFailed, setWsFailed] = useState(false);
@@ -162,33 +160,44 @@ export default function CourierDashboard() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('📨 Received in courier dashboard:', data);
+        
         if (data.type === 'pong') {
           lastPongTime = Date.now();
           return;
         }
+        
         if (data.type === 'new_order') {
           showNotification('🆕 Новый заказ доступен!', 'info');
           fetchAvailableOrders();
         }
+        
         if (data.type === 'order_assigned') {
           showNotification('✅ Заказ назначен вам!', 'success');
           if (data.order_id) fetchCurrentOrder(data.order_id);
         }
+        
+        // ✅ ОБРАБОТКА ПОДТВЕРЖДЕНИЯ ОТ КЛИЕНТА
         if (data.type === 'delivery_confirmed_by_customer') {
           showNotification('✅ Клиент подтвердил получение заказа!', 'success');
           setOrderStage('completed');
           setCurrentOrder(null);
           setSelectedOrder(null);
           fetchAvailableOrders();
+          setShowOrdersList(true);
         }
+        
         if (data.type === 'order_cancelled') {
           showNotification('❌ Заказ отменен!', 'error');
           setOrderStage('list');
           setCurrentOrder(null);
           setSelectedOrder(null);
           fetchAvailableOrders();
+          setShowOrdersList(true);
         }
-      } catch (error) {}
+      } catch (error) {
+        console.error('Ошибка обработки WebSocket:', error);
+      }
     };
     
     ws.onclose = () => {
@@ -263,6 +272,7 @@ export default function CourierDashboard() {
       const data = await res.json();
       setCurrentOrder(data);
       setSelectedOrder(data);
+      setShowOrdersList(false);
       
       if (data.status === 'ready_for_pickup') {
         setOrderStage('to_restaurant');
@@ -299,6 +309,7 @@ export default function CourierDashboard() {
         showNotification('✅ Заказ взят в работу! Едем в ресторан.', 'success');
         setSelectedOrder(order);
         setOrderStage('to_restaurant');
+        setShowOrdersList(false);
         await fetchCurrentOrder(order.order_id);
       } else {
         alert(data.message || 'Ошибка при взятии заказа');
@@ -437,6 +448,7 @@ export default function CourierDashboard() {
           setOrderStage('list');
           setSelectedOrder(null);
           setCurrentOrder(null);
+          setShowOrdersList(true);
           if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
           if (wsRef.current) wsRef.current.close();
         }
@@ -488,6 +500,7 @@ export default function CourierDashboard() {
   const goBackToList = () => {
     setOrderStage('list');
     setSelectedOrder(null);
+    setShowOrdersList(true);
     fetchAvailableOrders();
   };
 
@@ -808,6 +821,7 @@ export default function CourierDashboard() {
             <p className="text-gray-400">Включите режим "На линии" чтобы видеть заказы</p>
           </div>
         ) : orderStage === 'waiting_confirmation' && currentOrder ? (
+          // ✅ ОЖИДАНИЕ ПОДТВЕРЖДЕНИЯ
           <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-8 text-center shadow-lg">
             <div className="text-6xl mb-4">⏳</div>
             <h3 className="font-bold text-2xl text-yellow-700 mb-2">Ожидание подтверждения</h3>
@@ -819,6 +833,7 @@ export default function CourierDashboard() {
             </div>
           </div>
         ) : orderStage === 'completed' ? (
+          // ✅ ЗАВЕРШЕН
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-200 bg-green-50 text-center">
             <div className="text-5xl mb-4">✅</div>
             <h3 className="font-bold text-green-600 text-xl mb-2">Доставка завершена!</h3>
@@ -828,6 +843,7 @@ export default function CourierDashboard() {
                 setOrderStage('list');
                 setCurrentOrder(null);
                 setSelectedOrder(null);
+                setShowOrdersList(true);
                 fetchAvailableOrders();
               }}
               className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold transition"
@@ -836,6 +852,7 @@ export default function CourierDashboard() {
             </button>
           </div>
         ) : orderStage === 'list' ? (
+          // СПИСОК ЗАКАЗОВ
           <div>
             <h2 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
               <span>📋 Доступные заказы</span>
