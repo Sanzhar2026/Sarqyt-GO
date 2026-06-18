@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ (с компактными уведомлениями)
+// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ
 
 'use client';
 
@@ -531,7 +531,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // ✅ КОМПАКТНОЕ УВЕДОМЛЕНИЕ
   const showCompactNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const toast = document.createElement('div');
     const colors = {
@@ -549,9 +548,6 @@ export default function CourierDashboard() {
     }, 2500);
   };
 
-  // ============ СТАРОЕ УВЕДОМЛЕНИЕ (удалено) ============
-  // const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => { ... }
-
   const goToProfile = () => {
     router.push('/profile');
   };
@@ -563,7 +559,7 @@ export default function CourierDashboard() {
     fetchAvailableOrders();
   };
 
-  // ============ РЕНДЕР КАРТОЧКИ ЗАКАЗА ДЛЯ СПИСКА ============
+  // ============ РЕНДЕР КАРТОЧКИ ЗАКАЗА ============
   const renderOrderCard = (order: any) => (
     <div 
       key={order.order_id} 
@@ -832,7 +828,6 @@ export default function CourierDashboard() {
   // ============ ОСНОВНОЙ РЕНДЕР ============
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      {/* HEADER */}
       <div className="bg-emerald-500 text-white px-6 pt-12 pb-4">
         <div className="flex justify-between items-center">
           <div>
@@ -852,7 +847,6 @@ export default function CourierDashboard() {
         </div>
       </div>
 
-      {/* СТАТУС ОНЛАЙН */}
       <div className="px-4 mt-4">
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between">
@@ -880,7 +874,6 @@ export default function CourierDashboard() {
         </div>
       </div>
 
-      {/* ============ КОНТЕНТ ============ */}
       <div className="px-4 mt-4 pb-32">
         {!isOnline ? (
           <div className="text-center py-8">
