@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -45,20 +45,29 @@ export default function HomePage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
-  // ✅ Функция для получения токена
+  // ✅ Проверяем, что мы на клиенте
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // ✅ Функция для получения токена (с проверкой на клиент)
   const getAuthToken = useCallback(() => {
+    if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
            sessionStorage.getItem('authToken') || 
            sessionStorage.getItem('courierToken') ||
            null;
   }, []);
 
-  // ✅ Получаем токен и роль
+  // ✅ Получаем токен и роль (только на клиенте)
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const token = getAuthToken();
     setAuthToken(token);
     
@@ -74,12 +83,13 @@ export default function HomePage() {
     }
   }, [getAuthToken]);
 
-  // ✅ WebSocket URL ТОЛЬКО если есть токен И пользователь НЕ курьер
+  // ✅ WebSocket URL только на клиенте и для НЕ курьеров
   const wsUrl = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    
     const token = getAuthToken();
     const role = userRole;
     
-    // ✅ Только для клиентов (не для курьеров)
     if (!token || role === 'courier') {
       console.log('⏭️ Пропускаем WebSocket для курьера или без токена');
       return null;
@@ -135,6 +145,8 @@ export default function HomePage() {
   }, [getAuthToken]);
 
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
+    if (typeof window === 'undefined') return;
+    
     const toast = document.createElement('div');
     toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
       type === 'success' ? 'bg-[#367666]' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
@@ -161,6 +173,8 @@ export default function HomePage() {
   };
 
   const showCourierArrivedNotification = (data: any) => {
+    if (typeof window === 'undefined') return;
+    
     const { order_id, order_number, courier_name } = data;
     
     const toast = document.createElement('div');
@@ -221,11 +235,10 @@ export default function HomePage() {
     router.push(`/supplier/${supplierId}`);
   };
 
-  // ✅ Обработка WebSocket сообщений (только для клиентов)
+  // ✅ Обработка WebSocket сообщений (только на клиенте)
   useEffect(() => {
-    if (!lastMessage) return;
+    if (!lastMessage || typeof window === 'undefined') return;
     
-    // ✅ Игнорируем сообщения если пользователь - курьер
     if (userRole === 'courier') {
       console.log('⏭️ Курьер, игнорируем WebSocket сообщения на главной');
       return;
@@ -279,12 +292,16 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     isMountedRef.current = true;
     
     const hasLoaded = sessionStorage.getItem('has_loaded');
@@ -307,6 +324,8 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
       try {
