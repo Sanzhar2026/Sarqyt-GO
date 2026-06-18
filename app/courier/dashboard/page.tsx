@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ С КАРТОЙ
+// app/courier/dashboard/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -39,17 +39,14 @@ export default function CourierDashboard() {
   const [loading, setLoading] = useState(true);
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
-  const [showOrdersList, setShowOrdersList] = useState(true);
   const [pendingVerification, setPendingVerification] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [switching, setSwitching] = useState(false);
   const [locating, setLocating] = useState(false);
-  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<any>(null);
-  const [showOrderDetails, setShowOrderDetails] = useState(false);
   
   // Состояния заказа
-  const [orderStage, setOrderStage] = useState<'list' | 'details' | 'to_restaurant' | 'at_restaurant' | 'to_customer' | 'arrived' | 'completed'>('list');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [orderStage, setOrderStage] = useState<'list' | 'details' | 'to_restaurant' | 'to_customer' | 'arrived' | 'completed'>('list');
   
   const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
   const [wsFailed, setWsFailed] = useState(false);
@@ -265,6 +262,7 @@ export default function CourierDashboard() {
       setCurrentOrder(data);
       setSelectedOrder(data);
       
+      // Определяем этап по статусу
       if (data.status === 'ready_for_pickup') {
         setOrderStage('to_restaurant');
       } else if (data.status === 'picked_up') {
@@ -276,8 +274,6 @@ export default function CourierDashboard() {
       } else {
         setOrderStage('to_restaurant');
       }
-      
-      setShowOrdersList(false);
     } catch (error) {
       console.error('Error fetching order:', error);
     }
@@ -300,8 +296,6 @@ export default function CourierDashboard() {
         showNotification('✅ Заказ взят в работу! Едем в ресторан.', 'success');
         setSelectedOrder(order);
         setOrderStage('to_restaurant');
-        setShowOrdersList(false);
-        setShowOrderDetails(false);
         await fetchCurrentOrder(order.order_id);
       } else {
         alert(data.message || 'Ошибка при взятии заказа');
@@ -377,7 +371,10 @@ export default function CourierDashboard() {
         setCurrentOrder(null);
         setSelectedOrder(null);
         fetchAvailableOrders();
-        setShowOrdersList(true);
+        // Возвращаемся к списку через 2 секунды
+        setTimeout(() => {
+          setOrderStage('list');
+        }, 2000);
       }
     } catch (error) {
       console.error('Error completing delivery:', error);
@@ -437,6 +434,9 @@ export default function CourierDashboard() {
         const data = await res.json();
         if (data.success) {
           setIsOnline(false);
+          setOrderStage('list');
+          setSelectedOrder(null);
+          setCurrentOrder(null);
           if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
           if (wsRef.current) wsRef.current.close();
         }
@@ -485,14 +485,20 @@ export default function CourierDashboard() {
     router.push('/profile');
   };
 
+  const goBackToList = () => {
+    setOrderStage('list');
+    setSelectedOrder(null);
+    fetchAvailableOrders();
+  };
+
   // ============ РЕНДЕР КАРТОЧКИ ЗАКАЗА ДЛЯ СПИСКА ============
   const renderOrderCard = (order: any) => (
     <div 
       key={order.order_id} 
       className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition cursor-pointer"
       onClick={() => {
-        setSelectedOrderForDetails(order);
-        setShowOrderDetails(true);
+        setSelectedOrder(order);
+        setOrderStage('details');
       }}
     >
       <div className="flex justify-between items-start mb-2">
@@ -512,70 +518,198 @@ export default function CourierDashboard() {
         <span className="text-gray-500">📦 {order.bag_name || 'Сюрприз'}</span>
         <span className="text-blue-500">📍 {order.distance_km?.toFixed(1) || 0} км</span>
       </div>
-      
+    </div>
+  );
+
+  // ============ ДЕТАЛИ ЗАКАЗА С КАРТОЙ ============
+  const renderOrderDetails = (order: any) => (
+    <div className="space-y-4">
+      {/* Кнопка назад */}
       <button 
-        className="w-full mt-3 bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-xl text-sm font-semibold transition"
-        onClick={(e) => { 
-          e.stopPropagation(); 
-          takeOrder(order);
-        }}
+        onClick={goBackToList}
+        className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm"
+      >
+        ← Назад к списку
+      </button>
+      
+      {/* Информация о заказе */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-sm text-gray-500">Заказ #{order.order_number}</p>
+            <p className="font-bold text-gray-800 text-lg">{order.supplier_name}</p>
+          </div>
+          <span className="font-bold text-emerald-500 text-lg">{order.amount} ₸</span>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 mt-3">
+          <div>
+            <p className="text-xs text-gray-500">Ресторан</p>
+            <p className="text-sm font-medium text-gray-800">{order.supplier_address || 'Адрес не указан'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Клиент</p>
+            <p className="text-sm font-medium text-gray-800">{order.customer_address || 'Адрес не указан'}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4 mt-3 text-sm">
+          <span className="text-gray-500">📦 {order.bag_name || 'Сюрприз'}</span>
+          <span className="text-gray-500">•</span>
+          <span className="text-blue-500">📍 {order.distance_km?.toFixed(1) || 0} км</span>
+        </div>
+      </div>
+      
+      {/* КАРТА с маршрутом до ресторана */}
+      <div className="relative h-64 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+        <CourierMap
+          orderId={order.order_id}
+          restaurantLocation={order.supplier_lat ? { 
+            lat: order.supplier_lat, 
+            lon: order.supplier_lon 
+          } : undefined}
+          customerLocation={order.customer_lat ? { 
+            lat: order.customer_lat, 
+            lon: order.customer_lon 
+          } : undefined}
+          height="100%"
+        />
+        
+        <button
+          onClick={centerToMyLocation}
+          disabled={locating}
+          className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-all"
+        >
+          {locating ? (
+            <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <LocationIcon size={20} />
+          )}
+        </button>
+        
+        <div className="absolute top-4 left-4 right-4 z-[1000] bg-white/95 backdrop-blur rounded-xl p-2 shadow-lg border border-gray-200">
+          <p className="text-xs text-gray-500">Маршрут до ресторана</p>
+          <p className="font-semibold text-gray-800 text-sm">{order.supplier_name}</p>
+        </div>
+      </div>
+      
+      {/* Кнопка "Взять заказ" */}
+      <button 
+        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-semibold text-lg transition"
+        onClick={() => takeOrder(order)}
       >
         Взять заказ
       </button>
     </div>
   );
 
-  // ============ ДЕТАЛИ ЗАКАЗА (МОДАЛЬНОЕ ОКНО) ============
-  const renderOrderDetails = (order: any) => (
-    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 animate-slide-up">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Детали заказа</h2>
-          <button 
-            onClick={() => setShowOrderDetails(false)}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
+  // ============ АКТИВНЫЙ ЗАКАЗ - ТОЛЬКО КАРТА ============
+  const renderActiveOrder = () => {
+    if (!currentOrder) return null;
+    
+    const stageLabels = {
+      'to_restaurant': '🚗 Еду в ресторан',
+      'to_customer': '🚗 Еду к клиенту',
+      'arrived': '📍 Прибыл к клиенту',
+      'completed': '✅ Доставка завершена'
+    };
+    
+    const stageActions = {
+      'to_restaurant': (
+        <button
+          onClick={pickupOrder}
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition"
+        >
+          📦 Забрал заказ
+        </button>
+      ),
+      'to_customer': (
+        <button
+          onClick={courierArrived}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-semibold transition"
+        >
+          🚗 Я приехал
+        </button>
+      ),
+      'arrived': (
+        <button
+          onClick={completeDelivery}
+          className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-semibold transition"
+        >
+          ✅ Доставка отдана
+        </button>
+      ),
+      'completed': (
+        <div className="text-center py-2">
+          <p className="text-green-600 font-semibold">✅ Доставка завершена!</p>
+        </div>
+      )
+    };
+    
+    return (
+      <div className="space-y-4">
+        {/* Статус */}
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <p className="text-sm text-gray-500">Активный заказ</p>
+          <p className="font-bold text-gray-800 text-lg">{stageLabels[orderStage as keyof typeof stageLabels] || 'В пути'}</p>
+          <p className="text-sm text-gray-500">#{currentOrder.order_number} • {currentOrder.supplier?.business_name}</p>
         </div>
         
-        <div className="space-y-4">
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm text-gray-500">Ресторан</p>
-            <p className="font-semibold text-gray-800">{order.supplier_name}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              📍 {order.supplier_address || 'Адрес не указан'}
+        {/* КАРТА с маршрутом */}
+        <div className="relative h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+          <CourierMap
+            orderId={currentOrder.id}
+            restaurantLocation={currentOrder.supplier_lat ? { 
+              lat: currentOrder.supplier_lat, 
+              lon: currentOrder.supplier_lon 
+            } : currentOrder.supplier?.lat ? { 
+              lat: currentOrder.supplier.lat, 
+              lon: currentOrder.supplier.lon 
+            } : undefined}
+            customerLocation={currentOrder.customer_lat ? { 
+              lat: currentOrder.customer_lat, 
+              lon: currentOrder.customer_lon 
+            } : undefined}
+            height="100%"
+          />
+          
+          <button
+            onClick={centerToMyLocation}
+            disabled={locating}
+            className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-all"
+          >
+            {locating ? (
+              <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <LocationIcon size={20} />
+            )}
+          </button>
+          
+          <div className="absolute top-4 left-4 right-4 z-[1000] bg-white/95 backdrop-blur rounded-xl p-2 shadow-lg border border-gray-200">
+            <p className="text-xs text-gray-500">Маршрут доставки</p>
+            <p className="font-semibold text-gray-800 text-sm">
+              {orderStage === 'to_restaurant' ? '📍 Ресторан' : 
+               orderStage === 'to_customer' ? '📍 Клиент' : 
+               orderStage === 'arrived' ? '📍 Вы на месте' : '✅ Доставлено'}
             </p>
           </div>
-          
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm text-gray-500">Клиент</p>
-            <p className="font-semibold text-gray-800">{order.customer_address || 'Адрес не указан'}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-gray-400">📦 {order.bag_name || 'Сюрприз'}</span>
-              <span className="text-xs text-gray-400">•</span>
-              <span className="text-xs text-gray-400">{order.amount} ₸</span>
-            </div>
-          </div>
-          
-          <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm text-gray-500">Расстояние</p>
-            <p className="font-semibold text-gray-800">{order.distance_km?.toFixed(1) || 0} км</p>
-          </div>
-          
-          <button 
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-semibold transition"
-            onClick={() => {
-              setShowOrderDetails(false);
-              takeOrder(order);
-            }}
-          >
-            Взять заказ
-          </button>
         </div>
+        
+        {/* Кнопка действия */}
+        {stageActions[orderStage as keyof typeof stageActions]}
+        
+        {/* Кнопка "Отменить" только на этапах доставки */}
+        {orderStage !== 'completed' && (
+          <button
+            onClick={goBackToList}
+            className="w-full text-gray-400 hover:text-gray-600 py-2 text-sm transition"
+          >
+            Отменить заказ
+          </button>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // ============ ЗАГРУЗКА ============
   if (loading) {
@@ -656,46 +790,32 @@ export default function CourierDashboard() {
         </div>
       </div>
 
-      {/* ============ КАРТА (всегда видна с курьером, рестораном, клиентом) ============ */}
-      <div className="relative h-64 mx-4 mt-4 rounded-2xl overflow-hidden shadow-lg">
-        <CourierMap
-          orderId={currentOrder?.id}
-          restaurantLocation={currentOrder?.supplier ? { 
-            lat: currentOrder.supplier.lat, 
-            lon: currentOrder.supplier.lon 
-          } : undefined}
-          customerLocation={currentOrder?.customer_lat ? { 
-            lat: currentOrder.customer_lat, 
-            lon: currentOrder.customer_lon 
-          } : undefined}
-          height="100%"
-        />
-        
-        <button
-          onClick={centerToMyLocation}
-          disabled={locating}
-          className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-all"
-        >
-          {locating ? (
-            <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <LocationIcon size={20} />
-          )}
-        </button>
-        
-        {selectedOrder && (
-          <div className="absolute top-4 left-4 right-4 z-[1000] bg-white/95 backdrop-blur rounded-xl p-3 shadow-lg border border-gray-200">
-            <p className="text-xs text-gray-500">Активный заказ</p>
-            <p className="font-semibold text-gray-800 text-sm">#{selectedOrder.order_number}</p>
-            <p className="text-xs text-gray-500">{selectedOrder.supplier?.business_name}</p>
-          </div>
-        )}
-      </div>
-
-      {/* ============ КОНТЕНТ В ЗАВИСИМОСТИ ОТ ЭТАПА ============ */}
+      {/* ============ КОНТЕНТ ============ */}
       <div className="px-4 mt-4 pb-32">
-        {/* ЭТАП 1: СПИСОК ЗАКАЗОВ */}
-        {orderStage === 'list' && isOnline && (
+        {!isOnline ? (
+          <div className="text-center py-8">
+            <p className="text-gray-400">Включите режим "На линии" чтобы видеть заказы</p>
+          </div>
+        ) : orderStage === 'completed' ? (
+          // Завершенный заказ
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-200 bg-green-50 text-center">
+            <div className="text-5xl mb-4">✅</div>
+            <h3 className="font-bold text-green-600 text-xl mb-2">Доставка завершена!</h3>
+            <p className="text-gray-500 mb-4">Заказ #{currentOrder?.order_number} успешно доставлен</p>
+            <button
+              onClick={() => {
+                setOrderStage('list');
+                setCurrentOrder(null);
+                setSelectedOrder(null);
+                fetchAvailableOrders();
+              }}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold transition"
+            >
+              📋 К списку заказов
+            </button>
+          </div>
+        ) : orderStage === 'list' ? (
+          // СПИСОК ЗАКАЗОВ (без карты)
           <div>
             <h2 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
               <span>📋 Доступные заказы</span>
@@ -711,97 +831,14 @@ export default function CourierDashboard() {
               )}
             </div>
           </div>
-        )}
-
-        {/* ЭТАП 2: ПУТЬ ДО РЕСТОРАНА + КНОПКА "ЗАБРАЛ ЗАКАЗ" */}
-        {orderStage === 'to_restaurant' && currentOrder && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-800 mb-2">🚗 Еду в ресторан</h3>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm text-gray-500">Ресторан</p>
-                <p className="font-medium text-gray-800">{currentOrder.supplier?.business_name}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Клиент</p>
-                <p className="font-medium text-gray-800">{currentOrder.customer_address || 'Адрес не указан'}</p>
-              </div>
-            </div>
-            <button
-              onClick={pickupOrder}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition"
-            >
-              📦 Забрал заказ
-            </button>
-          </div>
-        )}
-
-        {/* ЭТАП 3: ПУТЬ ДО КЛИЕНТА + КНОПКА "Я ПРИЕХАЛ" */}
-        {orderStage === 'to_customer' && currentOrder && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-800 mb-2">🚗 Еду к клиенту</h3>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm text-gray-500">Клиент</p>
-                <p className="font-medium text-gray-800">{currentOrder.customer_address || 'Адрес не указан'}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Сумма</p>
-                <p className="font-bold text-emerald-500">{currentOrder.amount_paid} ₸</p>
-              </div>
-            </div>
-            <button
-              onClick={courierArrived}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-semibold transition"
-            >
-              🚗 Я приехал
-            </button>
-          </div>
-        )}
-
-        {/* ЭТАП 4: ПРИБЫЛ К КЛИЕНТУ + КНОПКА "ДОСТАВКА ОТДАНА" */}
-        {orderStage === 'arrived' && currentOrder && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <h3 className="font-bold text-green-600 mb-2">📍 Вы прибыли к клиенту</h3>
-            <p className="text-sm text-gray-500 mb-3">Ожидайте подтверждения получения</p>
-            <button
-              onClick={completeDelivery}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-semibold transition"
-            >
-              ✅ Доставка отдана
-            </button>
-          </div>
-        )}
-
-        {/* ЭТАП 5: ЗАВЕРШЕН */}
-        {orderStage === 'completed' && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-green-200 bg-green-50">
-            <h3 className="font-bold text-green-600 mb-2">✅ Доставка завершена!</h3>
-            <button
-              onClick={() => {
-                setOrderStage('list');
-                setCurrentOrder(null);
-                setSelectedOrder(null);
-                fetchAvailableOrders();
-                setShowOrdersList(true);
-              }}
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-semibold transition"
-            >
-              📋 К списку заказов
-            </button>
-          </div>
-        )}
-
-        {/* Офлайн состояние */}
-        {!isOnline && (
-          <div className="text-center py-8">
-            <p className="text-gray-400">Включите режим "На линии" чтобы видеть заказы</p>
-          </div>
-        )}
+        ) : orderStage === 'details' && selectedOrder ? (
+          // ДЕТАЛИ ЗАКАЗА С КАРТОЙ
+          renderOrderDetails(selectedOrder)
+        ) : (orderStage === 'to_restaurant' || orderStage === 'to_customer' || orderStage === 'arrived') && currentOrder ? (
+          // АКТИВНЫЙ ЗАКАЗ - ТОЛЬКО КАРТА
+          renderActiveOrder()
+        ) : null}
       </div>
-
-      {/* МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ ЗАКАЗА */}
-      {showOrderDetails && selectedOrderForDetails && renderOrderDetails(selectedOrderForDetails)}
     </div>
   );
 }
