@@ -1,17 +1,17 @@
-// app/courier/dashboard/page.tsx - ИДЕАЛЬНАЯ ТЕМА (адаптировано под ваш код)
+// app/courier/dashboard/page.tsx - СВЕТЛАЯ ВЕРСИЯ
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import DeliveryMap from '../../components/DeliveryMap';
+import DeliveryMapWithRoute from '../../components/DeliveryMapWithRoute';
 const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: false });
 
-// ============ ИКОНКИ ============
+// ============ СВЕТЛЫЕ ИКОНКИ ============
 const CarIcon = ({ size = 24, className = "" }) => (
   <div className={`inline-flex items-center justify-center ${className}`}>
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400/80">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
       <path d="M5 17h14M5 17a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2M5 17a2 2 0 1 0 4 0M19 17a2 2 0 1 0-4 0" />
       <path d="M7 9V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
     </svg>
@@ -20,7 +20,7 @@ const CarIcon = ({ size = 24, className = "" }) => (
 
 const LocationIcon = ({ size = 24, className = "" }) => (
   <div className={`inline-flex items-center justify-center ${className}`}>
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400/80">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
       <circle cx="12" cy="10" r="3" />
     </svg>
@@ -28,7 +28,7 @@ const LocationIcon = ({ size = 24, className = "" }) => (
 );
 
 const OnlineIcon = ({ isOnline = false }) => (
-  <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+  <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`} />
 );
 
 export default function CourierDashboard() {
@@ -48,6 +48,7 @@ export default function CourierDashboard() {
   const [locating, setLocating] = useState(false);
   const [arriving, setArriving] = useState(false);
   const [pickupLoading, setPickupLoading] = useState(false);
+  
   const [currentProgress, setCurrentProgress] = useState(0);
   const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
   const [wsFailed, setWsFailed] = useState(false);
@@ -95,7 +96,6 @@ export default function CourierDashboard() {
     }
   };
 
-  // useEffect для проверки статуса заказа
   useEffect(() => {
     if (!currentOrder) return;
     
@@ -134,7 +134,6 @@ export default function CourierDashboard() {
     };
   }, [currentOrder]);
 
-  // useEffect для проверки авторизации
   useEffect(() => {
     const checkAuth = async () => {
       const token = sessionStorage.getItem('courierToken');
@@ -222,7 +221,6 @@ export default function CourierDashboard() {
     };
   }, [router]);
 
-  // Heartbeat
   useEffect(() => {
     const heartbeat = setInterval(() => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -234,7 +232,6 @@ export default function CourierDashboard() {
     return () => clearInterval(heartbeat);
   }, []);
 
-  // Геолокация
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -251,7 +248,6 @@ export default function CourierDashboard() {
     }
   }, []);
 
-  // WebSocket
   const connectWebSocket = () => {
     const token = sessionStorage.getItem('courierToken');
     
@@ -771,7 +767,7 @@ export default function CourierDashboard() {
 
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-24 left-4 right-4 z-50 p-3 rounded-xl text-white text-center text-sm ${
+    toast.className = `fixed bottom-24 left-4 right-4 z-50 p-4 rounded-xl text-white text-center ${
       type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'
     } animate-slide-up`;
     toast.textContent = message;
@@ -779,29 +775,25 @@ export default function CourierDashboard() {
     setTimeout(() => toast.remove(), 3000);
   };
 
-  // ============ ЗАГРУЗКА ============
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#eef2f6]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
-          <p className="text-gray-500 text-sm">Загрузка...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-spin h-12 w-12 border-b-2 border-emerald-600 rounded-full"></div>
       </div>
     );
   }
 
   if (pendingVerification) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#eef2f6] p-6">
-        <div className="bg-white/90 backdrop-blur rounded-3xl p-8 text-center max-w-md border border-gray-200/60 shadow-lg">
+      <div className="min-h-screen flex items-center justify-center bg-white p-6">
+        <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-lg">
           <div className="text-6xl mb-4">⏳</div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">Заявка на рассмотрении</h1>
           <p className="text-gray-500 mb-6">
             Ваша заявка на регистрацию курьера еще не подтверждена администратором.
           </p>
           <Link href="/profile">
-            <button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-medium transition">
+            <button className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl transition">
               Вернуться в профиль
             </button>
           </Link>
@@ -810,92 +802,84 @@ export default function CourierDashboard() {
     );
   }
 
-  // ============ ОСНОВНОЙ JSX - ИДЕАЛЬНАЯ ТЕМА ============
   return (
-    <div className="min-h-screen bg-[#eef2f6] pb-32">
-      {/* HEADER */}
-      <div className="bg-white/90 backdrop-blur border-b border-gray-200/60 px-6 pt-12 pb-4">
+    <div className="min-h-screen bg-white pb-40">
+      {/* Header - светлый */}
+      <div className="bg-emerald-500 text-white px-6 pt-12 pb-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-3 text-gray-800">
-              <CarIcon size={28} />
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <CarIcon size={28} className="text-white" />
               Панель курьера
             </h1>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-emerald-100 text-sm mt-1">
               {status?.first_name} {status?.last_name}
             </p>
             {userLocation && (
-              <p className="text-gray-400 text-xs mt-1 flex items-center gap-1">
-                <span className="text-emerald-500">●</span>
-                {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}
+              <p className="text-emerald-100 text-xs mt-1 opacity-70">
+                📍 {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}
               </p>
             )}
           </div>
-          <button onClick={() => router.push('/profile')} className="bg-gray-100/80 hover:bg-gray-200/80 rounded-full p-2.5 transition backdrop-blur">
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Link href="/profile" className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-          </button>
+          </Link>
         </div>
       </div>
 
-      {/* КАРТА */}
-      <div className="relative h-72 mx-4 mt-4 rounded-2xl overflow-hidden shadow-lg border border-gray-200/60">
+      {/* Карта */}
+      <div className="relative h-64 m-4 rounded-2xl overflow-hidden shadow-lg">
         <CourierMap
           orderId={currentOrder?.id}
           restaurantLocation={currentOrder?.supplier ? { lat: currentOrder.supplier.lat, lon: currentOrder.supplier.lon } : undefined}
           customerLocation={currentOrder?.customer_lat ? { lat: currentOrder.customer_lat, lon: currentOrder.customer_lon } : undefined}
-          height="100%"
         />
         
         <button
           onClick={centerToMyLocation}
           disabled={locating}
-          className="absolute bottom-4 right-4 z-[1000] bg-white/90 backdrop-blur rounded-full shadow-lg p-3 hover:bg-gray-100/90 transition-all active:scale-95 disabled:opacity-50 border border-gray-200/60"
+          className="absolute bottom-4 right-4 z-[1000] bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-50"
         >
           {locating ? (
-            <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
           ) : (
-            <LocationIcon size={20} />
+            <LocationIcon size={24} className="text-emerald-500" />
           )}
         </button>
       </div>
 
-      {/* СТАТУС ОНЛАЙН */}
-      <div className="px-4 mt-4">
-        <div className="bg-white/90 backdrop-blur rounded-2xl p-5 shadow-lg border border-gray-200/60">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <OnlineIcon isOnline={isOnline} />
-                {isOnline && <div className="absolute -inset-1 bg-emerald-400/20 rounded-full animate-ping" />}
-              </div>
+      {/* Статус онлайн */}
+      <div className="px-4 mb-6">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">{isOnline ? '🟢' : '⚫'}</span>
               <div>
-                <p className={`font-semibold text-lg ${isOnline ? 'text-gray-800' : 'text-gray-400'}`}>
-                  {isOnline ? 'На линии' : 'Офлайн'}
-                </p>
+                <p className="font-semibold text-lg text-gray-800">{isOnline ? 'На линии' : 'Офлайн'}</p>
                 <p className="text-xs text-gray-500">
-                  {isOnline ? 'Готов принимать заказы' : 'Включите режим'}
+                  {isOnline ? 'Вы готовы принимать заказы' : 'Включите режим чтобы получать заказы'}
                 </p>
               </div>
             </div>
             <button
               onClick={toggleOnlineMode}
               disabled={switching}
-              className={`relative w-14 h-8 rounded-full transition-all duration-300 ${isOnline ? 'bg-emerald-500' : 'bg-gray-300'} ${switching ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+              className={`relative w-16 h-8 rounded-full transition-all duration-300 ${isOnline ? 'bg-emerald-500' : 'bg-gray-300'} ${switching ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
             >
-              <span className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 flex items-center justify-center text-xs font-bold ${isOnline ? 'translate-x-6' : 'translate-x-0'}`}>
-                {isOnline ? '✓' : '✕'}
+              <span className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 flex items-center justify-center text-xs ${isOnline ? 'translate-x-8' : 'translate-x-0'}`}>
+                {isOnline ? '✓' : '○'}
               </span>
             </button>
           </div>
           
           {isOnline && (
-            <div className="mt-4 pt-4 border-t border-gray-200/60">
+            <div className="mt-4 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">Статус:</span>
-                <span className="text-emerald-500 font-medium flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                <span className="text-emerald-500 font-medium flex items-center gap-1">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
                   Принимаю заказы
                 </span>
               </div>
@@ -909,77 +893,71 @@ export default function CourierDashboard() {
           )}
           
           {!isOnline && (
-            <div className="mt-4 pt-4 border-t border-gray-200/60">
+            <div className="mt-4 pt-4 border-t border-gray-100">
               <p className="text-sm text-gray-400 text-center">💤 Нажмите на ползунок чтобы выйти на линию</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* МАРШРУТ ДО РЕСТОРАНА */}
+      {/* Маршрут до ресторана */}
       {currentOrder && currentOrder.status === 'ready_for_pickup' && currentOrder.supplier?.lat && currentOrder.supplier?.lon && userLocation && (
-        <div className="px-4 mt-4">
-          <div className="bg-white/90 backdrop-blur rounded-2xl p-5 shadow-lg border border-gray-200/60">
+        <div className="px-4 mb-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h2 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800">
-              <LocationIcon size={20} />
+              <LocationIcon size={20} className="text-orange-500" />
               Маршрут до ресторана
             </h2>
-            <div className="h-48 rounded-xl overflow-hidden border border-gray-200/60">
-              <DeliveryMapWithRoute
-                orderId={currentOrder.id}
-                startLat={userLocation.lat}
-                startLon={userLocation.lon}
-                endLat={currentOrder.supplier.lat}
-                endLon={currentOrder.supplier.lon}
-                supplierName={currentOrder.supplier.business_name || 'Ресторан'}
-                customerAddress="Ресторан"
-                courierLocation={userLocation}
-                onProgressUpdate={(progress) => console.log(`🚚 Прогресс до ресторана: ${progress}%`)}
-              />
-            </div>
+            <DeliveryMapWithRoute
+              orderId={currentOrder.id}
+              startLat={userLocation.lat}
+              startLon={userLocation.lon}
+              endLat={currentOrder.supplier.lat}
+              endLon={currentOrder.supplier.lon}
+              supplierName={currentOrder.supplier.business_name || 'Ресторан'}
+              customerAddress="Ресторан"
+              courierLocation={userLocation}
+              onProgressUpdate={(progress) => console.log(`🚚 Прогресс до ресторана: ${progress}%`)}
+            />
           </div>
         </div>
       )}
 
-      {/* МАРШРУТ ДО КЛИЕНТА */}
+      {/* Маршрут до клиента */}
       {currentOrder && currentOrder.status === 'picked_up' && currentOrder.customer_lat && currentOrder.customer_lon && userLocation && (
-        <div className="px-4 mt-4">
-          <div className="bg-white/90 backdrop-blur rounded-2xl p-5 shadow-lg border border-gray-200/60">
+        <div className="px-4 mb-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
             <h2 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800">
-              <CarIcon size={20} />
+              <CarIcon size={20} className="text-blue-500" />
               Маршрут до клиента
             </h2>
-            <div className="h-48 rounded-xl overflow-hidden border border-gray-200/60">
-              <DeliveryMapWithRoute
-                orderId={currentOrder.id}
-                startLat={userLocation.lat}
-                startLon={userLocation.lon}
-                endLat={currentOrder.customer_lat}
-                endLon={currentOrder.customer_lon}
-                supplierName={currentOrder.supplier?.business_name || 'Ресторан'}
-                customerAddress={currentOrder.customer_address || 'Адрес клиента'}
-                courierLocation={userLocation}
-                onProgressUpdate={(progress) => console.log(`🚚 Прогресс доставки: ${progress}%`)}
-              />
-            </div>
+            <DeliveryMapWithRoute
+              orderId={currentOrder.id}
+              startLat={userLocation.lat}
+              startLon={userLocation.lon}
+              endLat={currentOrder.customer_lat}
+              endLon={currentOrder.customer_lon}
+              supplierName={currentOrder.supplier?.business_name || 'Ресторан'}
+              customerAddress={currentOrder.customer_address || 'Адрес клиента'}
+              courierLocation={userLocation}
+              onProgressUpdate={(progress) => console.log(`🚚 Прогресс доставки: ${progress}%`)}
+            />
           </div>
         </div>
       )}
 
-      {/* ТЕКУЩИЙ ЗАКАЗ */}
+      {/* Текущий заказ */}
       {currentOrder && currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
-        <div className="px-4 mt-4 pb-32">
-          <div className="bg-white/90 backdrop-blur rounded-2xl p-5 shadow-lg border border-gray-200/60">
-            <h2 className="font-bold text-lg mb-4 text-gray-800 flex items-center gap-2">
-              📦 Текущий заказ #{currentOrder.order_number}
-            </h2>
+        <div className="px-4 mb-6 pb-40">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <h2 className="font-bold text-lg mb-4 text-gray-800">📦 Текущий заказ #{currentOrder.order_number}</h2>
             
             <div className="space-y-3 mb-4">
-              <div className="flex justify-between items-center border-b border-gray-200/60 pb-2">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                 <span className="text-gray-500">Ресторан:</span>
                 <span className="font-medium text-gray-800 text-right">{currentOrder.supplier?.business_name}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-gray-200/60 pb-2">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                 <span className="text-gray-500">Клиент:</span>
                 <span className="font-medium text-gray-800 text-right">{currentOrder.customer_address || 'Адрес не указан'}</span>
               </div>
@@ -993,7 +971,7 @@ export default function CourierDashboard() {
               <button
                 onClick={pickupOrder}
                 disabled={pickupLoading}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-xl font-semibold transition disabled:opacity-50"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-xl font-semibold transition"
               >
                 {pickupLoading ? (
                   <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Загрузка...</>
@@ -1009,7 +987,7 @@ export default function CourierDashboard() {
               <button
                 onClick={courierArrived}
                 disabled={arriving}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-xl font-semibold transition disabled:opacity-50"
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-xl font-semibold transition"
               >
                 {arriving ? (
                   <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Отправка...</>
@@ -1020,16 +998,30 @@ export default function CourierDashboard() {
                 )}
               </button>
             )}
+            
+            {currentOrder.status === 'nearby' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-3 text-center">
+                <CarIcon size={32} className="text-yellow-500 mx-auto mb-2" />
+                <p className="font-semibold text-yellow-700">Ожидаем подтверждения от клиента</p>
+                <p className="text-xs text-yellow-600 mt-1">Клиент получил уведомление о вашем прибытии</p>
+              </div>
+            )}
+            
+            {orderStatus === 'almost_done' && (
+              <button onClick={completeDelivery} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-semibold mt-4 text-lg shadow-lg transition">
+                Завершить доставку
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* ДОСТУПНЫЕ ЗАКАЗЫ */}
+      {/* Доступные заказы */}
       {isOnline && !currentOrder && (
-        <div className="px-4 mt-4">
+        <div className="px-4 mb-6 pb-32">
           <button 
             onClick={() => { fetchAvailableOrders(); setShowOrdersList(!showOrdersList); }} 
-            className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-600 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition border border-blue-500/20"
+            className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition"
           >
             Список доступных заказов ({availableOrders.length})
           </button>
@@ -1037,7 +1029,7 @@ export default function CourierDashboard() {
           {showOrdersList && availableOrders.length > 0 && (
             <div className="mt-3 space-y-3">
               {availableOrders.map((order) => (
-                <div key={order.order_id} className="bg-white/90 backdrop-blur rounded-xl p-4 shadow-lg border border-gray-200/60">
+                <div key={order.order_id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="font-semibold text-gray-800">{order.supplier_name}</p>
@@ -1045,7 +1037,7 @@ export default function CourierDashboard() {
                     </div>
                     <span className="font-bold text-emerald-500">{order.amount} ₸</span>
                   </div>
-                  <button onClick={() => takeOrder(order.order_id)} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                  <button onClick={() => takeOrder(order.order_id)} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-2 rounded-xl text-sm transition">
                     Взять заказ
                   </button>
                 </div>
@@ -1055,13 +1047,13 @@ export default function CourierDashboard() {
         </div>
       )}
 
-      {/* МОДАЛЬНОЕ ОКНО */}
+      {/* Модальное окно */}
       {showProposalModal && proposedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white/90 backdrop-blur rounded-3xl max-w-sm w-full p-6 border border-gray-200/60 shadow-2xl">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl">
             <div className="text-center mb-4">
               <div className="flex justify-center mb-3">
-                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
                   <span className="text-3xl">🚚</span>
                 </div>
               </div>
@@ -1071,11 +1063,13 @@ export default function CourierDashboard() {
             </div>
             <div className="flex gap-3">
               <button onClick={acceptProposal} className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-semibold transition">Принять</button>
-              <button onClick={declineProposal} className="flex-1 bg-gray-200/80 hover:bg-gray-300/80 text-gray-700 py-3 rounded-xl font-semibold transition">Отклонить</button>
+              <button onClick={declineProposal} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-xl font-semibold transition">Отклонить</button>
             </div>
           </div>
         </div>
       )}
+      
+      <div className="h-16" />
     </div>
   );
 }
