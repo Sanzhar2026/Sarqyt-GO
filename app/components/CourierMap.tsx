@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - С СЕРОВАТО-ПРОЗРАЧНЫМИ ИКОНКАМИ
+// app/components/CourierMap.tsx - БЕЗ МЕТКИ С РАССТОЯНИЕМ
 
 'use client';
 
@@ -6,6 +6,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 
 // Загружаем Leaflet динамически
 let L: any;
+
+const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMDU3ZGE4OTkxODQ2M2JhNmVlZDgzM2QzMDE2OTYwIiwiaCI6Im11cm11cjY0In0=';
 
 const loadLeaflet = async () => {
   if (typeof window === 'undefined') return;
@@ -24,7 +26,82 @@ const loadLeaflet = async () => {
   return L;
 };
 
-// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ
+// Функция получения маршрута от ORS
+const getRouteFromORS = async (startLat: number, startLon: number, endLat: number, endLon: number) => {
+  try {
+    const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
+      method: 'POST',
+      headers: {
+        'Authorization': ORS_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        coordinates: [
+          [startLon, startLat],
+          [endLon, endLat]
+        ],
+        format: 'geojson',
+        preference: 'fastest'
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`ORS error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('ORS route error:', error);
+    return null;
+  }
+};
+
+// Функция декодирования polyline
+const decodePolyline = (encoded: string) => {
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  const coordinates = [];
+  let shift = 0;
+  let result = 0;
+  let byte = null;
+  let latitude_change;
+  let longitude_change;
+  const factor = Math.pow(10, 5);
+
+  while (index < encoded.length) {
+    byte = null;
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+
+    lat += latitude_change;
+    lng += longitude_change;
+
+    coordinates.push([lat / factor, lng / factor]);
+  }
+
+  return coordinates;
+};
+
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dlat = (lat2 - lat1) * Math.PI / 180;
@@ -34,7 +111,6 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// ✅ СВЕТЛАЯ КАРТА
 const LIGHT_MAP_TILE = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
 interface CourierLocation {
@@ -92,6 +168,7 @@ export default function CourierMap({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+  const [routePoints, setRoutePoints] = useState<[number, number][]>([]);
   
   const mapRef = useRef<any>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -158,7 +235,7 @@ export default function CourierMap({
     initMap();
   }, []);
 
-  // Инициализация карты со светлой темой
+  // Инициализация карты
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return;
     if (!mapCenter) return;
@@ -180,48 +257,92 @@ export default function CourierMap({
       position: 'bottomright'
     }).addTo(mapInstanceRef.current);
     
-    console.log(`🗺️ Карта инициализирована (светлая тема)`);
+    console.log(`🗺️ Карта инициализирована`);
   }, [mapLoaded, mapCenter]);
 
-  // ============ МАРШРУТ ============
+  // ============ ПОСТРОЕНИЕ МАРШРУТА ЧЕРЕЗ ORS ============
   useEffect(() => {
     if (!mapInstanceRef.current || !showRoute) return;
-    
-    if (routeLayerRef.current) {
-      routeLayerRef.current.remove();
-      routeLayerRef.current = null;
-    }
-    
-    if (restaurantLocation?.lat && restaurantLocation?.lon && 
-        customerLocation?.lat && customerLocation?.lon) {
-      
-      const points: [number, number][] = [
-        [restaurantLocation.lat, restaurantLocation.lon],
-        [customerLocation.lat, customerLocation.lon]
-      ];
-      
-      routeLayerRef.current = L.polyline(points, {
-        color: routeColor,
-        weight: routeWidth,
-        opacity: 0.8,
-        dashArray: null,
-        lineCap: 'round',
-        lineJoin: 'round',
-      }).addTo(mapInstanceRef.current);
-      
-      console.log(`✅ Маршрут добавлен (${routeColor}, ${routeWidth}px)`);
-    }
+    if (!restaurantLocation?.lat || !restaurantLocation?.lon || 
+        !customerLocation?.lat || !customerLocation?.lon) return;
+
+    const fetchRoute = async () => {
+      try {
+        const data = await getRouteFromORS(
+          restaurantLocation.lat, restaurantLocation.lon,
+          customerLocation.lat, customerLocation.lon
+        );
+
+        // Удаляем старый маршрут
+        if (routeLayerRef.current) {
+          routeLayerRef.current.remove();
+          routeLayerRef.current = null;
+        }
+
+        if (data && data.features && data.features.length > 0) {
+          const coordinates = data.features[0].geometry.coordinates;
+          const points: [number, number][] = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+          
+          setRoutePoints(points);
+
+          // Рисуем маршрут по дорогам
+          routeLayerRef.current = L.polyline(points, {
+            color: routeColor,
+            weight: routeWidth,
+            opacity: 0.8,
+            lineCap: 'round',
+            lineJoin: 'round',
+          }).addTo(mapInstanceRef.current);
+
+          console.log(`✅ Маршрут построен`);
+        } else {
+          // Fallback - прямая линия если ORS не вернул маршрут
+          const points: [number, number][] = [
+            [restaurantLocation.lat, restaurantLocation.lon],
+            [customerLocation.lat, customerLocation.lon]
+          ];
+          
+          routeLayerRef.current = L.polyline(points, {
+            color: routeColor,
+            weight: routeWidth,
+            opacity: 0.4,
+            dashArray: '5, 5',
+            lineCap: 'round',
+            lineJoin: 'round',
+          }).addTo(mapInstanceRef.current);
+          
+          console.log('⚠️ ORS не ответил, использована прямая линия');
+        }
+      } catch (error) {
+        console.error('Ошибка построения маршрута:', error);
+        // Fallback - прямая линия
+        const points: [number, number][] = [
+          [restaurantLocation.lat, restaurantLocation.lon],
+          [customerLocation.lat, customerLocation.lon]
+        ];
+        
+        routeLayerRef.current = L.polyline(points, {
+          color: routeColor,
+          weight: routeWidth,
+          opacity: 0.4,
+          dashArray: '5, 5',
+          lineCap: 'round',
+          lineJoin: 'round',
+        }).addTo(mapInstanceRef.current);
+      }
+    };
+
+    fetchRoute();
   }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded]);
 
-  // ============ СЕРОВАТО-ПРОЗРАЧНЫЕ ИКОНКИ ============
+  // ============ ИКОНКИ (ПРОЗРАЧНЫЕ) ============
   
-  const getCourierIcon = (status?: string) => {
+  const getCourierIcon = () => {
     return L.divIcon({
       html: `<div class="relative">
                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(156, 163, 175, 0.6); backdrop-filter: blur(4px);">
                  🚚
                </div>
-               <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full" style="background-color: rgba(156, 163, 175, 0.6);"></div>
              </div>`,
       className: 'custom-div-icon',
       iconSize: [40, 40],
@@ -253,7 +374,7 @@ export default function CourierMap({
 
   const getRestaurantIcon = () => {
     return L.divIcon({
-      html: `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(156, 163, 175, 0.6); backdrop-filter: blur(4px);">
+      html: `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(239, 68, 68, 0.6); backdrop-filter: blur(4px);">
                🍽️
              </div>`,
       className: 'custom-div-icon',
@@ -264,7 +385,7 @@ export default function CourierMap({
 
   const getCustomerIcon = () => {
     return L.divIcon({
-      html: `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(156, 163, 175, 0.6); backdrop-filter: blur(4px);">
+      html: `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white/50" style="background-color: rgba(16, 185, 129, 0.6); backdrop-filter: blur(4px);">
                🏠
              </div>`,
       className: 'custom-div-icon',
@@ -323,7 +444,6 @@ export default function CourierMap({
     }
   }, [mapLoaded, isLoadingLocation, userLocation]);
 
-  // Добавление маркеров магазинов на карту
   const addSupplierMarkers = useCallback(() => {
     if (!mapInstanceRef.current) return;
     
@@ -372,7 +492,7 @@ export default function CourierMap({
     }
   }, [mapInstanceRef.current, suppliers, addSupplierMarkers]);
 
-  // ============ МАРКЕРЫ КУРЬЕРОВ И ПОЛЬЗОВАТЕЛЯ ============
+  // ============ МАРКЕРЫ ============
   
   useEffect(() => {
     if (!mapInstanceRef.current || !userLocation) return;
@@ -384,89 +504,9 @@ export default function CourierMap({
     const icon = getUserLocationIcon();
     userMarkerRef.current = L.marker([userLocation.lat, userLocation.lon], { icon })
       .addTo(mapInstanceRef.current)
-      .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow"><strong class="text-blue-500">📍 Вы здесь</strong><br/><span class="text-gray-500">Ваше текущее положение</span></div>');
+      .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow"><strong class="text-blue-500">Вы здесь</strong><br/><span class="text-gray-500">Ваше текущее положение</span></div>');
     
   }, [userLocation, mapInstanceRef.current]);
-
-  const updateCourierMarkers = useCallback(() => {
-    if (!mapInstanceRef.current) return;
-    
-    couriers.forEach((courier, id) => {
-      if (!courier.lat || !courier.lon) return;
-      
-      const existingMarker = markersRef.current.get(id);
-      const icon = getCourierIcon(courier.current_order_status);
-      
-      if (existingMarker) {
-        existingMarker.setLatLng([courier.lat, courier.lon]);
-        existingMarker.bindPopup(createPopupContent(courier));
-      } else {
-        const marker = L.marker([courier.lat, courier.lon], { icon })
-          .addTo(mapInstanceRef.current)
-          .bindPopup(createPopupContent(courier));
-        
-        markersRef.current.set(id, marker);
-      }
-    });
-    
-    markersRef.current.forEach((marker, id) => {
-      if (!couriers.has(id)) {
-        marker.remove();
-        markersRef.current.delete(id);
-      }
-    });
-  }, [couriers]);
-
-  const createPopupContent = (courier: CourierLocation) => {
-    const div = document.createElement('div');
-    div.className = 'min-w-[200px] bg-white rounded-xl p-3 shadow-lg border border-gray-200';
-    div.innerHTML = `
-      <div class="flex items-center gap-3 mb-3">
-        <div class="text-3xl">🚚</div>
-        <div>
-          <p class="font-semibold text-gray-800">${courier.first_name} ${courier.last_name}</p>
-          <p class="text-xs text-gray-500">Курьер</p>
-        </div>
-      </div>
-      <div class="space-y-2 text-sm border-t border-gray-100 pt-2">
-        <div class="flex justify-between">
-          <span class="text-gray-500">Статус:</span>
-          <span class="font-medium ${courier.current_order_status === 'almost_done' ? 'text-yellow-600' : 'text-emerald-600'}">
-            ${courier.current_order_status === 'almost_done' ? '🔔 Почти закончил' :
-              courier.current_order_status === 'delivering' ? '🚚 В пути' :
-              courier.current_order_status === 'assigned' ? '📦 Назначен' :
-              '✅ На линии'}
-          </span>
-        </div>
-        ${courier.car_model ? `
-        <div class="flex justify-between">
-          <span class="text-gray-500">Авто:</span>
-          <span class="text-gray-700">${courier.car_model}</span>
-        </div>` : ''}
-        <div class="flex justify-between">
-          <span class="text-gray-500">Обновлен:</span>
-          <span class="text-xs text-gray-400">${new Date(courier.timestamp).toLocaleTimeString()}</span>
-        </div>
-      </div>
-      <button class="mt-3 w-full bg-blue-500 text-white text-sm py-2 rounded-lg center-btn hover:bg-blue-600 transition">
-        📍 Центрировать
-      </button>
-    `;
-    
-    setTimeout(() => {
-      const btn = div.querySelector('.center-btn');
-      if (btn) {
-        btn.addEventListener('click', () => {
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.setView([courier.lat, courier.lon], 15);
-            setSelectedCourier(courier.courier_id);
-          }
-        });
-      }
-    }, 0);
-    
-    return div;
-  };
 
   // Добавление ресторана и клиента
   useEffect(() => {
@@ -475,39 +515,15 @@ export default function CourierMap({
     if (restaurantLocation?.lat && restaurantLocation?.lon) {
       L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon: getRestaurantIcon() })
         .addTo(mapInstanceRef.current)
-        .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow border border-gray-200">🍽️ Ресторан</div>');
+        .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow border border-gray-200">Ресторан</div>');
     }
     
     if (customerLocation?.lat && customerLocation?.lon) {
       L.marker([customerLocation.lat, customerLocation.lon], { icon: getCustomerIcon() })
         .addTo(mapInstanceRef.current)
-        .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow border border-gray-200">🏠 Клиент</div>');
+        .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow border border-gray-200">Клиент</div>');
     }
   }, [restaurantLocation, customerLocation, mapLoaded]);
-
-  useEffect(() => {
-    if (mapInstanceRef.current) {
-      updateCourierMarkers();
-    }
-  }, [couriers, updateCourierMarkers]);
-
-  // Слушаем событие центрирования карты
-  useEffect(() => {
-    const handleCenterMap = (event: CustomEvent) => {
-      const { lat, lon, zoom } = event.detail;
-      console.log(`🎯 Центрирование: lat=${lat}, lon=${lon}, zoom=${zoom || 17}`);
-      
-      if (mapInstanceRef.current && lat && lon) {
-        const targetZoom = zoom || 17;
-        mapInstanceRef.current.setView([lat, lon], targetZoom);
-      }
-    };
-    
-    window.addEventListener('centerMap', handleCenterMap as EventListener);
-    return () => {
-      window.removeEventListener('centerMap', handleCenterMap as EventListener);
-    };
-  }, [mapInstanceRef.current]);
 
   // WebSocket для курьеров
   useEffect(() => {
@@ -604,6 +620,23 @@ export default function CourierMap({
     }
   }, [mapLoaded, API_URL]);
 
+  // Центрирование карты
+  useEffect(() => {
+    const handleCenterMap = (event: CustomEvent) => {
+      const { lat, lon, zoom } = event.detail;
+      
+      if (mapInstanceRef.current && lat && lon) {
+        const targetZoom = zoom || 17;
+        mapInstanceRef.current.setView([lat, lon], targetZoom);
+      }
+    };
+    
+    window.addEventListener('centerMap', handleCenterMap as EventListener);
+    return () => {
+      window.removeEventListener('centerMap', handleCenterMap as EventListener);
+    };
+  }, [mapInstanceRef.current]);
+
   if (!mapLoaded || !mapCenter) {
     return (
       <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center" style={{ height }}>
@@ -617,27 +650,19 @@ export default function CourierMap({
 
   return (
     <div className="relative w-full h-full" style={{ height }}>
-      {/* Индикатор WebSocket */}
       <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-sm border border-gray-200">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-500/50 animate-pulse' : 'bg-red-400/50'}`}></div>
+          <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-400/50'}`}></div>
           <span className="text-xs text-gray-500">{wsConnected ? 'Live' : 'Connecting...'}</span>
         </div>
       </div>
       
       {locationError && (
         <div className="absolute top-4 left-4 z-10 bg-yellow-50/80 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-yellow-600 border border-yellow-200">
-          📍 {locationError}
+          {locationError}
         </div>
       )}
       
-      {isLoadingLocation && (
-        <div className="absolute top-4 left-4 z-10 bg-blue-50/80 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-blue-600 border border-blue-200">
-          📍 Определение местоположения...
-        </div>
-      )}
-      
-      {/* Кнопка центрирования */}
       <button
         onClick={() => {
           if (userLocation && mapInstanceRef.current) {
