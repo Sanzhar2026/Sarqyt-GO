@@ -1,5 +1,3 @@
-// app/orders/[id]/page.tsx - ПОЛНАЯ ВЕРСИЯ
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -68,7 +66,6 @@ export default function OrderDetailPage() {
 
   // ✅ Функция для получения токена
   const getAuthToken = () => {
-    // Пробуем все возможные варианты
     return sessionStorage.getItem('userToken') || 
            sessionStorage.getItem('authToken') || 
            sessionStorage.getItem('courierToken') ||
@@ -82,7 +79,6 @@ export default function OrderDetailPage() {
       console.log('🔑 Проверка авторизации:', token ? 'Есть ✅' : 'Нет ❌');
       
       if (!token) {
-        // Если нет токена, пробуем через cookie
         fetch(`${API_URL}/api/auth/me`, {
           credentials: 'include'
         })
@@ -234,6 +230,8 @@ export default function OrderDetailPage() {
       });
       
       const data = await response.json();
+      console.log('📡 Ответ сервера:', data);
+      
       if (data.success) {
         showToast('✅ Спасибо! Заказ получен.', 'success');
         setShowConfirmModal(false);
@@ -399,9 +397,9 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА */}
+        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА - ПОЯВЛЯЕТСЯ ПРИ СТАТУСЕ 'nearby' */}
         {order.status === 'nearby' && (
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm animate-pulse">
             <div className="text-5xl mb-3">🚪</div>
             <h2 className="font-bold text-xl text-green-700 mb-2">Курьер рядом!</h2>
             {order.assigned_courier && (
@@ -414,7 +412,7 @@ export default function OrderDetailPage() {
             </p>
             <button
               onClick={() => setShowConfirmModal(true)}
-              className="w-full bg-[#367666] text-white py-3 rounded-xl font-semibold text-lg hover:bg-[#2a5a4d] transition shadow-md"
+              className="w-full bg-[#367666] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#2a5a4d] transition shadow-md"
             >
               ✅ ПОЛУЧИЛ ЗАКАЗ
             </button>
