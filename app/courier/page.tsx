@@ -1,10 +1,11 @@
-// app/courier/login/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/courier/login/page.tsx - С ОБНОВЛЕННЫМ ДИЗАЙНОМ
 
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Truck, Phone, Lock, ArrowLeft } from 'lucide-react';
 
 export default function CourierLogin() {
   const router = useRouter();
@@ -19,7 +20,6 @@ export default function CourierLogin() {
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  // ✅ Функция для получения токена
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
@@ -28,7 +28,6 @@ export default function CourierLogin() {
            null;
   };
 
-  // Проверка уже залогинен ли курьер
   useEffect(() => {
     let isMounted = true;
     
@@ -168,19 +167,26 @@ export default function CourierLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-lg">
+        
+        {/* Иконка грузовика - прозрачная */}
+        <div className="flex justify-center mb-4">
+          <div className="w-20 h-20 rounded-2xl bg-emerald-50/50 flex items-center justify-center">
+            <Truck size={40} className="text-emerald-600/60" strokeWidth={1.5} />
+          </div>
+        </div>
+        
         <div className="text-center mb-8">
-          <div className="text-5xl mb-2">🚚</div>
-          <h1 className="text-2xl font-bold text-emerald-600">Sarqyt GO</h1>
-          <p className="text-gray-500 mt-2">Вход для курьеров</p>
+          <h1 className="text-2xl font-bold text-gray-800">Sarqyt GO</h1>
+          <p className="text-gray-400 text-sm mt-1">Вход для курьеров</p>
         </div>
 
         {error && (
-          <div className={`p-3 rounded-xl mb-4 text-sm ${pendingVerification ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+          <div className={`p-3 rounded-xl mb-4 text-sm ${pendingVerification ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
             {pendingVerification ? (
               <div className="text-center">
                 <div className="text-2xl mb-2">⏳</div>
                 <p className="font-medium">Ваша заявка на рассмотрении</p>
-                <p className="text-xs mt-1">Администратор проверит данные и подтвердит аккаунт</p>
+                <p className="text-xs mt-1 opacity-80">Администратор проверит данные и подтвердит аккаунт</p>
               </div>
             ) : (
               error
@@ -190,44 +196,55 @@ export default function CourierLogin() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-600 mb-1.5">
               Номер телефона
             </label>
-            <input
-              type="tel"
-              placeholder="+77071234567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full p-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-              required
-            />
+            <div className="relative">
+              <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+              <input
+                type="tel"
+                placeholder="+77071234567"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
+                required
+              />
+            </div>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className="block text-sm font-medium text-gray-600 mb-1.5">
               Пароль
             </label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
-              required
-            />
+            <div className="relative">
+              <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300/70" strokeWidth={1.5} />
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-11 pr-4 py-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition placeholder:text-gray-400/60"
+                required
+              />
+            </div>
           </div>
           
           <button
             type="submit"
             disabled={loading || redirectingRef.current}
-            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50 text-lg mt-2"
+            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50 text-lg mt-2 shadow-md shadow-emerald-600/20"
           >
-            {loading ? 'Вход...' : 'Войти'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Вход...
+              </span>
+            ) : 'Войти'}
           </button>
         </form>
         
         <div className="text-center mt-6">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-400">
             Нет аккаунта?{' '}
             <Link href="/courier/register" className="text-emerald-600 font-medium hover:text-emerald-700 transition">
               Стать курьером
@@ -236,8 +253,9 @@ export default function CourierLogin() {
         </div>
         
         <div className="text-center mt-4">
-          <Link href="/courier/dashboard" className="text-xs text-gray-400 hover:text-gray-600 transition">
-            ← В панель курьера
+          <Link href="/courier/dashboard" className="text-xs text-gray-300 hover:text-gray-500 transition inline-flex items-center gap-1">
+            <ArrowLeft size={12} className="opacity-50" />
+            В панель курьера
           </Link>
         </div>
       </div>
