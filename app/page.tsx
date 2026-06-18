@@ -1,4 +1,5 @@
-// app/page.tsx
+// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -39,26 +40,55 @@ export default function HomePage() {
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(false);
-  const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; id: number; phone?: string; role?: string } | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
-  // Получаем токен
-  useEffect(() => {
-    const token = sessionStorage.getItem('authToken');
-    setAuthToken(token);
+  // ✅ Функция для получения токена
+  const getAuthToken = useCallback(() => {
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') || 
+           sessionStorage.getItem('courierToken') ||
+           null;
   }, []);
 
-  // WebSocket URL только если есть токен
-  const wsUrl = authToken 
-    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
-    : null;
+  // ✅ Получаем токен и роль
+  useEffect(() => {
+    const token = getAuthToken();
+    setAuthToken(token);
+    
+    const userStr = sessionStorage.getItem('user');
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setUserRole(userData.role || 'customer');
+        console.log('👤 Роль пользователя:', userData.role || 'customer');
+      } catch (e) {
+        console.error('Ошибка парсинга user:', e);
+      }
+    }
+  }, [getAuthToken]);
+
+  // ✅ WebSocket URL ТОЛЬКО если есть токен И пользователь НЕ курьер
+  const wsUrl = useCallback(() => {
+    const token = getAuthToken();
+    const role = userRole;
+    
+    // ✅ Только для клиентов (не для курьеров)
+    if (!token || role === 'courier') {
+      console.log('⏭️ Пропускаем WebSocket для курьера или без токена');
+      return null;
+    }
+    
+    return `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(token)}`;
+  }, [getAuthToken, userRole]);
   
-  const { isConnected, lastMessage } = useWebSocket(wsUrl);
+  const { isConnected, lastMessage } = useWebSocket(wsUrl());
 
   const refreshAfterOrder = useCallback(async () => {
     await fetchBags();
@@ -72,8 +102,12 @@ export default function HomePage() {
     }
     
     try {
+      const token = getAuthToken();
       const response = await fetch(`/api/surprise-bags`, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       
       if (!response.ok) {
@@ -98,7 +132,7 @@ export default function HomePage() {
         if (isInitial) setLoading(false);
       }
     }
-  }, []);
+  }, [getAuthToken]);
 
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
     const toast = document.createElement('div');
@@ -187,9 +221,15 @@ export default function HomePage() {
     router.push(`/supplier/${supplierId}`);
   };
 
-  // Обработка WebSocket сообщений
+  // ✅ Обработка WebSocket сообщений (только для клиентов)
   useEffect(() => {
     if (!lastMessage) return;
+    
+    // ✅ Игнорируем сообщения если пользователь - курьер
+    if (userRole === 'courier') {
+      console.log('⏭️ Курьер, игнорируем WebSocket сообщения на главной');
+      return;
+    }
     
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
       fetchBags(false, false);
@@ -232,7 +272,7 @@ export default function HomePage() {
         'info'
       );
     }
-  }, [lastMessage, fetchBags]);
+  }, [lastMessage, fetchBags, userRole]);
 
   const handleManualRefresh = () => {
     fetchBags(true, false);
@@ -274,8 +314,10 @@ export default function HomePage() {
         setUser({
           name: parsed.full_name || parsed.name,
           id: parsed.id,
-          phone: parsed.phone
+          phone: parsed.phone,
+          role: parsed.role || 'customer'
         });
+        setUserRole(parsed.role || 'customer');
       } catch(e) {}
     }
     
@@ -290,9 +332,11 @@ export default function HomePage() {
             const userData = {
               name: data.user_name,
               id: data.user_id,
-              phone: data.user_phone
+              phone: data.user_phone,
+              role: data.role || 'customer'
             };
             setUser(userData);
+            setUserRole(userData.role);
             sessionStorage.setItem('user', JSON.stringify(userData));
           }
         }
@@ -428,6 +472,11 @@ export default function HomePage() {
               {user.phone}
             </p>
           )}
+          {userRole === 'courier' && (
+            <p className="text-xs text-yellow-300 mt-1 font-medium">
+              🚚 Вы вошли как курьер
+            </p>
+          )}
         </div>
       </div>
 
@@ -472,7 +521,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Контейнер без белой карточки-обертки */}
+      {/* Контейнер */}
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>
@@ -488,11 +537,20 @@ export default function HomePage() {
               </p>
             </div>
             
-            {user && (
+            {user && userRole !== 'courier' && (
               <Link href="/orders">
                 <button className="w-full bg-[#367666]/10 text-[#367666] py-2.5 rounded-xl text-sm font-medium hover:bg-[#367666]/20 transition flex items-center justify-center gap-2 mb-4">
                   <span>📋</span>
                   <span>{t[lang].myOrders}</span>
+                </button>
+              </Link>
+            )}
+            
+            {userRole === 'courier' && (
+              <Link href="/courier/dashboard">
+                <button className="w-full bg-orange-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-orange-600 transition flex items-center justify-center gap-2 mb-4">
+                  <span>🚚</span>
+                  <span>Панель курьера</span>
                 </button>
               </Link>
             )}
@@ -510,7 +568,7 @@ export default function HomePage() {
             
             <div className="text-right text-xs text-gray-400 mb-3">
               {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
-              {isConnected && <span className="ml-2 text-green-500">● Live</span>}
+              {isConnected && userRole !== 'courier' && <span className="ml-2 text-green-500">● Live</span>}
             </div>
             
             <div className="flex flex-col gap-3">
