@@ -1,4 +1,5 @@
-// app/components/SurpriseBagCard.tsx
+// app/components/SurpriseBagCard.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -75,10 +76,19 @@ export default function SurpriseBagCard({
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
+  // ✅ Единая функция для получения токена
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') || 
+           sessionStorage.getItem('courierToken') ||
+           null;
+  };
+
   useEffect(() => {
     const fetchRating = async () => {
       try {
-        const token = sessionStorage.getItem('authToken');
+        const token = getAuthToken();
         const headers: HeadersInit = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
@@ -97,7 +107,7 @@ export default function SurpriseBagCard({
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = sessionStorage.getItem('authToken');
+      const token = getAuthToken();
       if (token) {
         setIsAuthenticated(true);
         setAuthChecked(true);
@@ -107,7 +117,7 @@ export default function SurpriseBagCard({
         const response = await fetch(`${API_URL}/api/auth/me`);
         const data = await response.json();
         setIsAuthenticated(data.authenticated);
-        if (data.token) sessionStorage.setItem('authToken', data.token);
+        if (data.token) sessionStorage.setItem('userToken', data.token);
       } catch (error) {
         setIsAuthenticated(false);
       } finally {
@@ -138,28 +148,47 @@ export default function SurpriseBagCard({
     setIsFavorite(!isFavorite);
   };
 
+  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ addToCart
   const addToCart = async () => {
-    if (!isAuthenticated) {
+    const token = getAuthToken();
+    console.log('🔑 Токен в SurpriseBagCard:', token ? 'Есть ✅' : 'Нет ❌');
+    
+    if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
       router.push('/login');
       return;
     }
+    
     if (availableQuantity <= 0) {
       alert('Этот сюрприз закончился');
       return;
     }
+    
     setAddingToCart(true);
-    const token = sessionStorage.getItem('authToken');
+    
     try {
       const response = await fetch(`${API_URL}/api/cart/add`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ bag_id: id, quantity: 1 })
       });
+      
       const data = await response.json();
+      console.log('📡 Ответ /api/cart/add:', response.status, data);
+
+      if (response.status === 401) {
+        alert('Сессия истекла. Пожалуйста, войдите заново.');
+        router.push('/login');
+        return;
+      }
+
       if (response.ok && data.success) {
         const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
         const existing = cart.find((item: any) => item.id === id);
+        
         const cartItem = {
           id, name, businessName: supplierName,
           price, originalPrice, discount, imageUrl: getImageByTitle(name),
@@ -168,6 +197,7 @@ export default function SurpriseBagCard({
           reservation_id: data.reservation_id,
           expires_at: data.expires_at
         };
+        
         if (existing) {
           existing.quantity += 1;
           existing.reservation_id = data.reservation_id;
@@ -175,6 +205,7 @@ export default function SurpriseBagCard({
         } else {
           cart.push(cartItem);
         }
+        
         sessionStorage.setItem('cart', JSON.stringify(cart));
         window.dispatchEvent(new Event('cartUpdated'));
         showNotification(`✅ ${name} добавлен в корзину!`, 'success');
@@ -242,7 +273,6 @@ export default function SurpriseBagCard({
           className="object-cover"
         />
         
-        {/* Скидка и иконка подарка - top-2 left-2, одинаковый размер с сердечком */}
         <div className="absolute top-2 left-2 flex gap-1.5">
           {discount > 0 && (
             <div className="bg-red-500 text-white px-2 py-1 rounded-full text-[11px] font-bold shadow-sm">
@@ -254,7 +284,6 @@ export default function SurpriseBagCard({
           </div>
         </div>
         
-        {/* Сердечко (лайк) - точно на одном уровне с иконкой подарка */}
         <button 
           onClick={toggleFavorite}
           className="absolute top-2 right-2 z-10"
@@ -266,7 +295,6 @@ export default function SurpriseBagCard({
           />
         </button>
         
-        {/* Восклицательный знак (Info) - справа внизу */}
         <button 
           onClick={() => setShowExpanded(!showExpanded)}
           className="absolute bottom-2 right-2 z-10"
