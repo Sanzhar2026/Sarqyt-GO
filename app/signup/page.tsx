@@ -1,3 +1,5 @@
+// app/signup/page.tsx - ГЕНЕРАЦИЯ КОДА НА СТРАНИЦЕ
+
 'use client';
 
 import { useState } from 'react';
@@ -9,13 +11,13 @@ export default function SignupPage() {
   const [step, setStep] = useState<'phone' | 'verify'>('phone');
   const [phone, setPhone] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
@@ -27,35 +29,31 @@ export default function SignupPage() {
     return value;
   };
 
+  // ✅ ГЕНЕРАЦИЯ 6-ЗНАЧНОГО КОДА
+  const generateCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  // ✅ ШАГ 1: ГЕНЕРИРУЕМ КОД И ПОКАЗЫВАЕМ
   const sendVerification = async () => {
     if (!phone) {
       setError('Номер телефона обязателен');
       return;
     }
-    setLoading(true);
+    
+    // ✅ ГЕНЕРИРУЕМ КОД
+    const code = generateCode();
+    setGeneratedCode(code);
+    setVerificationCode(code); // Автозаполнение
+    
+    // Показываем код пользователю
+    alert(`✅ Ваш код подтверждения: ${code}`);
+    
+    setStep('verify');
     setError('');
-    try {
-      const formattedPhone = formatPhoneNumber(phone);
-      const response = await fetch(`${API_URL}/api/send-verification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone_number: formattedPhone }),
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setIsDemoMode(data.demo || false);
-        if (data.demo) setVerificationCode('123456');
-        setStep('verify');
-      } else {
-        setError(data.detail || 'Ошибка отправки SMS');
-      }
-    } catch (err) {
-      setError('Ошибка подключения к серверу');
-    } finally {
-      setLoading(false);
-    }
   };
 
+  // ✅ РЕГИСТРАЦИЯ
   const handleSignup = async () => {
     if (password !== confirmPassword) {
       setError('Пароли не совпадают');
@@ -69,24 +67,28 @@ export default function SignupPage() {
       setError('Имя и фамилия обязательны');
       return;
     }
+    
+    // ✅ ПРОВЕРЯЕМ КОД
+    if (verificationCode !== generatedCode) {
+      setError('Неверный код подтверждения');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
       const formattedPhone = formatPhoneNumber(phone);
-      const codeToSend = isDemoMode ? '123456' : verificationCode;
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
       const response = await fetch(`${API_URL}/api/verify-and-register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           phone: formattedPhone,
           full_name: fullName,
           password: password,
-          verification_code: codeToSend,
+          verification_code: verificationCode,
         }),
       });
 
@@ -97,11 +99,12 @@ export default function SignupPage() {
           id: data.user_id,
           name: fullName,
           full_name: fullName,
-          phone: formattedPhone
+          phone: formattedPhone,
+          role: 'customer'
         }));
         
         if (data.token) {
-          sessionStorage.setItem('authToken', data.token);
+          sessionStorage.setItem('userToken', data.token);
         }
         
         sessionStorage.setItem('isLoggedIn', 'true');
@@ -109,7 +112,7 @@ export default function SignupPage() {
         window.dispatchEvent(new Event('authUpdated'));
         window.location.href = '/';
       } else {
-        setError(data.detail || 'Неверный код подтверждения');
+        setError(data.detail || 'Ошибка регистрации');
       }
     } catch (err) {
       console.error('Signup error:', err);
@@ -119,16 +122,28 @@ export default function SignupPage() {
     }
   };
 
+  // ✅ ПОВТОРНАЯ ГЕНЕРАЦИЯ КОДА
+  const regenerateCode = () => {
+    const newCode = generateCode();
+    setGeneratedCode(newCode);
+    setVerificationCode(newCode);
+    alert(`✅ Новый код подтверждения: ${newCode}`);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#367666]/10 to-white">
       <div className="w-full max-w-md px-6">
         <div className="bg-white rounded-3xl shadow-lg p-8">
           <h1 className="text-3xl font-bold text-center text-[#367666] mb-8">Регистрация</h1>
           
-          {error && <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">{error}</div>}
-          {isDemoMode && step === 'verify' && <div className="mb-4 p-3 bg-yellow-50 text-yellow-700 rounded-xl text-sm border border-yellow-200">Демо режим: Код 123456</div>}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">
+              {error}
+            </div>
+          )}
 
           {step === 'phone' ? (
+            // ✅ ШАГ 1: ВВОД ТЕЛЕФОНА
             <div className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Номер телефона</label>
@@ -145,28 +160,39 @@ export default function SignupPage() {
                 disabled={loading} 
                 className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg hover:bg-[#2a5a4d] transition disabled:opacity-70 shadow-md"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Отправка...
-                  </span>
-                ) : 'Отправить код'}
+                Получить код
               </button>
             </div>
           ) : (
+            // ✅ ШАГ 2: ВВОД КОДА И ДАННЫХ
             <div className="space-y-4">
-              {!isDemoMode && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">SMS код</label>
-                  <input 
-                    type="text" 
-                    value={verificationCode} 
-                    onChange={(e) => setVerificationCode(e.target.value)} 
-                    placeholder="123456" 
-                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
-                  />
-                </div>
-              )}
+              {/* ПОКАЗЫВАЕМ СГЕНЕРИРОВАННЫЙ КОД */}
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
+                <p className="text-sm text-gray-600">Ваш код подтверждения:</p>
+                <p className="text-3xl font-bold text-[#367666] tracking-[0.5em] font-mono">
+                  {generatedCode}
+                </p>
+                <button
+                  type="button"
+                  onClick={regenerateCode}
+                  className="text-xs text-[#367666] hover:underline mt-2"
+                >
+                  Сгенерировать новый код
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Введите код</label>
+                <input 
+                  type="text" 
+                  value={verificationCode} 
+                  onChange={(e) => setVerificationCode(e.target.value)} 
+                  placeholder="000000" 
+                  maxLength={6}
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition text-center text-2xl tracking-[0.5em] font-mono"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Имя</label>
                 <input 
@@ -193,7 +219,7 @@ export default function SignupPage() {
                   type="password" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="••••••••" 
+                  placeholder="•••••••• (минимум 4 символа)" 
                   className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 />
               </div>
