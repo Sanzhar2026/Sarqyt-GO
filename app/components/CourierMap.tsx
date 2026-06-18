@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - С ORS API
+// app/components/CourierMap.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -169,6 +169,7 @@ export default function CourierMap({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
   
   const mapRef = useRef<any>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -260,13 +261,15 @@ export default function CourierMap({
     console.log(`🗺️ Карта инициализирована`);
   }, [mapLoaded, mapCenter]);
 
-  // ============ ПОСТРОЕНИЕ МАРШРУТА ПО ДОРОГАМ ============
+  // ============ ПОСТРОЕНИЕ МАРШРУТА ПО ДОРОГАМ ЧЕРЕЗ ORS ============
   useEffect(() => {
     if (!mapInstanceRef.current || !showRoute) return;
     if (!restaurantLocation?.lat || !restaurantLocation?.lon || 
         !customerLocation?.lat || !customerLocation?.lon) return;
 
     const fetchRoute = async () => {
+      setRouteLoading(true);
+      
       try {
         // ✅ ЗАПРОС К ORS
         const data = await getRouteFromORS(
@@ -295,46 +298,20 @@ export default function CourierMap({
 
           console.log(`✅ Маршрут построен по дорогам, точек: ${points.length}`);
         } else {
-          // Fallback - если ORS не ответил
-          const points: [number, number][] = [
-            [restaurantLocation.lat, restaurantLocation.lon],
-            [customerLocation.lat, customerLocation.lon]
-          ];
-          
-          routeLayerRef.current = L.polyline(points, {
-            color: routeColor,
-            weight: routeWidth,
-            opacity: 0.3,
-            dashArray: '5, 5',
-            lineCap: 'round',
-            lineJoin: 'round',
-          }).addTo(mapInstanceRef.current);
-          
-          console.log('⚠️ ORS не ответил, использована прямая линия');
+          // ❌ НЕ РИСУЕМ НИЧЕГО, ЕСЛИ ОРС НЕ ОТВЕТИЛ
+          console.log('❌ ORS не ответил, маршрут не построен');
         }
       } catch (error) {
-        console.error('Ошибка построения маршрута:', error);
-        // Fallback
-        const points: [number, number][] = [
-          [restaurantLocation.lat, restaurantLocation.lon],
-          [customerLocation.lat, customerLocation.lon]
-        ];
-        
-        routeLayerRef.current = L.polyline(points, {
-          color: routeColor,
-          weight: routeWidth,
-          opacity: 0.3,
-          dashArray: '5, 5',
-          lineCap: 'round',
-          lineJoin: 'round',
-        }).addTo(mapInstanceRef.current);
+        console.error('❌ Ошибка построения маршрута:', error);
+      } finally {
+        setRouteLoading(false);
       }
     };
 
     fetchRoute();
   }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded]);
 
-  // ============ ОСТАЛЬНОЙ КОД (ИКОНКИ, МАРКЕРЫ, ПОПУПЫ) ============
+  // ============ ИКОНКИ (ПРОЗРАЧНЫЕ) ============
   
   const getCourierIcon = () => {
     return L.divIcon({
@@ -491,7 +468,7 @@ export default function CourierMap({
     }
   }, [mapInstanceRef.current, suppliers, addSupplierMarkers]);
 
-  // ============ МАРКЕРЫ ПОЛЬЗОВАТЕЛЯ ============
+  // ============ МАРКЕРЫ ============
   
   useEffect(() => {
     if (!mapInstanceRef.current || !userLocation) return;
@@ -659,6 +636,16 @@ export default function CourierMap({
       {locationError && (
         <div className="absolute top-4 left-4 z-10 bg-yellow-50/80 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-yellow-600 border border-yellow-200">
           {locationError}
+        </div>
+      )}
+      
+      {/* Индикатор загрузки маршрута */}
+      {routeLoading && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-white/90 backdrop-blur rounded-lg shadow-lg px-4 py-2 text-sm border border-gray-200">
+          <div className="flex items-center gap-2">
+            <div className="animate-spin h-4 w-4 border-2 border-emerald-500 border-t-transparent rounded-full"></div>
+            <span className="text-gray-600">Построение маршрута...</span>
+          </div>
         </div>
       )}
       
