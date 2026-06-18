@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ
 
 'use client';
 
@@ -45,7 +45,9 @@ export default function CourierDashboard() {
   const [switching, setSwitching] = useState(false);
   const [locating, setLocating] = useState(false);
   
-  // ✅ ДОБАВЛЯЕМ НОВЫЙ ЭТАП 'waiting_confirmation'
+  // ✅ setSelectedOrder ДОБАВЛЕНА
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  
   const [orderStage, setOrderStage] = useState<'list' | 'details' | 'to_restaurant' | 'to_customer' | 'arrived' | 'waiting_confirmation' | 'completed'>('list');
   
   const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
@@ -172,7 +174,6 @@ export default function CourierDashboard() {
           showNotification('✅ Заказ назначен вам!', 'success');
           if (data.order_id) fetchCurrentOrder(data.order_id);
         }
-        // ✅ ОБРАБОТКА ПОДТВЕРЖДЕНИЯ ОТ КЛИЕНТА
         if (data.type === 'delivery_confirmed_by_customer') {
           showNotification('✅ Клиент подтвердил получение заказа!', 'success');
           setOrderStage('completed');
@@ -263,7 +264,6 @@ export default function CourierDashboard() {
       setCurrentOrder(data);
       setSelectedOrder(data);
       
-      // ✅ ДОБАВЛЯЕМ ОБРАБОТКУ 'waiting_confirmation'
       if (data.status === 'ready_for_pickup') {
         setOrderStage('to_restaurant');
       } else if (data.status === 'picked_up') {
@@ -369,7 +369,6 @@ export default function CourierDashboard() {
       
       const data = await res.json();
       if (data.success) {
-        // ✅ ПЕРЕХОДИМ В ОЖИДАНИЕ, А НЕ СРАЗУ В COMPLETED
         showNotification('📦 Заказ передан клиенту! Ожидайте подтверждения.', 'info');
         setOrderStage('waiting_confirmation');
         await fetchCurrentOrder(currentOrder.id);
@@ -663,14 +662,12 @@ export default function CourierDashboard() {
     
     return (
       <div className="space-y-4">
-        {/* Статус */}
         <div className={`bg-white rounded-xl p-4 shadow-sm border ${stageStyles[orderStage as keyof typeof stageStyles] || 'border-gray-100'}`}>
           <p className="text-sm text-gray-500">Активный заказ</p>
           <p className="font-bold text-gray-800 text-lg">{stageLabels[orderStage as keyof typeof stageLabels] || 'В пути'}</p>
           <p className="text-sm text-gray-500">#{currentOrder.order_number} • {currentOrder.supplier?.business_name}</p>
         </div>
         
-        {/* КАРТА с маршрутом */}
         <div className="relative h-80 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
           <CourierMap
             orderId={currentOrder.id}
@@ -711,10 +708,8 @@ export default function CourierDashboard() {
           </div>
         </div>
         
-        {/* Кнопка действия */}
         {stageActions[orderStage as keyof typeof stageActions]}
         
-        {/* Кнопка "Отменить" только на этапах доставки */}
         {orderStage !== 'completed' && orderStage !== 'waiting_confirmation' && (
           <button
             onClick={goBackToList}
@@ -813,35 +808,17 @@ export default function CourierDashboard() {
             <p className="text-gray-400">Включите режим "На линии" чтобы видеть заказы</p>
           </div>
         ) : orderStage === 'waiting_confirmation' && currentOrder ? (
-          // ✅ НОВЫЙ ЭТАП - ОЖИДАНИЕ ПОДТВЕРЖДЕНИЯ
           <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-8 text-center shadow-lg">
             <div className="text-6xl mb-4">⏳</div>
             <h3 className="font-bold text-2xl text-yellow-700 mb-2">Ожидание подтверждения</h3>
-            <p className="text-yellow-600 text-base mb-2">
-              Вы передали заказ клиенту.
-            </p>
-            <p className="text-yellow-600 text-sm">
-              Клиент должен подтвердить получение в приложении.
-            </p>
+            <p className="text-yellow-600 text-base mb-2">Вы передали заказ клиенту.</p>
+            <p className="text-yellow-600 text-sm">Клиент должен подтвердить получение в приложении.</p>
             <div className="flex items-center justify-center gap-3 mt-6">
               <div className="animate-spin h-6 w-6 border-3 border-yellow-500 border-t-transparent rounded-full"></div>
               <p className="text-sm text-yellow-600 font-medium">Ожидаем подтверждения...</p>
             </div>
-            {/* Кнопка для принудительного завершения (опционально) */}
-            <button
-              onClick={() => {
-                setOrderStage('completed');
-                setCurrentOrder(null);
-                setSelectedOrder(null);
-                fetchAvailableOrders();
-              }}
-              className="mt-4 text-sm text-gray-400 hover:text-gray-600 underline"
-            >
-              Принудительно завершить (только если клиент не подтверждает)
-            </button>
           </div>
         ) : orderStage === 'completed' ? (
-          // Завершенный заказ
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-200 bg-green-50 text-center">
             <div className="text-5xl mb-4">✅</div>
             <h3 className="font-bold text-green-600 text-xl mb-2">Доставка завершена!</h3>
@@ -859,7 +836,6 @@ export default function CourierDashboard() {
             </button>
           </div>
         ) : orderStage === 'list' ? (
-          // СПИСОК ЗАКАЗОВ
           <div>
             <h2 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
               <span>📋 Доступные заказы</span>
