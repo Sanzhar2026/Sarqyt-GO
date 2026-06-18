@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/components/CourierMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -6,9 +6,6 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 
 // Загружаем Leaflet динамически
 let L: any;
-
-// ✅ ORS API KEY
-const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMDU3ZGE4OTkxODQ2M2JhNmVlZDgzM2QzMDE2OTYwIiwiaCI6Im11cm11cjY0In0=';
 
 const loadLeaflet = async () => {
   if (typeof window === 'undefined') return;
@@ -27,33 +24,47 @@ const loadLeaflet = async () => {
   return L;
 };
 
-// ✅ ФУНКЦИЯ ПОЛУЧЕНИЯ МАРШРУТА ПО ДОРОГАМ
+// ✅ ФУНКЦИЯ ПОЛУЧЕНИЯ МАРШРУТА - с правильным API ключом
+const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMDU3ZGE4OTkxODQ2M2JhNmVlZDgzM2QzMDE2OTYwIiwiaCI6Im11cm11cjY0In0=';
+
 const getRouteFromORS = async (startLat: number, startLon: number, endLat: number, endLon: number) => {
   try {
-    const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
+    const url = 'https://api.openrouteservice.org/v2/directions/driving-car';
+    const body = {
+      coordinates: [
+        [startLon, startLat],
+        [endLon, endLat]
+      ],
+      format: 'geojson',
+      preference: 'fastest'
+    };
+
+    console.log('🔄 Запрос к ORS:', url);
+    console.log('📦 Тело:', JSON.stringify(body));
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': ORS_API_KEY,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        coordinates: [
-          [startLon, startLat],
-          [endLon, endLat]
-        ],
-        format: 'geojson',
-        preference: 'fastest'
-      })
+      body: JSON.stringify(body)
     });
 
+    console.log('📡 Статус ORS:', response.status);
+
     if (!response.ok) {
-      throw new Error(`ORS error: ${response.status}`);
+      const text = await response.text();
+      console.error('❌ ORS ошибка:', response.status, text);
+      return null;
     }
 
     const data = await response.json();
+    console.log('✅ ORS ответ получен');
     return data;
   } catch (error) {
-    console.error('ORS route error:', error);
+    console.error('❌ ORS ошибка:', error);
     return null;
   }
 };
@@ -261,7 +272,7 @@ export default function CourierMap({
     console.log(`🗺️ Карта инициализирована`);
   }, [mapLoaded, mapCenter]);
 
-  // ============ ПОСТРОЕНИЕ МАРШРУТА ПО ДОРОГАМ ЧЕРЕЗ ORS ============
+  // ============ МАРШРУТ ЧЕРЕЗ ORS ============
   useEffect(() => {
     if (!mapInstanceRef.current || !showRoute) return;
     if (!restaurantLocation?.lat || !restaurantLocation?.lon || 
@@ -271,13 +282,15 @@ export default function CourierMap({
       setRouteLoading(true);
       
       try {
-        // ✅ ЗАПРОС К ORS
+        console.log('🔄 Запрос маршрута ORS...');
+        console.log(`📍 Ресторан: ${restaurantLocation.lat}, ${restaurantLocation.lon}`);
+        console.log(`📍 Клиент: ${customerLocation.lat}, ${customerLocation.lon}`);
+        
         const data = await getRouteFromORS(
           restaurantLocation.lat, restaurantLocation.lon,
           customerLocation.lat, customerLocation.lon
         );
 
-        // Удаляем старый маршрут
         if (routeLayerRef.current) {
           routeLayerRef.current.remove();
           routeLayerRef.current = null;
@@ -287,7 +300,6 @@ export default function CourierMap({
           const coordinates = data.features[0].geometry.coordinates;
           const points: [number, number][] = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
           
-          // ✅ РИСУЕМ МАРШРУТ ПО ДОРОГАМ
           routeLayerRef.current = L.polyline(points, {
             color: routeColor,
             weight: routeWidth,
@@ -296,10 +308,9 @@ export default function CourierMap({
             lineJoin: 'round',
           }).addTo(mapInstanceRef.current);
 
-          console.log(`✅ Маршрут построен по дорогам, точек: ${points.length}`);
+          console.log(`✅ Маршрут построен, точек: ${points.length}`);
         } else {
-          // ❌ НЕ РИСУЕМ НИЧЕГО, ЕСЛИ ОРС НЕ ОТВЕТИЛ
-          console.log('❌ ORS не ответил, маршрут не построен');
+          console.log('❌ ORS не вернул маршрут');
         }
       } catch (error) {
         console.error('❌ Ошибка построения маршрута:', error);
@@ -311,8 +322,7 @@ export default function CourierMap({
     fetchRoute();
   }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded]);
 
-  // ============ ИКОНКИ (ПРОЗРАЧНЫЕ) ============
-  
+  // ============ ИКОНКИ ============
   const getCourierIcon = () => {
     return L.divIcon({
       html: `<div class="relative">
@@ -468,7 +478,7 @@ export default function CourierMap({
     }
   }, [mapInstanceRef.current, suppliers, addSupplierMarkers]);
 
-  // ============ МАРКЕРЫ ============
+  // ============ МАРКЕРЫ ПОЛЬЗОВАТЕЛЯ ============
   
   useEffect(() => {
     if (!mapInstanceRef.current || !userLocation) return;
@@ -639,7 +649,6 @@ export default function CourierMap({
         </div>
       )}
       
-      {/* Индикатор загрузки маршрута */}
       {routeLoading && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-white/90 backdrop-blur rounded-lg shadow-lg px-4 py-2 text-sm border border-gray-200">
           <div className="flex items-center gap-2">
