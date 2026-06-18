@@ -1,4 +1,5 @@
-// app/courier/dashboard/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/courier/dashboard/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -44,9 +45,8 @@ export default function CourierDashboard() {
   const [switching, setSwitching] = useState(false);
   const [locating, setLocating] = useState(false);
   
-  // Состояния заказа
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [orderStage, setOrderStage] = useState<'list' | 'details' | 'to_restaurant' | 'to_customer' | 'arrived' | 'completed'>('list');
+  // ✅ ДОБАВЛЯЕМ НОВЫЙ ЭТАП 'waiting_confirmation'
+  const [orderStage, setOrderStage] = useState<'list' | 'details' | 'to_restaurant' | 'to_customer' | 'arrived' | 'waiting_confirmation' | 'completed'>('list');
   
   const [wsReconnectAttempts, setWsReconnectAttempts] = useState(0);
   const [wsFailed, setWsFailed] = useState(false);
@@ -172,8 +172,9 @@ export default function CourierDashboard() {
           showNotification('✅ Заказ назначен вам!', 'success');
           if (data.order_id) fetchCurrentOrder(data.order_id);
         }
-        if (data.type === 'delivery_confirmed') {
-          showNotification('✅ Клиент подтвердил получение!', 'success');
+        // ✅ ОБРАБОТКА ПОДТВЕРЖДЕНИЯ ОТ КЛИЕНТА
+        if (data.type === 'delivery_confirmed_by_customer') {
+          showNotification('✅ Клиент подтвердил получение заказа!', 'success');
           setOrderStage('completed');
           setCurrentOrder(null);
           setSelectedOrder(null);
@@ -262,13 +263,15 @@ export default function CourierDashboard() {
       setCurrentOrder(data);
       setSelectedOrder(data);
       
-      // Определяем этап по статусу
+      // ✅ ДОБАВЛЯЕМ ОБРАБОТКУ 'waiting_confirmation'
       if (data.status === 'ready_for_pickup') {
         setOrderStage('to_restaurant');
       } else if (data.status === 'picked_up') {
         setOrderStage('to_customer');
       } else if (data.status === 'nearby') {
         setOrderStage('arrived');
+      } else if (data.status === 'waiting_confirmation') {
+        setOrderStage('waiting_confirmation');
       } else if (data.status === 'delivered') {
         setOrderStage('completed');
       } else {
@@ -366,18 +369,16 @@ export default function CourierDashboard() {
       
       const data = await res.json();
       if (data.success) {
-        showNotification('✅ Доставка завершена!', 'success');
-        setOrderStage('completed');
-        setCurrentOrder(null);
-        setSelectedOrder(null);
-        fetchAvailableOrders();
-        // Возвращаемся к списку через 2 секунды
-        setTimeout(() => {
-          setOrderStage('list');
-        }, 2000);
+        // ✅ ПЕРЕХОДИМ В ОЖИДАНИЕ, А НЕ СРАЗУ В COMPLETED
+        showNotification('📦 Заказ передан клиенту! Ожидайте подтверждения.', 'info');
+        setOrderStage('waiting_confirmation');
+        await fetchCurrentOrder(currentOrder.id);
+      } else {
+        alert(data.message || 'Ошибка');
       }
     } catch (error) {
       console.error('Error completing delivery:', error);
+      alert('Ошибка при завершении доставки');
     }
   };
 
@@ -524,7 +525,6 @@ export default function CourierDashboard() {
   // ============ ДЕТАЛИ ЗАКАЗА С КАРТОЙ ============
   const renderOrderDetails = (order: any) => (
     <div className="space-y-4">
-      {/* Кнопка назад */}
       <button 
         onClick={goBackToList}
         className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm"
@@ -532,7 +532,6 @@ export default function CourierDashboard() {
         ← Назад к списку
       </button>
       
-      {/* Информация о заказе */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
         <div className="flex justify-between items-start">
           <div>
@@ -560,7 +559,6 @@ export default function CourierDashboard() {
         </div>
       </div>
       
-      {/* КАРТА с маршрутом до ресторана */}
       <div className="relative h-64 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
         <CourierMap
           orderId={order.order_id}
@@ -593,7 +591,6 @@ export default function CourierDashboard() {
         </div>
       </div>
       
-      {/* Кнопка "Взять заказ" */}
       <button 
         className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-semibold text-lg transition"
         onClick={() => takeOrder(order)}
@@ -603,7 +600,7 @@ export default function CourierDashboard() {
     </div>
   );
 
-  // ============ АКТИВНЫЙ ЗАКАЗ - ТОЛЬКО КАРТА ============
+  // ============ АКТИВНЫЙ ЗАКАЗ ============
   const renderActiveOrder = () => {
     if (!currentOrder) return null;
     
@@ -611,6 +608,7 @@ export default function CourierDashboard() {
       'to_restaurant': '🚗 Еду в ресторан',
       'to_customer': '🚗 Еду к клиенту',
       'arrived': '📍 Прибыл к клиенту',
+      'waiting_confirmation': '⏳ Ожидание подтверждения',
       'completed': '✅ Доставка завершена'
     };
     
@@ -639,6 +637,15 @@ export default function CourierDashboard() {
           ✅ Доставка отдана
         </button>
       ),
+      'waiting_confirmation': (
+        <div className="flex flex-col items-center gap-3 py-4">
+          <div className="flex items-center gap-2">
+            <div className="animate-spin h-6 w-6 border-2 border-yellow-500 border-t-transparent rounded-full"></div>
+            <p className="text-yellow-600 font-medium">Ожидаем подтверждения от клиента...</p>
+          </div>
+          <p className="text-sm text-gray-500">Клиент получил заказ и должен подтвердить получение</p>
+        </div>
+      ),
       'completed': (
         <div className="text-center py-2">
           <p className="text-green-600 font-semibold">✅ Доставка завершена!</p>
@@ -646,10 +653,18 @@ export default function CourierDashboard() {
       )
     };
     
+    const stageStyles = {
+      'to_restaurant': 'border-blue-200 bg-blue-50',
+      'to_customer': 'border-blue-200 bg-blue-50',
+      'arrived': 'border-emerald-200 bg-emerald-50',
+      'waiting_confirmation': 'border-yellow-200 bg-yellow-50',
+      'completed': 'border-green-200 bg-green-50'
+    };
+    
     return (
       <div className="space-y-4">
         {/* Статус */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className={`bg-white rounded-xl p-4 shadow-sm border ${stageStyles[orderStage as keyof typeof stageStyles] || 'border-gray-100'}`}>
           <p className="text-sm text-gray-500">Активный заказ</p>
           <p className="font-bold text-gray-800 text-lg">{stageLabels[orderStage as keyof typeof stageLabels] || 'В пути'}</p>
           <p className="text-sm text-gray-500">#{currentOrder.order_number} • {currentOrder.supplier?.business_name}</p>
@@ -690,7 +705,8 @@ export default function CourierDashboard() {
             <p className="font-semibold text-gray-800 text-sm">
               {orderStage === 'to_restaurant' ? '📍 Ресторан' : 
                orderStage === 'to_customer' ? '📍 Клиент' : 
-               orderStage === 'arrived' ? '📍 Вы на месте' : '✅ Доставлено'}
+               orderStage === 'arrived' ? '📍 Вы на месте' : 
+               orderStage === 'waiting_confirmation' ? '⏳ Ожидание' : '✅ Доставлено'}
             </p>
           </div>
         </div>
@@ -699,7 +715,7 @@ export default function CourierDashboard() {
         {stageActions[orderStage as keyof typeof stageActions]}
         
         {/* Кнопка "Отменить" только на этапах доставки */}
-        {orderStage !== 'completed' && (
+        {orderStage !== 'completed' && orderStage !== 'waiting_confirmation' && (
           <button
             onClick={goBackToList}
             className="w-full text-gray-400 hover:text-gray-600 py-2 text-sm transition"
@@ -796,6 +812,34 @@ export default function CourierDashboard() {
           <div className="text-center py-8">
             <p className="text-gray-400">Включите режим "На линии" чтобы видеть заказы</p>
           </div>
+        ) : orderStage === 'waiting_confirmation' && currentOrder ? (
+          // ✅ НОВЫЙ ЭТАП - ОЖИДАНИЕ ПОДТВЕРЖДЕНИЯ
+          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-8 text-center shadow-lg">
+            <div className="text-6xl mb-4">⏳</div>
+            <h3 className="font-bold text-2xl text-yellow-700 mb-2">Ожидание подтверждения</h3>
+            <p className="text-yellow-600 text-base mb-2">
+              Вы передали заказ клиенту.
+            </p>
+            <p className="text-yellow-600 text-sm">
+              Клиент должен подтвердить получение в приложении.
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <div className="animate-spin h-6 w-6 border-3 border-yellow-500 border-t-transparent rounded-full"></div>
+              <p className="text-sm text-yellow-600 font-medium">Ожидаем подтверждения...</p>
+            </div>
+            {/* Кнопка для принудительного завершения (опционально) */}
+            <button
+              onClick={() => {
+                setOrderStage('completed');
+                setCurrentOrder(null);
+                setSelectedOrder(null);
+                fetchAvailableOrders();
+              }}
+              className="mt-4 text-sm text-gray-400 hover:text-gray-600 underline"
+            >
+              Принудительно завершить (только если клиент не подтверждает)
+            </button>
+          </div>
         ) : orderStage === 'completed' ? (
           // Завершенный заказ
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-200 bg-green-50 text-center">
@@ -815,7 +859,7 @@ export default function CourierDashboard() {
             </button>
           </div>
         ) : orderStage === 'list' ? (
-          // СПИСОК ЗАКАЗОВ (без карты)
+          // СПИСОК ЗАКАЗОВ
           <div>
             <h2 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
               <span>📋 Доступные заказы</span>
@@ -832,10 +876,8 @@ export default function CourierDashboard() {
             </div>
           </div>
         ) : orderStage === 'details' && selectedOrder ? (
-          // ДЕТАЛИ ЗАКАЗА С КАРТОЙ
           renderOrderDetails(selectedOrder)
         ) : (orderStage === 'to_restaurant' || orderStage === 'to_customer' || orderStage === 'arrived') && currentOrder ? (
-          // АКТИВНЫЙ ЗАКАЗ - ТОЛЬКО КАРТА
           renderActiveOrder()
         ) : null}
       </div>
