@@ -1,196 +1,244 @@
-// app/courier/register/page.tsx
+// app/courier/login/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function CourierRegisterPage() {
+export default function CourierLogin() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [registered, setRegistered] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
-    phone: '',
-    password: '',
-    confirm_password: '',
-    courier_type: 'pedestrian',
-    car_model: '',
-    car_number: ''
-  });
+  const [loading, setLoading] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  
+  const redirectingRef = useRef(false);
+
+  const API_URL = 'https://toogood-2ncf.onrender.com';
+
+  // ✅ Функция для получения токена
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('courierToken') || 
+           sessionStorage.getItem('authToken') ||
+           null;
+  };
+
+  // Проверка уже залогинен ли курьер
+  useEffect(() => {
+    let isMounted = true;
+    
+    const checkAlreadyLoggedIn = async () => {
+      if (redirectingRef.current) return;
+      
+      try {
+        const token = getAuthToken();
+        const courierData = sessionStorage.getItem('courier');
+        
+        if (token && courierData) {
+          console.log('✅ Найдены данные в sessionStorage');
+          redirectingRef.current = true;
+          if (isMounted) {
+            window.location.href = '/courier/dashboard';
+          }
+          return;
+        }
+        
+        if (token) {
+          const response = await fetch(`${API_URL}/api/courier/status`, {
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.is_verified === true) {
+              sessionStorage.setItem('courier', JSON.stringify({
+                ...data,
+                role: 'courier'
+              }));
+              sessionStorage.setItem('userToken', token);
+              redirectingRef.current = true;
+              if (isMounted) {
+                window.location.href = '/courier/dashboard';
+              }
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка проверки авторизации:', error);
+      } finally {
+        if (isMounted) {
+          setCheckingAuth(false);
+        }
+      }
+    };
+    
+    checkAlreadyLoggedIn();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [API_URL]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     
-    if (formData.password !== formData.confirm_password) {
-      setError('Пароли не совпадают');
-      return;
-    }
+    if (redirectingRef.current) return;
     
     setLoading(true);
-    
+    setError('');
+    setPendingVerification(false);
+
     try {
-      const res = await fetch('https://toogood-2ncf.onrender.com/courier/register', {
+      console.log('🔐 Попытка входа курьера:', phone);
+      
+      const response = await fetch(`${API_URL}/api/courier/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          phone: formData.phone,
-          password: formData.password,
-          courier_type: formData.courier_type,
-          car_model: formData.car_model,
-          car_number: formData.car_number
-        })
+        body: JSON.stringify({ phone, password }),
       });
-      
-      const data = await res.json();
-      
-      if (res.ok && data.success) {
-        setRegistered(true);
+
+      const data = await response.json();
+      console.log('📥 Ответ сервера:', response.status, data);
+
+      if (response.ok && data.success) {
+        if (data.token) {
+          sessionStorage.setItem('courierToken', data.token);
+          sessionStorage.setItem('userToken', data.token);
+        }
+        
+        const courierData = {
+          id: data.courier.id,
+          first_name: data.courier.first_name,
+          last_name: data.courier.last_name,
+          phone: data.courier.phone,
+          is_verified: data.courier.is_verified,
+          courier_type: data.courier.courier_type,
+          role: 'courier'
+        };
+        sessionStorage.setItem('courier', JSON.stringify(courierData));
+        
+        sessionStorage.setItem('user', JSON.stringify({
+          id: data.courier.id,
+          full_name: `${data.courier.first_name} ${data.courier.last_name}`,
+          phone: data.courier.phone,
+          role: 'courier'
+        }));
+        
+        sessionStorage.setItem('isCourierLoggedIn', 'true');
+        
+        console.log('✅ Успешный вход, данные сохранены');
+        
+        redirectingRef.current = true;
+        window.location.href = '/courier/dashboard';
+        
+      } else if (response.status === 403) {
+        setPendingVerification(true);
+        setError(data.detail || 'Ваша учетная запись ожидает подтверждения администратора');
       } else {
-        setError(data.detail || 'Ошибка регистрации');
+        setError(data.detail || data.message || 'Неверный телефон или пароль');
       }
-    } catch {
-      setError('Ошибка соединения');
+    } catch (err) {
+      console.error('❌ Ошибка входа:', err);
+      setError('Ошибка подключения к серверу');
     } finally {
       setLoading(false);
     }
   };
 
-  if (registered) {
+  if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl p-6 text-center max-w-md">
-          <div className="text-5xl mb-3">📝</div>
-          <h1 className="text-xl font-bold mb-1">Заявка отправлена!</h1>
-          <p className="text-gray-500 text-sm mb-4">После проверки администратор свяжется с вами.</p>
-          <Link href="/"><button className="w-full bg-emerald-600 text-white py-2 rounded-lg text-sm font-semibold">На главную</button></Link>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin h-10 w-10 border-b-2 border-emerald-600 rounded-full mx-auto"></div>
+          <p className="text-gray-500 mt-3 text-sm">Проверка...</p>
         </div>
       </div>
     );
   }
 
   return (
-    // ✅ Добавляем overflow-y-auto для прокрутки
-    <div className="min-h-screen bg-gray-50 py-6 px-4 overflow-y-auto">
-      <div className="max-w-md mx-auto pb-20">
-        <div className="bg-white rounded-xl p-5 shadow-md">
-          <div className="text-center mb-4">
-            <div className="text-4xl mb-1">🚚</div>
-            <h1 className="text-lg font-bold">Регистрация курьера</h1>
-            <p className="text-gray-500 text-xs">Выберите тип доставки</p>
-          </div>
-          
-          {error && (
-            <div className="bg-red-100 text-red-700 p-2 rounded-lg mb-3 text-xs">
-              ❌ {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit} className="space-y-2">
-            <input
-              type="text"
-              placeholder="Имя *"
-              className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
-              value={formData.first_name}
-              onChange={(e) => setFormData({...formData, first_name: e.target.value})}
-              required
-            />
-            
-            <input
-              type="text"
-              placeholder="Фамилия *"
-              className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
-              value={formData.last_name}
-              onChange={(e) => setFormData({...formData, last_name: e.target.value})}
-              required
-            />
-            
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, courier_type: 'pedestrian', car_model: '', car_number: ''})}
-                className={`flex-1 p-2.5 rounded-lg border text-center transition ${formData.courier_type === 'pedestrian' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200'}`}
-              >
-                <div className="text-xl">🚶</div>
-                <div className="text-xs font-medium">Пеший</div>
-                <div className="text-[10px] text-gray-400">3 км</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, courier_type: 'driver'})}
-                className={`flex-1 p-2.5 rounded-lg border text-center transition ${formData.courier_type === 'driver' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200'}`}
-              >
-                <div className="text-xl">🚗</div>
-                <div className="text-xs font-medium">На машине</div>
-                <div className="text-[10px] text-gray-400">15 км</div>
-              </button>
-            </div>
-            
-            {formData.courier_type === 'driver' && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Модель авто"
-                  className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
-                  value={formData.car_model}
-                  onChange={(e) => setFormData({...formData, car_model: e.target.value})}
-                />
-                <input
-                  type="text"
-                  placeholder="Госномер"
-                  className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
-                  value={formData.car_number}
-                  onChange={(e) => setFormData({...formData, car_number: e.target.value})}
-                />
-              </>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-lg">
+        <div className="text-center mb-8">
+          <div className="text-5xl mb-2">🚚</div>
+          <h1 className="text-2xl font-bold text-emerald-600">Sarqyt GO</h1>
+          <p className="text-gray-500 mt-2">Вход для курьеров</p>
+        </div>
+
+        {error && (
+          <div className={`p-3 rounded-xl mb-4 text-sm ${pendingVerification ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+            {pendingVerification ? (
+              <div className="text-center">
+                <div className="text-2xl mb-2">⏳</div>
+                <p className="font-medium">Ваша заявка на рассмотрении</p>
+                <p className="text-xs mt-1">Администратор проверит данные и подтвердит аккаунт</p>
+              </div>
+            ) : (
+              error
             )}
-            
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Номер телефона
+            </label>
             <input
               type="tel"
-              placeholder="Телефон *"
-              className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
-              value={formData.phone}
-              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              placeholder="+77071234567"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full p-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
               required
             />
-            
-            <input
-              type="password"
-              placeholder="Пароль *"
-              className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              required
-            />
-            
-            <input
-              type="password"
-              placeholder="Подтверждение пароля *"
-              className="w-full p-2.5 border border-gray-200 rounded-lg text-sm"
-              value={formData.confirm_password}
-              onChange={(e) => setFormData({...formData, confirm_password: e.target.value})}
-              required
-            />
-            
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm mt-2"
-            >
-              {loading ? 'Регистрация...' : 'Зарегистрироваться'}
-            </button>
-          </form>
-          
-          <div className="text-center mt-3">
-            <Link href="/courier/login" className="text-xs text-emerald-600">
-              ← Уже есть аккаунт? Войти
-            </Link>
           </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Пароль
+            </label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+              required
+            />
+          </div>
+          
+          <button
+            type="submit"
+            disabled={loading || redirectingRef.current}
+            className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50 text-lg mt-2"
+          >
+            {loading ? 'Вход...' : 'Войти'}
+          </button>
+        </form>
+        
+        <div className="text-center mt-6">
+          <p className="text-sm text-gray-500">
+            Нет аккаунта?{' '}
+            <Link href="/courier/register" className="text-emerald-600 font-medium hover:text-emerald-700 transition">
+              Стать курьером
+            </Link>
+          </p>
+        </div>
+        
+        <div className="text-center mt-4">
+          <Link href="/courier/dashboard" className="text-xs text-gray-400 hover:text-gray-600 transition">
+            ← В панель курьера
+          </Link>
         </div>
       </div>
     </div>
