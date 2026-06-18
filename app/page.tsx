@@ -1,3 +1,5 @@
+// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (без иконки грузовика)
+
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -33,7 +35,7 @@ interface SurpriseBag {
 export default function HomePage() {
   const router = useRouter();
   const location = useGeolocation();
-  const { lang } = useLanguage(); 
+  const { lang, setLang } = useLanguage(); 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,9 +43,27 @@ export default function HomePage() {
   const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('userToken');
+      setAuthToken(token);
+    }
+  }, []);
+
+  const wsUrl = authToken 
+    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(authToken)}` 
+    : null;
+  
+  const { isConnected, lastMessage } = useWebSocket(wsUrl);
+
+  const refreshAfterOrder = useCallback(async () => {
+    await fetchBags();
+  }, []);
 
   const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
@@ -53,8 +73,12 @@ export default function HomePage() {
     }
     
     try {
+      const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('userToken');
       const response = await fetch(`/api/surprise-bags`, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       
       if (!response.ok) {
@@ -81,13 +105,152 @@ export default function HomePage() {
     }
   }, []);
 
-  const refreshAfterOrder = useCallback(async () => {
-    await fetchBags();
-  }, [fetchBags]);
+  const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
+    if (typeof window === 'undefined') return;
+    
+    const toast = document.createElement('div');
+    toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
+      type === 'success' ? 'bg-[#367666]' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
+    }`;
+    toast.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '🚚'}</span>
+        <div class="flex-1">
+          <div class="font-bold">${title}</div>
+          <div class="text-sm opacity-90">${body}</div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('animate-fade-out');
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
+    
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/logo.png' });
+    }
+  };
+
+  const showCourierArrivedNotification = (data: any) => {
+    if (typeof window === 'undefined') return;
+    
+    const { order_id, order_number, courier_name } = data;
+    
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
+    toast.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-l-4 border-[#367666]">
+        <div class="p-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-[#367666]/10 rounded-full flex items-center justify-center text-lg">🚚</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h3 class="font-bold text-gray-800 text-sm">Курьер прибыл!</h3>
+                <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-lg leading-none ml-2">✕</button>
+              </div>
+              <p class="text-[#367666] text-xs">Заказ #${order_number} • ${courier_name}</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-2 mt-3">
+            <button id="go-to-order-btn" class="flex-1 bg-[#367666] text-white py-1.5 rounded-xl text-xs font-semibold hover:bg-[#2a5a4d] transition">
+              Перейти
+            </button>
+            <button id="later-btn" class="px-3 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium hover:bg-gray-200 transition">
+              Позже
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    const goToOrder = () => {
+      toast.classList.add('animate-fade-out');
+      setTimeout(() => {
+        toast.remove();
+        router.push(`/orders/${order_id}`);
+      }, 300);
+    };
+    
+    const closeNotification = () => {
+      toast.classList.add('animate-fade-out');
+      setTimeout(() => toast.remove(), 300);
+    };
+    
+    toast.querySelector('#go-to-order-btn')?.addEventListener('click', goToOrder);
+    toast.querySelector('#later-btn')?.addEventListener('click', closeNotification);
+    toast.querySelector('#close-notification-btn')?.addEventListener('click', closeNotification);
+    
+    setTimeout(() => {
+      if (document.body.contains(toast)) {
+        closeNotification();
+      }
+    }, 6000);
+  };
 
   const handleSupplierClick = (supplierId: number, supplierName: string) => {
     router.push(`/supplier/${supplierId}`);
   };
+
+  useEffect(() => {
+    if (!lastMessage) return;
+    
+    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
+      fetchBags(false, false);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Новый сюрприз!', {
+          body: 'Появился новый сюрприз рядом с вами!',
+          icon: '/logo.png'
+        });
+      }
+    }
+    
+    if (lastMessage.type === 'delete_bag') {
+      fetchBags(false, false);
+    }
+    
+    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
+      const { bag_id, available_quantity, is_active } = lastMessage.data;
+      
+      setBags(prevBags => {
+        const updatedBags = prevBags.map(bag => 
+          bag.id === bag_id 
+            ? { ...bag, available_quantity: available_quantity, is_active: is_active ?? bag.is_active }
+            : bag
+        );
+        const filteredBags = updatedBags.filter(bag => bag.available_quantity > 0);
+        if (filteredBags.length !== prevBags.length) setLastUpdate(new Date());
+        return filteredBags;
+      });
+    }
+    
+    if (lastMessage.type === 'courier_arrived') {
+      showCourierArrivedNotification(lastMessage.data);
+    }
+    
+    if (lastMessage.type === 'order_assigned') {
+      const { courier_name, courier_phone, estimated_time } = lastMessage.data;
+      showNotification(
+        'Курьер назначен!',
+        `${courier_name} (${courier_phone}) везет ваш заказ. Ожидайте ${estimated_time || 30} минут.`,
+        'info'
+      );
+    }
+  }, [lastMessage, fetchBags]);
+
+  const handleManualRefresh = () => {
+    fetchBags(true, false);
+  };
+
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -261,7 +424,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header */}
+      {/* Header - БЕЗ ИКОНКИ ГРУЗОВИКА */}
       <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">
@@ -321,6 +484,7 @@ export default function HomePage() {
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>
+            {/* Заголовок */}
             <div className="mb-4">
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <Store size={20} className="text-gray-400/60" />
@@ -344,7 +508,7 @@ export default function HomePage() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold">{t[lang].nearbyOffers}</h3>
               <button 
-                onClick={() => fetchBags(true, false)}
+                onClick={handleManualRefresh}
                 disabled={isRefreshing}
                 className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs hover:bg-[#2a5a4d] transition flex items-center gap-1 disabled:opacity-50"
               >
@@ -354,6 +518,7 @@ export default function HomePage() {
             
             <div className="text-right text-xs text-gray-400 mb-3">
               {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
+              {isConnected && <span className="ml-2 text-green-500">● Live</span>}
             </div>
             
             <div className="flex flex-col gap-3">
