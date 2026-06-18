@@ -1,10 +1,11 @@
-// app/profile/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/profile/page.tsx - С ДИЗАЙНОМ КАК РАНЬШЕ
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -148,8 +149,9 @@ export default function ProfilePage() {
   const isCourier = user.role === 'courier';
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-[#367666] text-white p-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
         <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
         </button>
@@ -157,9 +159,12 @@ export default function ProfilePage() {
       </div>
 
       <div className="px-6 py-8">
+        {/* Аватар */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center text-4xl mb-3">
-            {user.full_name ? user.full_name.charAt(0).toUpperCase() : '👤'}
+          <div className="relative w-24 h-24 mb-3">
+            <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center text-5xl text-gray-400 overflow-hidden">
+              {user.full_name ? user.full_name.charAt(0).toUpperCase() : '👤'}
+            </div>
           </div>
           <h2 className="text-xl font-bold text-gray-800">{user.full_name || 'Пользователь'}</h2>
           <p className="text-gray-500 text-sm">{user.phone || 'Телефон не указан'}</p>
@@ -168,6 +173,7 @@ export default function ProfilePage() {
           </p>
         </div>
 
+        {/* Информация */}
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
           <h3 className="font-bold text-lg mb-4">Информация</h3>
           <div className="space-y-3">
@@ -188,8 +194,8 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Кнопки */}
         <div className="space-y-3">
-          {/* ✅ Ссылка "Стать курьером" - для клиентов */}
           {!isCourier && (
             <Link href="/courier/register">
               <button className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition">
