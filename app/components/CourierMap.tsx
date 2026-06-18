@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - ЧЕРНО-ЗЕЛЕНАЯ ТЕМА (inDriver стиль)
+// app/components/CourierMap.tsx - СВЕТЛАЯ ВЕРСИЯ
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -33,8 +33,8 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// ✅ ЧЕРНО-ЗЕЛЕНАЯ КАРТА (inDriver стиль)
-const DARK_MAP_TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+// ✅ СВЕТЛАЯ КАРТА
+const LIGHT_MAP_TILE = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
 interface CourierLocation {
   courier_id: number;
@@ -148,7 +148,7 @@ export default function CourierMap({
     initMap();
   }, []);
 
-  // Инициализация карты с черно-зеленой темой
+  // Инициализация карты со светлой темой
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return;
     if (!mapCenter) return;
@@ -156,36 +156,35 @@ export default function CourierMap({
     const [centerLat, centerLon] = mapCenter;
     
     mapInstanceRef.current = L.map(mapRef.current, {
-      zoomControl: false  // Убираем стандартный зум, добавим кастомный
+      zoomControl: false
     }).setView([centerLat, centerLon], 13);
     
-    // ✅ ЧЕРНО-ЗЕЛЕНЫЙ ТАЙЛ (inDriver стиль)
-    L.tileLayer(DARK_MAP_TILE, {
+    // ✅ СВЕТЛЫЙ ТАЙЛ
+    L.tileLayer(LIGHT_MAP_TILE, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
       subdomains: 'abcd',
       maxZoom: 19,
       minZoom: 3
     }).addTo(mapInstanceRef.current);
     
-    // Кастомный зум контрол (черный)
+    // Кастомный зум контрол
     L.control.zoom({
       position: 'bottomright'
     }).addTo(mapInstanceRef.current);
     
-    console.log(`🗺️ Карта инициализирована (inDriver стиль)`);
+    console.log(`🗺️ Карта инициализирована (светлая тема)`);
   }, [mapLoaded, mapCenter]);
 
-  // ============ КАСТОМНЫЕ ИКОНКИ ДЛЯ ТЕМНОЙ ТЕМЫ ============
+  // ============ КАСТОМНЫЕ ИКОНКИ ДЛЯ СВЕТЛОЙ ТЕМЫ ============
   
   const getCourierIcon = (status?: string) => {
-    // Зеленые оттенки для inDriver стиля
-    const color = status === 'almost_done' ? '#fbbf24' : 
-                  status === 'delivering' ? '#34d399' : 
-                  status === 'assigned' ? '#a78bfa' : '#10b981';
+    const color = status === 'almost_done' ? '#f59e0b' : 
+                  status === 'delivering' ? '#3b82f6' : 
+                  status === 'assigned' ? '#8b5cf6' : '#10b981';
     
     return L.divIcon({
       html: `<div class="relative">
-               <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-emerald-400" style="background-color: ${color}">
+               <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white" style="background-color: ${color}">
                  🚚
                </div>
                <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 rounded-full" style="background-color: ${color}"></div>
@@ -198,7 +197,7 @@ export default function CourierMap({
 
   const getSupplierIcon = () => {
     return L.divIcon({
-      html: `<div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-emerald-300">🏪</div>`,
+      html: `<div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🏪</div>`,
       iconSize: [40, 40],
       className: 'custom-div-icon',
       popupAnchor: [0, -20]
@@ -208,8 +207,8 @@ export default function CourierMap({
   const getUserLocationIcon = () => {
     return L.divIcon({
       html: `<div class="relative">
-               <div class="w-5 h-5 bg-emerald-400 rounded-full shadow-lg" style="border: 2px solid #10b981;"></div>
-               <div class="absolute -top-1 -left-1 w-7 h-7 bg-emerald-400 rounded-full opacity-30 animate-ping"></div>
+               <div class="w-5 h-5 bg-blue-500 rounded-full shadow-lg" style="border: 2px solid #3b82f6;"></div>
+               <div class="absolute -top-1 -left-1 w-7 h-7 bg-blue-500 rounded-full opacity-30 animate-ping"></div>
              </div>`,
       className: 'custom-div-icon',
       iconSize: [20, 20]
@@ -218,7 +217,7 @@ export default function CourierMap({
 
   const getRestaurantIcon = () => {
     return L.divIcon({
-      html: `<div class="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-emerald-300">🍽️</div>`,
+      html: `<div class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🍽️</div>`,
       className: 'custom-div-icon',
       iconSize: [40, 40],
       popupAnchor: [0, -20]
@@ -227,7 +226,7 @@ export default function CourierMap({
 
   const getCustomerIcon = () => {
     return L.divIcon({
-      html: `<div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-emerald-300">🏠</div>`,
+      html: `<div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🏠</div>`,
       className: 'custom-div-icon',
       iconSize: [40, 40],
       popupAnchor: [0, -20]
@@ -298,14 +297,14 @@ export default function CourierMap({
       const marker = L.marker([supplier.lat, supplier.lon], { icon })
         .addTo(mapInstanceRef.current)
         .bindPopup(`
-          <div class="text-center min-w-[180px] bg-gray-900 text-white rounded-xl p-3 border border-emerald-500">
-            <div class="font-bold text-lg text-emerald-400">${supplier.business_name}</div>
-            <div class="text-sm text-gray-400">${supplier.address || 'Адрес не указан'}</div>
+          <div class="text-center min-w-[180px] bg-white rounded-xl p-3 shadow-lg border border-gray-200">
+            <div class="font-bold text-lg text-gray-800">${supplier.business_name}</div>
+            <div class="text-sm text-gray-500">${supplier.address || 'Адрес не указан'}</div>
             <div class="flex justify-center gap-2 mt-2 text-sm">
-              <span class="text-emerald-400">📦 ${supplier.surprise_bags_count} сюрпризов</span>
-              <span class="text-gray-400">📍 ${supplier.distance_km.toFixed(2)} км</span>
+              <span class="text-orange-500">📦 ${supplier.surprise_bags_count} сюрпризов</span>
+              <span class="text-gray-500">📍 ${supplier.distance_km.toFixed(2)} км</span>
             </div>
-            <button class="mt-2 bg-emerald-500 text-white px-3 py-1 rounded-lg text-xs view-offers-btn hover:bg-emerald-600" data-id="${supplier.id}">
+            <button class="mt-2 bg-orange-500 text-white px-3 py-1 rounded-lg text-xs view-offers-btn hover:bg-orange-600" data-id="${supplier.id}">
               Смотреть сюрпризы
             </button>
           </div>
@@ -345,7 +344,7 @@ export default function CourierMap({
     const icon = getUserLocationIcon();
     userMarkerRef.current = L.marker([userLocation.lat, userLocation.lon], { icon })
       .addTo(mapInstanceRef.current)
-      .bindPopup('<div class="text-center bg-gray-900 text-white p-2 rounded-lg"><strong class="text-emerald-400">📍 Вы здесь</strong><br/><span class="text-gray-400">Ваше текущее положение</span></div>');
+      .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow"><strong class="text-blue-500">📍 Вы здесь</strong><br/><span class="text-gray-500">Ваше текущее положение</span></div>');
     
   }, [userLocation, mapInstanceRef.current]);
 
@@ -380,19 +379,19 @@ export default function CourierMap({
 
   const createPopupContent = (courier: CourierLocation) => {
     const div = document.createElement('div');
-    div.className = 'min-w-[200px] bg-gray-900 text-white rounded-xl p-3 border border-emerald-500';
+    div.className = 'min-w-[200px] bg-white rounded-xl p-3 shadow-lg border border-gray-200';
     div.innerHTML = `
       <div class="flex items-center gap-3 mb-3">
         <div class="text-3xl">🚚</div>
         <div>
-          <p class="font-semibold text-emerald-400">${courier.first_name} ${courier.last_name}</p>
-          <p class="text-xs text-gray-400">Курьер</p>
+          <p class="font-semibold text-gray-800">${courier.first_name} ${courier.last_name}</p>
+          <p class="text-xs text-gray-500">Курьер</p>
         </div>
       </div>
-      <div class="space-y-2 text-sm border-t border-gray-700 pt-2">
+      <div class="space-y-2 text-sm border-t border-gray-100 pt-2">
         <div class="flex justify-between">
-          <span class="text-gray-400">Статус:</span>
-          <span class="font-medium ${courier.current_order_status === 'almost_done' ? 'text-yellow-400' : 'text-emerald-400'}">
+          <span class="text-gray-500">Статус:</span>
+          <span class="font-medium ${courier.current_order_status === 'almost_done' ? 'text-yellow-600' : 'text-emerald-600'}">
             ${courier.current_order_status === 'almost_done' ? '🔔 Почти закончил' :
               courier.current_order_status === 'delivering' ? '🚚 В пути' :
               courier.current_order_status === 'assigned' ? '📦 Назначен' :
@@ -401,15 +400,15 @@ export default function CourierMap({
         </div>
         ${courier.car_model ? `
         <div class="flex justify-between">
-          <span class="text-gray-400">Авто:</span>
-          <span class="text-gray-300">${courier.car_model}</span>
+          <span class="text-gray-500">Авто:</span>
+          <span class="text-gray-700">${courier.car_model}</span>
         </div>` : ''}
         <div class="flex justify-between">
-          <span class="text-gray-400">Обновлен:</span>
+          <span class="text-gray-500">Обновлен:</span>
           <span class="text-xs text-gray-400">${new Date(courier.timestamp).toLocaleTimeString()}</span>
         </div>
       </div>
-      <button class="mt-3 w-full bg-emerald-500 text-white text-sm py-2 rounded-lg center-btn hover:bg-emerald-600 transition">
+      <button class="mt-3 w-full bg-blue-500 text-white text-sm py-2 rounded-lg center-btn hover:bg-blue-600 transition">
         📍 Центрировать
       </button>
     `;
@@ -436,13 +435,13 @@ export default function CourierMap({
     if (restaurantLocation) {
       L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon: getRestaurantIcon() })
         .addTo(mapInstanceRef.current)
-        .bindPopup('<div class="text-center bg-gray-900 text-white p-2 rounded-lg border border-emerald-500">🍽️ Ресторан</div>');
+        .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow border border-gray-200">🍽️ Ресторан</div>');
     }
     
     if (customerLocation) {
       L.marker([customerLocation.lat, customerLocation.lon], { icon: getCustomerIcon() })
         .addTo(mapInstanceRef.current)
-        .bindPopup('<div class="text-center bg-gray-900 text-white p-2 rounded-lg border border-emerald-500">🏠 Клиент</div>');
+        .bindPopup('<div class="text-center bg-white p-2 rounded-lg shadow border border-gray-200">🏠 Клиент</div>');
     }
   }, [restaurantLocation, customerLocation, mapLoaded]);
 
@@ -567,10 +566,10 @@ export default function CourierMap({
 
   if (!mapLoaded || !mapCenter) {
     return (
-      <div className="w-full h-full bg-gray-900 rounded-2xl flex items-center justify-center" style={{ height }}>
+      <div className="w-full h-full bg-gray-100 rounded-2xl flex items-center justify-center" style={{ height }}>
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-b-2 border-emerald-500 rounded-full mx-auto"></div>
-          <p className="text-sm text-gray-400 mt-2">Загрузка карты...</p>
+          <p className="text-sm text-gray-500 mt-2">Загрузка карты...</p>
         </div>
       </div>
     );
@@ -579,22 +578,22 @@ export default function CourierMap({
   return (
     <div className="relative w-full h-full" style={{ height }}>
       {/* Индикатор WebSocket */}
-      <div className="absolute top-4 right-4 z-10 bg-gray-900/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-sm border border-emerald-500/30">
+      <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-sm border border-gray-200">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
-          <span className="text-xs text-gray-300">{wsConnected ? 'Live' : 'Connecting...'}</span>
+          <span className="text-xs text-gray-600">{wsConnected ? 'Live' : 'Connecting...'}</span>
         </div>
       </div>
       
       {/* Индикатор статуса геолокации */}
       {locationError && (
-        <div className="absolute top-4 left-4 z-10 bg-yellow-900/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-yellow-300 border border-yellow-500/30">
+        <div className="absolute top-4 left-4 z-10 bg-yellow-50/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-yellow-700 border border-yellow-200">
           📍 {locationError}. Показаны магазины в радиусе 100 км
         </div>
       )}
       
       {isLoadingLocation && (
-        <div className="absolute top-4 left-4 z-10 bg-emerald-900/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-emerald-300 border border-emerald-500/30">
+        <div className="absolute top-4 left-4 z-10 bg-blue-50/90 backdrop-blur rounded-lg shadow-lg px-3 py-1 text-xs text-blue-700 border border-blue-200">
           📍 Определение местоположения...
         </div>
       )}
@@ -606,10 +605,10 @@ export default function CourierMap({
             mapInstanceRef.current.setView([userLocation.lat, userLocation.lon], 15);
           }
         }}
-        className="absolute bottom-4 right-4 z-10 bg-gray-900 rounded-full shadow-lg p-3 hover:bg-gray-800 transition-all border border-emerald-500/30"
+        className="absolute bottom-4 right-4 z-10 bg-white rounded-full shadow-lg p-3 hover:bg-gray-50 transition-all border border-gray-200"
         title="Мое местоположение"
       >
-        <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
             d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
