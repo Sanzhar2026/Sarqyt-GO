@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - БЕЗ МЕТКИ С РАССТОЯНИЕМ
+// app/components/CourierMap.tsx - С ORS API
 
 'use client';
 
@@ -7,6 +7,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 // Загружаем Leaflet динамически
 let L: any;
 
+// ✅ ORS API KEY
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMDU3ZGE4OTkxODQ2M2JhNmVlZDgzM2QzMDE2OTYwIiwiaCI6Im11cm11cjY0In0=';
 
 const loadLeaflet = async () => {
@@ -26,7 +27,7 @@ const loadLeaflet = async () => {
   return L;
 };
 
-// Функция получения маршрута от ORS
+// ✅ ФУНКЦИЯ ПОЛУЧЕНИЯ МАРШРУТА ПО ДОРОГАМ
 const getRouteFromORS = async (startLat: number, startLon: number, endLat: number, endLon: number) => {
   try {
     const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
@@ -57,7 +58,7 @@ const getRouteFromORS = async (startLat: number, startLon: number, endLat: numbe
   }
 };
 
-// Функция декодирования polyline
+// ✅ ДЕКОДИРОВАНИЕ POLYLINE
 const decodePolyline = (encoded: string) => {
   let index = 0;
   let lat = 0;
@@ -168,7 +169,6 @@ export default function CourierMap({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
-  const [routePoints, setRoutePoints] = useState<[number, number][]>([]);
   
   const mapRef = useRef<any>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -260,7 +260,7 @@ export default function CourierMap({
     console.log(`🗺️ Карта инициализирована`);
   }, [mapLoaded, mapCenter]);
 
-  // ============ ПОСТРОЕНИЕ МАРШРУТА ЧЕРЕЗ ORS ============
+  // ============ ПОСТРОЕНИЕ МАРШРУТА ПО ДОРОГАМ ============
   useEffect(() => {
     if (!mapInstanceRef.current || !showRoute) return;
     if (!restaurantLocation?.lat || !restaurantLocation?.lon || 
@@ -268,6 +268,7 @@ export default function CourierMap({
 
     const fetchRoute = async () => {
       try {
+        // ✅ ЗАПРОС К ORS
         const data = await getRouteFromORS(
           restaurantLocation.lat, restaurantLocation.lon,
           customerLocation.lat, customerLocation.lon
@@ -283,9 +284,7 @@ export default function CourierMap({
           const coordinates = data.features[0].geometry.coordinates;
           const points: [number, number][] = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
           
-          setRoutePoints(points);
-
-          // Рисуем маршрут по дорогам
+          // ✅ РИСУЕМ МАРШРУТ ПО ДОРОГАМ
           routeLayerRef.current = L.polyline(points, {
             color: routeColor,
             weight: routeWidth,
@@ -294,9 +293,9 @@ export default function CourierMap({
             lineJoin: 'round',
           }).addTo(mapInstanceRef.current);
 
-          console.log(`✅ Маршрут построен`);
+          console.log(`✅ Маршрут построен по дорогам, точек: ${points.length}`);
         } else {
-          // Fallback - прямая линия если ORS не вернул маршрут
+          // Fallback - если ORS не ответил
           const points: [number, number][] = [
             [restaurantLocation.lat, restaurantLocation.lon],
             [customerLocation.lat, customerLocation.lon]
@@ -305,7 +304,7 @@ export default function CourierMap({
           routeLayerRef.current = L.polyline(points, {
             color: routeColor,
             weight: routeWidth,
-            opacity: 0.4,
+            opacity: 0.3,
             dashArray: '5, 5',
             lineCap: 'round',
             lineJoin: 'round',
@@ -315,7 +314,7 @@ export default function CourierMap({
         }
       } catch (error) {
         console.error('Ошибка построения маршрута:', error);
-        // Fallback - прямая линия
+        // Fallback
         const points: [number, number][] = [
           [restaurantLocation.lat, restaurantLocation.lon],
           [customerLocation.lat, customerLocation.lon]
@@ -324,7 +323,7 @@ export default function CourierMap({
         routeLayerRef.current = L.polyline(points, {
           color: routeColor,
           weight: routeWidth,
-          opacity: 0.4,
+          opacity: 0.3,
           dashArray: '5, 5',
           lineCap: 'round',
           lineJoin: 'round',
@@ -335,7 +334,7 @@ export default function CourierMap({
     fetchRoute();
   }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded]);
 
-  // ============ ИКОНКИ (ПРОЗРАЧНЫЕ) ============
+  // ============ ОСТАЛЬНОЙ КОД (ИКОНКИ, МАРКЕРЫ, ПОПУПЫ) ============
   
   const getCourierIcon = () => {
     return L.divIcon({
@@ -492,7 +491,7 @@ export default function CourierMap({
     }
   }, [mapInstanceRef.current, suppliers, addSupplierMarkers]);
 
-  // ============ МАРКЕРЫ ============
+  // ============ МАРКЕРЫ ПОЛЬЗОВАТЕЛЯ ============
   
   useEffect(() => {
     if (!mapInstanceRef.current || !userLocation) return;
