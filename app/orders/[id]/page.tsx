@@ -177,63 +177,74 @@ export default function OrderDetailPage() {
   };
 
   // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ ЗАКАЗА (с модальным окном)
-  const handleConfirmDelivery = async () => {
+const handleConfirmDelivery = async () => {
     setConfirmLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order?.id}`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        showToast('✅ Спасибо! Заказ получен.', 'success');
-        setShowConfirmModal(false);
-        fetchOrder();
-      } else {
-        alert(data.message || 'Ошибка');
-      }
+        // ✅ Получаем токен из sessionStorage
+        const token = sessionStorage.getItem('userToken');
+        
+        const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order?.id}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showToast('✅ Спасибо! Заказ получен.', 'success');
+            setShowConfirmModal(false);
+            fetchOrder();
+        } else {
+            alert(data.message || 'Ошибка');
+        }
     } catch (error) {
-      console.error('Error:', error);
-      alert('Ошибка при подтверждении');
+        console.error('Error:', error);
+        alert('Ошибка при подтверждении');
     } finally {
-      setConfirmLoading(false);
+        setConfirmLoading(false);
     }
-  };
+};
 
   // КЛИЕНТ ЗАПРАШИВАЕТ ВОЗВРАТ
   const handleRequestRefund = async () => {
     if (!refundReason.trim()) {
-      alert('Укажите причину возврата');
-      return;
+        alert('Укажите причину возврата');
+        return;
     }
     
     setSubmitting(true);
     try {
-      const response = await fetch(`${API_URL}/api/order/${order?.id}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ reason: refundReason })
-      });
-      
-      if (response.ok) {
-        alert('Запрос на возврат отправлен. Администратор рассмотрит его в ближайшее время.');
-        setShowRefundModal(false);
-        setRefundReason('');
-        fetchOrder();
-      } else {
-        const error = await response.json();
-        alert(`Ошибка: ${error.detail || 'Ошибка'}`);
-      }
+        // ✅ Добавляем токен
+        const token = sessionStorage.getItem('userToken');
+        
+        const response = await fetch(`${API_URL}/api/order/${order?.id}/reject`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            credentials: 'include',
+            body: JSON.stringify({ reason: refundReason })
+        });
+        
+        if (response.ok) {
+            alert('Запрос на возврат отправлен. Администратор рассмотрит его в ближайшее время.');
+            setShowRefundModal(false);
+            setRefundReason('');
+            fetchOrder();
+        } else {
+            const error = await response.json();
+            alert(`Ошибка: ${error.detail || 'Ошибка'}`);
+        }
     } catch (err) {
-      alert('Ошибка при отправке запроса');
+        alert('Ошибка при отправке запроса');
     } finally {
-      setSubmitting(false);
+        setSubmitting(false);
     }
-  };
-
-  const getStatusColor = (status: string) => {
+};  const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: 'bg-yellow-500',
       confirmed: 'bg-blue-500',
