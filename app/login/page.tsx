@@ -1,4 +1,4 @@
-// app/login/page.tsx - ПОЛНАЯ ВЕРСИЯ С ВОССТАНОВЛЕНИЕМ ПАРОЛЯ
+// app/login/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Состояния для восстановления пароля
   const [showResetForm, setShowResetForm] = useState(false);
   const [resetStep, setResetStep] = useState<'phone' | 'code' | 'password'>('phone');
   const [verificationCode, setVerificationCode] = useState('');
@@ -22,10 +21,10 @@ export default function LoginPage() {
   const [countdown, setCountdown] = useState(0);
   const [resetToken, setResetToken] = useState('');
 
+  // ✅ ИСПРАВЛЕНО: ПРАВИЛЬНЫЙ API URL
   const API_URL = 'https://toogood-2ncf.onrender.com';
   const MAX_CODE_LENGTH = 6;
 
-  // Таймер
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -33,14 +32,15 @@ export default function LoginPage() {
     }
   }, [countdown]);
 
-  // ✅ ОБЫЧНЫЙ ВХОД
+  // ✅ ИСПРАВЛЕНО: ПРАВИЛЬНЫЙ ЭНДПОИНТ - /api/auth/login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch(`${API_URL}/api/login`, {
+      // ✅ ПРАВИЛЬНЫЙ ЭНДПОИНТ
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password }),
@@ -68,7 +68,7 @@ export default function LoginPage() {
         
         window.location.href = redirectTo;
       } else {
-        setError(data.error || 'Неверный телефон или пароль');
+        setError(data.error || data.message || 'Неверный телефон или пароль');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -78,7 +78,7 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ ЗАПРОС ВОССТАНОВЛЕНИЯ
+  // ✅ ИСПРАВЛЕНО: ПРАВИЛЬНЫЙ ЭНДПОИНТ - /api/auth/request-password-reset
   const handleRequestReset = async () => {
     if (!phone || phone.length < 10) {
       setError('Введите корректный номер телефона');
@@ -113,7 +113,7 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ ПРОВЕРКА КОДА
+  // ✅ ИСПРАВЛЕНО: ПРАВИЛЬНЫЙ ЭНДПОИНТ - /api/auth/verify-reset-code
   const handleVerifyCode = async () => {
     if (!verificationCode || verificationCode.length !== MAX_CODE_LENGTH) {
       setError('Введите 6-значный код');
@@ -150,7 +150,7 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ СБРОС ПАРОЛЯ
+  // ✅ ИСПРАВЛЕНО: ПРАВИЛЬНЫЙ ЭНДПОИНТ - /api/auth/reset-password
   const handleResetPassword = async () => {
     if (!newPassword || newPassword.length < 6) {
       setError('Пароль должен быть минимум 6 символов');
@@ -181,7 +181,6 @@ export default function LoginPage() {
       
       if (response.ok && data.success) {
         alert('✅ Пароль успешно изменен! Войдите с новым паролем.');
-        // Возвращаемся к обычному входу
         setShowResetForm(false);
         setResetStep('phone');
         setVerificationCode('');
@@ -200,7 +199,6 @@ export default function LoginPage() {
     }
   };
 
-  // Форматирование ввода кода
   const handleCodeInput = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, MAX_CODE_LENGTH);
     setVerificationCode(digits);
@@ -221,7 +219,6 @@ export default function LoginPage() {
           )}
 
           {!showResetForm ? (
-            // ✅ ОБЫЧНЫЙ ВХОД
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Номер телефона</label>
@@ -258,7 +255,6 @@ export default function LoginPage() {
                 ) : 'Войти'}
               </button>
 
-              {/* ✅ ЗАБЫЛИ ПАРОЛЬ? */}
               <div className="text-center mt-4">
                 <button
                   type="button"
@@ -274,7 +270,6 @@ export default function LoginPage() {
               </div>
             </form>
           ) : (
-            // ✅ ВОССТАНОВЛЕНИЕ ПАРОЛЯ
             <div className="space-y-5">
               {resetStep === 'phone' && (
                 <>
@@ -388,7 +383,6 @@ export default function LoginPage() {
                 </>
               )}
 
-              {/* Кнопка "Назад" */}
               <button
                 type="button"
                 onClick={() => {
