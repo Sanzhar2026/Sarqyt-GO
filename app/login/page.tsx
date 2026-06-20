@@ -1,4 +1,4 @@
-// app/login/page.tsx - ИСПРАВЛЕННЫЙ
+// app/login/page.tsx - ТОЛЬКО ОТНОСИТЕЛЬНЫЕ ПУТИ!
 
 'use client';
 
@@ -11,8 +11,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ✅ ПРАВИЛЬНЫЙ URL БЕКЕНДА
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  // ❌ УБЕРИ - НЕ НУЖНО!
+  // const API_URL = 'https://toogood-2ncf.onrender.com';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +20,8 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
