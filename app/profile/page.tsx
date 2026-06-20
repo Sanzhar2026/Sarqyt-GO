@@ -1,312 +1,228 @@
-// app/profile/page.tsx - БЕЗ ИКОНОК
+// app/signup/page.tsx - С ВЕРИФИКАЦИЕЙ
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import AvatarCropper from '../components/AvatarCropper';
 
-export default function ProfilePage() {
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [showCropper, setShowCropper] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export default function SignupPage() {
+  const [step, setStep] = useState<'phone' | 'verify'>('phone');
+  const [phone, setPhone] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const API_URL = 'https://toogood-2ncf.onrender.com';
 
-  const getAuthToken = () => {
-    if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('userToken') || 
-           sessionStorage.getItem('courierToken') || 
-           sessionStorage.getItem('authToken') ||
-           null;
+  // Генерация 6-значного кода
+  const generateCode = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   };
 
-  const fetchAvatar = async (userId: number) => {
-    try {
-      const response = await fetch(`${API_URL}/users/avatar-file/${userId}`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        setAvatarUrl(url);
-      }
-    } catch (error) {
-      console.error('Error fetching avatar:', error);
+  // Шаг 1: Отправка номера
+  const sendVerification = async () => {
+    if (!phone) {
+      setError('Номер телефона обязателен');
+      return;
     }
+    
+    const code = generateCode();
+    setGeneratedCode(code);
+    setVerificationCode(code);
+    
+    alert(`✅ Ваш код подтверждения: ${code}`);
+    
+    setStep('verify');
+    setError('');
   };
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = getAuthToken();
-      
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_URL}/api/auth/me`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.authenticated && data.user) {
-            setUser(data.user);
-            if (data.user.id) {
-              fetchAvatar(data.user.id);
-            }
-          } else {
-            const storedUser = sessionStorage.getItem('user');
-            if (storedUser) {
-              const parsed = JSON.parse(storedUser);
-              setUser(parsed);
-              if (parsed.id) fetchAvatar(parsed.id);
-            } else {
-              router.push('/login');
-            }
-          }
-        } else {
-          const storedUser = sessionStorage.getItem('user');
-          if (storedUser) {
-            const parsed = JSON.parse(storedUser);
-            setUser(parsed);
-            if (parsed.id) fetchAvatar(parsed.id);
-          } else {
-            router.push('/login');
-          }
-        }
-      } catch (error) {
-        console.error('Ошибка:', error);
-        const storedUser = sessionStorage.getItem('user');
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser);
-          setUser(parsed);
-          if (parsed.id) fetchAvatar(parsed.id);
-        } else {
-          router.push('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Файл слишком большой. Максимальный размер 5MB.');
+  // Шаг 2: Регистрация
+  const handleSignup = async () => {
+    if (!fullName) {
+      setError('Введите полное имя');
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      setError('Пароли не совпадают');
+      return;
+    }
+    
+    if (password.length < 4) {
+      setError('Пароль не менее 4 символов');
+      return;
+    }
+    
+    if (verificationCode !== generatedCode) {
+      setError('Неверный код подтверждения');
       return;
     }
 
-    setSelectedFile(file);
-    setShowCropper(true);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleCropComplete = async (croppedBlob: Blob) => {
-    setShowCropper(false);
-    setUploading(true);
+    setLoading(true);
+    setError('');
 
     try {
-      const token = getAuthToken();
-      const formData = new FormData();
-      formData.append('avatar', croppedBlob, 'avatar.webp');
-
-      const response = await fetch(`${API_URL}/users/${user.id}/avatar`, {
+      const response = await fetch(`${API_URL}/api/verify-and-register`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json',
         },
-        body: formData
+        body: JSON.stringify({
+          phone: phone.trim(),
+          full_name: fullName.trim(),
+          password: password,
+          verification_code: verificationCode,
+        }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          fetchAvatar(user.id);
-          alert('Аватар успешно обновлен!');
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        if (data.token) {
+          localStorage.setItem('userToken', data.token);
+          sessionStorage.setItem('userToken', data.token);
         }
+        
+        sessionStorage.setItem('isLoggedIn', 'true');
+        window.location.href = '/';
       } else {
-        alert('Ошибка загрузки аватара');
+        setError(data.detail || 'Ошибка регистрации');
       }
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      alert('Ошибка загрузки аватара');
+      console.error('Signup error:', error);
+      setError('Ошибка подключения к серверу');
     } finally {
-      setUploading(false);
-      setSelectedFile(null);
+      setLoading(false);
     }
   };
 
-  const handleCropCancel = () => {
-    setShowCropper(false);
-    setSelectedFile(null);
-  };
-
-  const handleLogout = () => {
-    sessionStorage.clear();
-    window.location.href = '/login';
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        <div className="text-center">
-          <p className="text-gray-500 mb-4">Пожалуйста, войдите в аккаунт</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="bg-[#367666] text-white px-6 py-3 rounded-xl hover:bg-[#2a5a4d] transition"
-          >
-            Войти
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const isCourier = user.role === 'courier';
-
   return (
-    <>
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
-          <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
-            ← Назад
-          </button>
-          <h1 className="text-2xl font-bold">Профиль</h1>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#367666]/10 to-white p-6">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-3xl shadow-lg p-8">
+          <h1 className="text-3xl font-bold text-center text-[#367666] mb-8">Регистрация</h1>
+          
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">
+              ❌ {error}
+            </div>
+          )}
 
-        <div className="px-6 py-8 pb-32">
-          {/* Аватар */}
-          <div className="flex flex-col items-center mb-8">
-            <div 
-              className="relative w-36 h-36 rounded-full overflow-hidden bg-gray-200 cursor-pointer group"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt="Аватар"
-                  fill
-                  className="object-cover"
+          {step === 'phone' ? (
+            // ШАГ 1: ВВОД ТЕЛЕФОНА
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Номер телефона *</label>
+                <input 
+                  type="tel" 
+                  value={phone} 
+                  onChange={(e) => setPhone(e.target.value)} 
+                  placeholder="+77071234567" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-6xl text-gray-400">
-                  {user.full_name ? user.full_name.charAt(0).toUpperCase() : '👤'}
-                </div>
-              )}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-sm font-medium">Изменить</span>
               </div>
-              {uploading && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <div className="animate-spin h-8 w-8 border-2 border-white border-t-transparent rounded-full"></div>
-                </div>
-              )}
+              <button 
+                onClick={sendVerification} 
+                disabled={loading} 
+                className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg hover:bg-[#2a5a4d] transition disabled:opacity-70 shadow-md"
+              >
+                Получить код
+              </button>
             </div>
-            
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-3 text-sm text-[#367666] hover:text-[#2a5a4d] transition font-medium"
-              disabled={uploading}
-            >
-              {uploading ? 'Загрузка...' : 'Загрузить фото'}
-            </button>
-            
-            <h2 className="text-xl font-bold text-gray-800 mt-3">{user.full_name || 'Пользователь'}</h2>
-            <p className="text-gray-500 text-sm">{user.phone || 'Телефон не указан'}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {isCourier ? 'Курьер' : 'Клиент'}
-            </p>
-          </div>
+          ) : (
+            // ШАГ 2: ВВОД КОДА И ДАННЫХ
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
+                <p className="text-sm text-gray-600">Ваш код подтверждения:</p>
+                <p className="text-3xl font-bold text-[#367666] tracking-[0.5em] font-mono">
+                  {generatedCode}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newCode = generateCode();
+                    setGeneratedCode(newCode);
+                    setVerificationCode(newCode);
+                    alert(`✅ Новый код: ${newCode}`);
+                  }}
+                  className="text-xs text-[#367666] hover:underline mt-2"
+                >
+                  Сгенерировать новый код
+                </button>
+              </div>
 
-          {/* Информация */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
-            <h3 className="font-bold text-lg text-gray-800 mb-4">Информация</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Имя</span>
-                <span className="font-medium text-gray-800">{user.full_name || 'Не указано'}</span>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Введите код *</label>
+                <input 
+                  type="text" 
+                  value={verificationCode} 
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                  placeholder="000000" 
+                  maxLength={6}
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition text-center text-2xl tracking-[0.5em] font-mono"
+                />
               </div>
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-500">Телефон</span>
-                <span className="font-medium text-gray-800">{user.phone || 'Не указан'}</span>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Полное имя *</label>
+                <input 
+                  type="text" 
+                  value={fullName} 
+                  onChange={(e) => setFullName(e.target.value)} 
+                  placeholder="Иван Иванов" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
+                />
               </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-500">Роль</span>
-                <span className="font-medium text-gray-800">
-                  {isCourier ? 'Курьер' : 'Клиент'}
-                </span>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Пароль *</label>
+                <input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  placeholder="Минимум 4 символа" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
+                />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Подтвердите пароль *</label>
+                <input 
+                  type="password" 
+                  value={confirmPassword} 
+                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                  placeholder="Повторите пароль" 
+                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
+                />
+              </div>
+
+              <button 
+                onClick={handleSignup} 
+                disabled={loading} 
+                className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg mt-4 hover:bg-[#2a5a4d] transition disabled:opacity-70 shadow-md"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Регистрация...
+                  </span>
+                ) : 'Зарегистрироваться'}
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* Кнопки */}
-          <div className="space-y-3">
-            {!isCourier && (
-              <Link href="/courier/register">
-                <button className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition">
-                  Стать курьером
-                </button>
-              </Link>
-            )}
-            
-            {isCourier && (
-              <Link href="/courier/dashboard">
-                <button className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition">
-                  Панель курьера
-                </button>
-              </Link>
-            )}
-            
-            <button
-              onClick={handleLogout}
-              className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition"
-            >
-              Выйти
-            </button>
-          </div>
+          <p className="text-center text-gray-500 mt-6">
+            Уже есть аккаунт?{' '}
+            <Link href="/login" className="text-[#367666] font-semibold hover:underline">
+              Войти
+            </Link>
+          </p>
         </div>
       </div>
-
-      {/* Avatar Cropper Modal */}
-      {showCropper && selectedFile && (
-        <AvatarCropper
-          imageFile={selectedFile}
-          onCropComplete={handleCropComplete}
-          onCancel={handleCropCancel}
-        />
-      )}
-    </>
+    </div>
   );
 }
