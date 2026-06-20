@@ -43,20 +43,15 @@ export default function HomePage() {
   const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // ✅ ИСПРАВЛЕНО: используем userToken вместо authToken
   const [userToken, setUserToken] = useState<string | null>(null);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
-  // ✅ Функция для получения токена
+  // ✅ Получение токена
   const getAuthToken = useCallback(() => {
     if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('userToken') || 
-           sessionStorage.getItem('authToken') || 
-           sessionStorage.getItem('courierToken') ||
-           null;
+    return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
   }, []);
 
   // ✅ Получаем токен при монтировании
@@ -66,7 +61,6 @@ export default function HomePage() {
     console.log('🔑 Токен на главной:', token ? 'Есть ✅' : 'Нет ❌');
     console.log('🔑 userToken из sessionStorage:', sessionStorage.getItem('userToken'));
     
-    // Проверяем пользователя
     const userStr = sessionStorage.getItem('user');
     if (userStr) {
       try {
@@ -80,7 +74,7 @@ export default function HomePage() {
     }
   }, [getAuthToken]);
 
-  // ✅ ИСПОЛЬЗУЕМ userToken ДЛЯ WEBSOCKET
+  // ✅ WebSocket с токеном
   const wsUrl = userToken 
     ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(userToken)}` 
     : null;
@@ -91,6 +85,7 @@ export default function HomePage() {
     await fetchBags();
   }, []);
 
+  // ✅ ИСПРАВЛЕНА ФУНКЦИЯ fetchBags
   const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
     
@@ -100,12 +95,46 @@ export default function HomePage() {
     
     try {
       const token = getAuthToken();
-      const response = await fetch(`/api/surprise-bags`, {
+      
+      console.log('📤 Запрос к /api/surprise-bags с токеном:', token ? '✅' : '❌');
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch('/api/surprise-bags', {
+        headers,
         credentials: 'include',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
       });
+      
+      console.log('📡 Статус /api/surprise-bags:', response.status);
+      
+      if (response.status === 401) {
+        console.warn('⚠️ Токен невалидный, пробуем без токена');
+        const retryResponse = await fetch('/api/surprise-bags', {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+        });
+        
+        if (!retryResponse.ok) {
+          throw new Error(`HTTP ${retryResponse.status}`);
+        }
+        
+        const data = await retryResponse.json();
+        const filteredBags = data.filter((bag: SurpriseBag) => bag.available_quantity > 0);
+        
+        if (isMountedRef.current) {
+          setBags(filteredBags);
+          setLastUpdate(new Date());
+        }
+        return;
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -117,9 +146,10 @@ export default function HomePage() {
       if (isMountedRef.current) {
         setBags(filteredBags);
         setLastUpdate(new Date());
+        console.log('✅ Загружено', filteredBags.length, 'сюрпризов');
       }
     } catch (err) {
-      console.error('Ошибка загрузки:', err);
+      console.error('❌ Ошибка загрузки:', err);
       if (isMountedRef.current) {
         setBags([]);
       }
@@ -225,6 +255,8 @@ export default function HomePage() {
   // ✅ Обработка WebSocket сообщений
   useEffect(() => {
     if (!lastMessage) return;
+    
+    console.log('📨 Получено WS сообщение:', lastMessage);
     
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
       fetchBags(false, false);
