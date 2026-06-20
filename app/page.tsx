@@ -1,630 +1,651 @@
-// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/cart/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
-import { Store, Gift } from 'lucide-react';
-import OfferCard from './components/OfferCard';
-import { useGeolocation } from './hooks/useGeolocation';
-import { useWebSocket } from './hooks/useWebSocket';
-import { setGlobalHideBottomNav } from './layout';
+import Link from 'next/link';
 import { useLanguage } from './layout';
 
-const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: false });
-
-type ViewMode = 'list' | 'map';
-
-interface SurpriseBag {
+interface CartItem {
   id: number;
   name: string;
-  description: string;
-  original_price: number;
-  discounted_price: number;
-  discount_percentage: number;
-  image_url: string;
-  available_quantity: number;
-  supplier_name: string;
-  supplier_id: number;
-  is_active?: boolean;
+  businessName: string;
+  price: number;
+  originalPrice: number;
+  discount: number;
+  imageUrl: string;
+  quantity: number;
+  reservation_id?: number;
+  expires_at?: string;
 }
 
-export default function HomePage() {
+interface Reservation {
+  id: number;
+  expires_at: string;
+  bag_id: number;
+}
+
+export default function CartPage() {
   const router = useRouter();
-  const location = useGeolocation();
-  const { lang, setLang } = useLanguage(); 
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [bags, setBags] = useState<SurpriseBag[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(false);
-  const [user, setUser] = useState<{ name: string; id: number; phone?: string } | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [userToken, setUserToken] = useState<string | null>(null);
-  
-  const isMountedRef = useRef(true);
-  const initialLoadDoneRef = useRef(false);
+  const { lang, setLang } = useLanguage();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [processingStep, setProcessingStep] = useState<'form' | 'processing' | 'success'>('form');
+  const [reservation, setReservation] = useState<Reservation | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showTimerWarning, setShowTimerWarning] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('pickup');
 
-  // ✅ Получение токена
-  const getAuthToken = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
-  }, []);
-
-  // ✅ Получаем токен при монтировании
-  useEffect(() => {
-    const token = getAuthToken();
-    setUserToken(token);
-    console.log('🔑 Токен на главной:', token ? 'Есть ✅' : 'Нет ❌');
-    console.log('🔑 userToken из sessionStorage:', sessionStorage.getItem('userToken'));
-    
-    const userStr = sessionStorage.getItem('user');
-    if (userStr) {
-      try {
-        const parsed = JSON.parse(userStr);
-        setUser({
-          name: parsed.full_name || parsed.name,
-          id: parsed.id,
-          phone: parsed.phone
-        });
-      } catch(e) {}
-    }
-  }, [getAuthToken]);
-
-  // ✅ WebSocket с токеном
-  const wsUrl = userToken 
-    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(userToken)}` 
-    : null;
-  
-  const { isConnected, lastMessage } = useWebSocket(wsUrl);
-
-  const refreshAfterOrder = useCallback(async () => {
-    await fetchBags();
-  }, []);
-
-  // ✅ ИСПРАВЛЕНА ФУНКЦИЯ fetchBags
-  const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
-    if (!isMountedRef.current) return;
-    
-    if (showLoading && !isInitial) {
-      setIsRefreshing(true);
-    }
-    
-    try {
-      const token = getAuthToken();
-      
-      console.log('📤 Запрос к /api/surprise-bags с токеном:', token ? '✅' : '❌');
-      
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      
-      const response = await fetch('/api/surprise-bags', {
-        headers,
-        credentials: 'include',
-      });
-      
-      console.log('📡 Статус /api/surprise-bags:', response.status);
-      
-      if (response.status === 401) {
-        console.warn('⚠️ Токен невалидный, пробуем без токена');
-        const retryResponse = await fetch('/api/surprise-bags', {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        });
-        
-        if (!retryResponse.ok) {
-          throw new Error(`HTTP ${retryResponse.status}`);
-        }
-        
-        const data = await retryResponse.json();
-        const filteredBags = data.filter((bag: SurpriseBag) => bag.available_quantity > 0);
-        
-        if (isMountedRef.current) {
-          setBags(filteredBags);
-          setLastUpdate(new Date());
-        }
-        return;
-      }
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const filteredBags = data.filter((bag: SurpriseBag) => bag.available_quantity > 0);
-      
-      if (isMountedRef.current) {
-        setBags(filteredBags);
-        setLastUpdate(new Date());
-        console.log('✅ Загружено', filteredBags.length, 'сюрпризов');
-      }
-    } catch (err) {
-      console.error('❌ Ошибка загрузки:', err);
-      if (isMountedRef.current) {
-        setBags([]);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        if (showLoading && !isInitial) setIsRefreshing(false);
-        if (isInitial) setLoading(false);
-      }
-    }
-  }, [getAuthToken]);
-
-  const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
-    if (typeof window === 'undefined') return;
-    
-    const toast = document.createElement('div');
-    toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
-      type === 'success' ? 'bg-[#367666]' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
-    }`;
-    toast.innerHTML = `
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '🚚'}</span>
-        <div class="flex-1">
-          <div class="font-bold">${title}</div>
-          <div class="text-sm opacity-90">${body}</div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      toast.classList.add('animate-fade-out');
-      setTimeout(() => toast.remove(), 300);
-    }, 5000);
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '/logo.png' });
-    }
-  };
-
-  const showCourierArrivedNotification = (data: any) => {
-    if (typeof window === 'undefined') return;
-    
-    const { order_id, order_number, courier_name } = data;
-    
-    const toast = document.createElement('div');
-    toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
-    toast.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-l-4 border-[#367666]">
-        <div class="p-3">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-[#367666]/10 rounded-full flex items-center justify-center text-lg">🚚</div>
-            <div class="flex-1">
-              <div class="flex items-center justify-between">
-                <h3 class="font-bold text-gray-800 text-sm">Курьер прибыл!</h3>
-                <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-lg leading-none ml-2">✕</button>
-              </div>
-              <p class="text-[#367666] text-xs">Заказ #${order_number} • ${courier_name}</p>
-            </div>
-          </div>
-          
-          <div class="flex gap-2 mt-3">
-            <button id="go-to-order-btn" class="flex-1 bg-[#367666] text-white py-1.5 rounded-xl text-xs font-semibold hover:bg-[#2a5a4d] transition">
-              Перейти
-            </button>
-            <button id="later-btn" class="px-3 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium hover:bg-gray-200 transition">
-              Позже
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    const goToOrder = () => {
-      toast.classList.add('animate-fade-out');
-      setTimeout(() => {
-        toast.remove();
-        router.push(`/orders/${order_id}`);
-      }, 300);
-    };
-    
-    const closeNotification = () => {
-      toast.classList.add('animate-fade-out');
-      setTimeout(() => toast.remove(), 300);
-    };
-    
-    toast.querySelector('#go-to-order-btn')?.addEventListener('click', goToOrder);
-    toast.querySelector('#later-btn')?.addEventListener('click', closeNotification);
-    toast.querySelector('#close-notification-btn')?.addEventListener('click', closeNotification);
-    
-    setTimeout(() => {
-      if (document.body.contains(toast)) {
-        closeNotification();
-      }
-    }, 6000);
-  };
-
-  const handleSupplierClick = (supplierId: number, supplierName: string) => {
-    router.push(`/supplier/${supplierId}`);
-  };
-
-  // ✅ Обработка WebSocket сообщений
-  useEffect(() => {
-    if (!lastMessage) return;
-    
-    console.log('📨 Получено WS сообщение:', lastMessage);
-    
-    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
-      fetchBags(false, false);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Новый сюрприз!', {
-          body: 'Появился новый сюрприз рядом с вами!',
-          icon: '/logo.png'
-        });
-      }
-    }
-    
-    if (lastMessage.type === 'delete_bag') {
-      fetchBags(false, false);
-    }
-    
-    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
-      const { bag_id, available_quantity, is_active } = lastMessage.data;
-      
-      setBags(prevBags => {
-        const updatedBags = prevBags.map(bag => 
-          bag.id === bag_id 
-            ? { ...bag, available_quantity: available_quantity, is_active: is_active ?? bag.is_active }
-            : bag
-        );
-        const filteredBags = updatedBags.filter(bag => bag.available_quantity > 0);
-        if (filteredBags.length !== prevBags.length) setLastUpdate(new Date());
-        return filteredBags;
-      });
-    }
-    
-    if (lastMessage.type === 'courier_arrived') {
-      showCourierArrivedNotification(lastMessage.data);
-    }
-    
-    if (lastMessage.type === 'order_assigned') {
-      const { courier_name, courier_phone, estimated_time } = lastMessage.data;
-      showNotification(
-        'Курьер назначен!',
-        `${courier_name} (${courier_phone}) везет ваш заказ. Ожидайте ${estimated_time || 30} минут.`,
-        'info'
-      );
-    }
-  }, [lastMessage, fetchBags]);
-
-  const handleManualRefresh = () => {
-    fetchBags(true, false);
-  };
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    isMountedRef.current = true;
-    
-    const hasLoaded = sessionStorage.getItem('has_loaded');
-    
-    if (!hasLoaded) {
-      setGlobalHideBottomNav(true);
-      setShowSplash(true);
-      
-      const timer = setTimeout(() => {
-        setShowSplash(false);
-        setGlobalHideBottomNav(false);
-        sessionStorage.setItem('has_loaded', 'true');
-      }, 3500);
-      
-      return () => clearTimeout(timer);
-    } else {
-      setShowSplash(false);
-      setGlobalHideBottomNav(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const storedUser = sessionStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUser({
-          name: parsed.full_name || parsed.name,
-          id: parsed.id,
-          phone: parsed.phone
-        });
-      } catch(e) {}
-    }
-    
-    const fetchUser = async () => {
-      try {
-        const token = getAuthToken();
-        const res = await fetch(`/api/check-auth`, { 
-          credentials: 'include',
-          headers: {
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.authenticated) {
-            const userData = {
-              name: data.user_name || data.user?.full_name,
-              id: data.user_id || data.user?.id,
-              phone: data.user_phone || data.user?.phone
-            };
-            setUser(userData);
-            sessionStorage.setItem('user', JSON.stringify(userData));
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchUser();
-  }, [getAuthToken]);
-
-  useEffect(() => {
-    if (showSplash) return;
-    if (!initialLoadDoneRef.current) {
-      initialLoadDoneRef.current = true;
-      fetchBags(true, true);
-    }
-  }, [showSplash, fetchBags]);
-
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleRefreshOffers = () => {
-      fetchBags(false, false);
-    };
-    window.addEventListener('refreshOffers', handleRefreshOffers);
-    return () => window.removeEventListener('refreshOffers', handleRefreshOffers);
-  }, [fetchBags]);
+  const DELIVERY_FEE = 400;
+  const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
   const t = {
     kz: {
-      greeting: 'Сәлем',
-      guest: 'Қонақ',
-      subtitle: 'Бүгін не құтқарасыз?',
-      logout: 'Шығу',
-      login: 'Кіру',
-      register: 'Тіркелу',
-      search: 'Мейрамхана немесе тағам іздеу...',
-      nearbyOffers: 'Жақын маңдағы ұсыныстар',
-      noOffers: 'Қазір жақын маңда ұсыныс жоқ',
-      myOrders: 'Менің тапсырыстарым',
-      refresh: 'Жаңарту',
-      lastUpdate: 'Соңғы жаңарту',
-      connected: 'Қосылған',
-      disconnected: 'Қосылым жоқ',
-      nearbyShops: 'Жақын маңдағы дүкендер мен кафелер',
-      list: 'Тізім',
-      map: 'Карта'
+      cart: 'Себет',
+      timeLeft: 'Броньдеу уақыты',
+      payBefore: 'Мерзімі өткенше төлеңіз',
+      orElse: 'Әйтпесе тауар сатылымға қайтарылады',
+      total: 'Барлығы',
+      items: 'тауар',
+      checkout: 'Тапсырыс беру',
+      timeExpired: 'Уақыт өтті',
+      paymentMethod: 'Kaspi QR арқылы төлеу',
+      amount: 'Сома',
+      back: 'Артқа',
+      pay: 'Kaspi QR арқылы төлеу',
+      emptyCart: 'Себет бос',
+      addItems: 'Тауарларды қосыңыз',
+      shop: 'Сатып алу',
+      bookingExpired: 'Броньдеу уақыты аяқталды! Тауар сатылымға қайтарылды.',
+      bookingWarning: 'Броньдеу уақыты аяқталуға жақын',
+      timeRemaining: 'Қалған уақыт',
+      deliveryAddress: 'Жеткізу мекенжайы',
+      enterAddress: 'Мекенжайыңызды енгізіңіз',
+      processing: 'Өңделуде',
+      redirecting: 'Төлем бетіне өту...',
+      deliveryType: 'Жеткізу түрі',
+      courier: 'Курьермен жеткізу',
+      pickup: 'Өзім алып кетемін',
+      pickupAddress: 'Алып кету мекенжайы',
+      deliveryFee: 'Жеткізу құны',
+      orderAmount: 'Тапсырыс сомасы',
+      totalAmount: 'Төленетін сома'
     },
     ru: {
-      greeting: 'Привет',
-      guest: 'Гость',
-      subtitle: 'Что спасете сегодня?',
-      logout: 'Выйти',
-      login: 'Войти',
-      register: 'Регистрация',
-      search: 'Поиск ресторана или блюда...',
-      nearbyOffers: 'Предложения рядом',
-      noOffers: 'Рядом нет предложений',
-      myOrders: 'Мои заказы',
-      refresh: 'Обновить',
-      lastUpdate: 'Последнее обновление',
-      connected: 'Подключено',
-      disconnected: 'Нет соединения',
-      nearbyShops: 'Ближайшие магазины и кафе',
-      list: 'Список',
-      map: 'Карта'
+      cart: 'Корзина',
+      timeLeft: 'Время бронирования',
+      payBefore: 'Оплатите до истечения',
+      orElse: 'Иначе товар вернется в продажу',
+      total: 'Итого',
+      items: 'товаров',
+      checkout: 'Заказать',
+      timeExpired: 'Время истекло',
+      paymentMethod: 'Оплата через Kaspi QR',
+      amount: 'Сумма',
+      back: 'Назад',
+      pay: 'Оплатить Kaspi QR',
+      emptyCart: 'Корзина пуста',
+      addItems: 'Добавьте товары',
+      shop: 'Перейти к покупкам',
+      bookingExpired: 'Время бронирования истекло! Товар возвращен в продажу.',
+      bookingWarning: 'Время бронирования истекает',
+      timeRemaining: 'Осталось',
+      deliveryAddress: 'Адрес доставки',
+      enterAddress: 'Введите ваш адрес',
+      processing: 'Обработка',
+      redirecting: 'Переход на страницу оплаты...',
+      deliveryType: 'Способ получения',
+      courier: 'Доставка курьером',
+      pickup: 'Самовывоз',
+      pickupAddress: 'Адрес самовывоза',
+      deliveryFee: 'Стоимость доставки',
+      orderAmount: 'Сумма заказа',
+      totalAmount: 'Итого к оплате'
     }
   };
 
-  const LogoCircle = () => {
-    const [imgError, setImgError] = useState(false);
+  // ✅ Функция для получения токена
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
+  };
+
+  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ - ИСПОЛЬЗУЕТ ОТНОСИТЕЛЬНЫЕ ПУТИ
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
     
-    if (imgError) {
-      return (
-        <div className="w-56 h-56 mx-auto rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
-          <div className="text-4xl font-bold tracking-tight">
-            <span className="text-black">SARQYT</span>
-            <span className="text-[#FF9500]">GO</span>
-          </div>
-        </div>
+    if (!token) {
+      console.error('❌ Нет токена userToken');
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      throw new Error('No token');
+    }
+    
+    // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ (БЕЗ ПОЛНОГО URL)
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+  };
+
+  useEffect(() => {
+    const token = getAuthToken();
+    console.log('🔑 Проверка токена в корзине:', token ? '✅ ЕСТЬ' : '❌ НЕТ');
+    if (!token) {
+      router.push('/login');
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (navigator.geolocation && deliveryType === 'delivery') {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          setUserLocation({ lat, lon });
+          
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=ru`
+            );
+            const data = await response.json();
+            const address = data.display_name || `${lat}, ${lon}`;
+            setCustomerAddress(address);
+          } catch (error) {
+            setCustomerAddress(`${lat}, ${lon}`);
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+        }
       );
     }
-    
-    return (
-      <div className="w-56 h-56 mx-auto rounded-full overflow-hidden shadow-2xl">
-        <div className="relative w-full h-full scale-[1.4]">
-          <Image 
-            src="/logotype.jpeg" 
-            alt="SARQYT GO" 
-            fill
-            className="object-cover"
-            priority
-            onError={() => setImgError(true)}
-          />
-        </div>
-      </div>
-    );
+  }, [deliveryType]);
+
+  const checkReservation = async () => {
+    try {
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+      const response = await authFetch('/api/cart/reservation');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.reservation) {
+          setReservation(data.reservation);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking reservation:', error);
+    }
   };
 
-  if (showSplash) {
-    return (
-      <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
-        <div className="text-center">
-          <LogoCircle />
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadCart();
+    checkReservation();
+    window.addEventListener('cartUpdated', loadCart);
+    return () => window.removeEventListener('cartUpdated', loadCart);
+  }, []);
 
-  if (loading) {
+  useEffect(() => {
+    const reservationFromCart = cartItems.find((item: any) => item.reservation_id && item.expires_at);
+    if (reservationFromCart && !reservation) {
+      setReservation({
+        id: reservationFromCart.reservation_id,
+        expires_at: reservationFromCart.expires_at,
+        bag_id: reservationFromCart.id
+      });
+    }
+  }, [cartItems, reservation]);
+
+  useEffect(() => {
+    if (!reservation?.expires_at) return;
+
+    let expiresAt = reservation.expires_at;
+    if (expiresAt && !expiresAt.endsWith('Z')) {
+      expiresAt = expiresAt + 'Z';
+    }
+    const expires = new Date(expiresAt);
+    const now = new Date();
+    
+    if (expires.getTime() <= now.getTime()) {
+      setTimeLeft(0);
+      alert(`⏰ ${t[lang].bookingExpired}`);
+      sessionStorage.removeItem('cart');
+      setCartItems([]);
+      setReservation(null);
+      router.push('/');
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const diff = expires.getTime() - now.getTime();
+      
+      if (diff <= 0) {
+        setTimeLeft(0);
+        clearInterval(interval);
+        alert(`⏰ ${t[lang].bookingExpired}`);
+        sessionStorage.removeItem('cart');
+        setCartItems([]);
+        setReservation(null);
+        router.push('/');
+      } else {
+        setTimeLeft(Math.floor(diff / 1000));
+        if (diff <= 60000 && !showTimerWarning) {
+          setShowTimerWarning(true);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [reservation, router, showTimerWarning, lang, t]);
+
+  const loadCart = () => {
+    const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
+    setCartItems(cart);
+    
+    const activeReservation = cart.find((item: any) => item.reservation_id && item.expires_at);
+    if (activeReservation) {
+      setReservation({
+        id: activeReservation.reservation_id,
+        expires_at: activeReservation.expires_at,
+        bag_id: activeReservation.id
+      });
+    }
+  };
+
+  const updateQuantity = (id: number, newQuantity: number) => {
+    if (newQuantity < 1) {
+      removeItem(id);
+      return;
+    }
+    const updatedCart = cartItems.map(item =>
+      item.id === id ? { ...item, quantity: newQuantity } : item
+    );
+    setCartItems(updatedCart);
+    sessionStorage.setItem('cart', JSON.stringify(updatedCart));
+    window.dispatchEvent(new Event('cartUpdated'));
+  };
+
+  const removeItem = (id: number) => {
+    const updatedCart = cartItems.filter(item => item.id !== id);
+    setCartItems(updatedCart);
+    sessionStorage.setItem('cart', JSON.stringify(updatedCart));
+    window.dispatchEvent(new Event('cartUpdated'));
+  };
+
+  const getSubtotalPrice = () => {
+    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  };
+
+  const getDeliveryFee = () => {
+    return deliveryType === 'delivery' ? DELIVERY_FEE : 0;
+  };
+
+  const getTotalPrice = () => {
+    return getSubtotalPrice() + getDeliveryFee();
+  };
+
+  const getTotalItems = () => {
+    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  };
+
+  const handleCheckout = async () => {
+    if (deliveryType === 'delivery' && !customerAddress) {
+      alert('Пожалуйста, укажите адрес доставки');
+      return;
+    }
+    
+    setProcessingStep('processing');
+    
+    try {
+      const orders = await createOrders();
+      console.log('✅ Заказы созданы, ожидают оплаты:', orders);
+      
+      sessionStorage.setItem('pending_order', JSON.stringify({
+        orders: orders,
+        total: getTotalPrice(),
+        timestamp: Date.now()
+      }));
+      
+      setShowPaymentModal(true);
+      setProcessingStep('form');
+      
+    } catch (error) {
+      console.error('Error creating orders:', error);
+      alert('Ошибка при создании заказа');
+      setProcessingStep('form');
+    }
+  };
+
+  // ✅ ИСПРАВЛЕНА - ИСПОЛЬЗУЕТ ОТНОСИТЕЛЬНЫЕ ПУТИ
+  const createOrders = async () => {
+    const token = getAuthToken();
+    console.log('🔑 Токен для запроса:', token ? `${token.substring(0, 30)}...` : 'НЕТ ТОКЕНА');
+    
+    const createdOrders = [];
+    
+    for (const item of cartItems) {
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+      const response = await authFetch('/api/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          bag_id: item.id,
+          lat: userLocation?.lat || 43.238,
+          lon: userLocation?.lon || 76.945,
+          address: deliveryType === 'delivery' ? customerAddress : 'Самовывоз',
+          delivery_type: deliveryType
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || `Ошибка создания заказа для ${item.name}`);
+      }
+      
+      const order = await response.json();
+      createdOrders.push(order);
+    }
+    
+    return createdOrders;
+  };
+
+  const handleKaspiPayment = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Ошибка авторизации');
+      router.push('/login');
+      return;
+    }
+    
+    setProcessingStep('processing');
+    
+    try {
+      const pendingData = sessionStorage.getItem('pending_order');
+      if (!pendingData) {
+        throw new Error('Нет информации о заказах');
+      }
+      
+      window.location.href = KASPI_QR_URL;
+      
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert('Ошибка при оплате');
+      setProcessingStep('form');
+    }
+  };
+
+  const formatTimeLeft = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (cartItems.length === 0) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-gray-50">
-        <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full"></div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+        <div className="text-center">
+          <div className="flex justify-center mb-6">
+            <svg className="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].emptyCart}</h1>
+          <p className="text-gray-500 mb-6">{t[lang].addItems}</p>
+          <Link href="/offers">
+            <button className="bg-[#367666] text-white px-6 py-3 rounded-xl hover:bg-[#2a5a4d] transition">
+              {t[lang].shop}
+            </button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-dvh bg-gray-50">
-      {/* Header с логотипом и номером телефона */}
-      <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight">
-            <span className="text-white">SARQYT</span>{' '}
-            <span className="text-[#FFD700]">GO</span>
-          </h1>
-          {user?.phone && (
-            <p className="text-sm text-white/80 mt-1 font-medium">
-              {user.phone}
-            </p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
+            </svg>
+            <h1 className="text-xl font-bold">{t[lang].cart}</h1>
+          </div>
+          <button 
+            onClick={() => router.back()}
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Контент корзины */}
+      <div className="px-4 pt-4 pb-20">
+        {/* Способ получения */}
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            {t[lang].deliveryType}
+          </label>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setDeliveryType('pickup')}
+              className={`flex-1 py-3 rounded-xl font-semibold transition ${
+                deliveryType === 'pickup'
+                  ? 'bg-[#367666] text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {t[lang].pickup}
+            </button>
+            <button
+              onClick={() => setDeliveryType('delivery')}
+              className={`flex-1 py-3 rounded-xl font-semibold transition ${
+                deliveryType === 'delivery'
+                  ? 'bg-[#367666] text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {t[lang].courier}
+            </button>
+          </div>
+          
+          {deliveryType === 'delivery' && (
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {t[lang].deliveryAddress}
+              </label>
+              <input
+                type="text"
+                placeholder={t[lang].enterAddress}
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#367666] text-sm"
+              />
+            </div>
           )}
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="px-6 -mt-4">
-        <input 
-          type="text" 
-          placeholder={t[lang].search} 
-          className="w-full px-6 py-4 rounded-2xl bg-white shadow-md text-base focus:outline-none focus:ring-2 focus:ring-[#367666] placeholder:text-gray-400"
-        />
-      </div>
-
-      {/* Toggle Buttons */}
-      <div className="px-6 mt-4">
-        <div className="bg-gray-100 p-1 rounded-2xl flex gap-1">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-              viewMode === 'list' 
-                ? 'bg-white shadow text-[#367666]' 
-                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
-            }`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            <span>{t[lang].list}</span>
-          </button>
-          <button
-            onClick={() => setViewMode('map')}
-            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-              viewMode === 'map' 
-                ? 'bg-white shadow text-[#367666]' 
-                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
-            }`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
-            <span>{t[lang].map}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Контейнер */}
-      <div className="px-3 mt-6 pb-32">
-        {viewMode === 'list' ? (
-          <>
-            {/* Заголовок с иконкой Store */}
-            <div className="mb-4">
-              <h2 className="font-bold text-lg flex items-center gap-2">
-                <Store size={20} className="text-gray-400/60" />
-                {t[lang].nearbyShops}
-              </h2>
-              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
-                <Gift size={14} className="text-gray-400" />
-                Сюрприз-пакеты рядом с вами
+          
+          {deliveryType === 'pickup' && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-xl">
+              <p className="text-sm text-blue-700">
+                {t[lang].pickupAddress}: Ресторан по адресу, указанному при оформлении
               </p>
             </div>
-            
-            {user && (
-              <Link href="/orders">
-                <button className="w-full bg-[#367666]/10 text-[#367666] py-2.5 rounded-xl text-sm font-medium hover:bg-[#367666]/20 transition flex items-center justify-center gap-2 mb-4">
-                  <span>📋</span>
-                  <span>{t[lang].myOrders}</span>
-                </button>
-              </Link>
-            )}
-            
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold">{t[lang].nearbyOffers}</h3>
-              <button 
-                onClick={handleManualRefresh}
-                disabled={isRefreshing}
-                className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs hover:bg-[#2a5a4d] transition flex items-center gap-1 disabled:opacity-50"
-              >
-                {isRefreshing ? '...' : t[lang].refresh}
-              </button>
+          )}
+        </div>
+        
+        {/* Таймер бронирования */}
+        {timeLeft !== null && timeLeft > 0 && (
+          <div className={`mb-4 p-4 rounded-2xl ${showTimerWarning ? 'bg-red-50 border border-red-200' : 'bg-yellow-50'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm font-semibold ${showTimerWarning ? 'text-red-600' : 'text-yellow-700'}`}>
+                  {t[lang].timeLeft}
+                </p>
+                <p className={`text-2xl font-mono font-bold ${showTimerWarning ? 'text-red-600 animate-pulse' : 'text-yellow-700'}`}>
+                  {formatTimeLeft(timeLeft)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">{t[lang].payBefore}</p>
+                <p className="text-xs text-gray-400">{t[lang].orElse}</p>
+              </div>
             </div>
-            
-            <div className="text-right text-xs text-gray-400 mb-3">
-              {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
-              {isConnected && <span className="ml-2 text-green-500">● Live</span>}
-            </div>
-            
-            <div className="flex flex-col gap-3">
-              {bags.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">{t[lang].noOffers}</p>
-                </div>
-              ) : (
-                bags.map((bag, bagIdx) => (
-                  <OfferCard
-                    key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
-                    id={bag.id}
-                    name={bag.name}
-                    businessName={bag.supplier_name}
-                    distance={`${(Math.random() * 5 + 1).toFixed(1)} км`}
-                    price={bag.discounted_price}
-                    originalPrice={bag.original_price}
-                    discount={bag.discount_percentage}
-                    imageUrl={bag.image_url}
-                    description={bag.description}
-                    onOrderSuccess={refreshAfterOrder}
-                  />
-                ))
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="w-full h-[500px]">
-            <SuppliersMap 
-              userLat={location.lat} 
-              userLon={location.lon}
-              onSupplierClick={handleSupplierClick}
-              showUserLocation={true}
-            />
           </div>
         )}
+        
+        {/* Детали оплаты */}
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">{t[lang].orderAmount}</span>
+              <span className="text-gray-800">{getSubtotalPrice().toLocaleString()} ₸</span>
+            </div>
+            {deliveryType === 'delivery' && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{t[lang].deliveryFee}</span>
+                <span className="text-gray-800">{DELIVERY_FEE.toLocaleString()} ₸</span>
+              </div>
+            )}
+            <div className="border-t border-gray-100 pt-2 mt-2">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-gray-800">{t[lang].totalAmount}</span>
+                <span className="text-2xl font-bold text-[#367666]">
+                  {getTotalPrice().toLocaleString()} ₸
+                </span>
+              </div>
+              <div className="text-right text-sm text-gray-500 mt-1">
+                {getTotalItems()} {t[lang].items}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Кнопка оформления */}
+        <button
+          onClick={handleCheckout}
+          disabled={timeLeft === 0 || (deliveryType === 'delivery' && !customerAddress)}
+          className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+        >
+          <span>{timeLeft === 0 ? t[lang].timeExpired : t[lang].checkout}</span>
+        </button>
+        
+        {/* Товары в корзине */}
+        <div className="space-y-3">
+          {cartItems.map((item) => (
+            <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm flex gap-4">
+              <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
+                <Image
+                  src={item.imageUrl || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop'}
+                  alt={item.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
+                <p className="text-gray-500 text-xs">{item.businessName}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <div>
+                    <span className="text-lg font-bold text-[#367666]">{item.price} ₸</span>
+                    {item.originalPrice > item.price && (
+                      <span className="text-gray-400 line-through text-xs ml-2">{item.originalPrice} ₸</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    >-</button>
+                    <span className="font-semibold text-sm min-w-[25px] text-center">{item.quantity}</span>
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    >+</button>
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      className="ml-1 text-red-500 hover:text-red-700 text-sm"
+                    >✕</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-slide-up">
+            <div className="bg-gradient-to-r from-[#367666] to-[#367666] px-6 py-5">
+              <div className="flex flex-col items-center">
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-2 shadow-md">
+                  <Image 
+                    src="/kasp.png" 
+                    alt="Kaspi" 
+                    width={248} 
+                    height={248}
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <p className="text-gray-500 text-sm mb-1">Сумма к оплате</p>
+                <p className="text-3xl font-bold text-[#367666]">
+                  {getTotalPrice().toLocaleString()} ₸
+                </p>
+                {timeLeft && timeLeft > 0 && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Осталось: {formatTimeLeft(timeLeft)}
+                  </p>
+                )}
+              </div>
+              
+              <button
+                onClick={handleKaspiPayment}
+                disabled={processingStep === 'processing'}
+                className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg flex items-center justify-center gap-3 transition-all hover:bg-[#2a5a4d] active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+              >
+                {processingStep === 'processing' ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Перенаправление...</span>
+                  </>
+                ) : (
+                  <span>Оплатить через Kaspi</span>
+                )}
+              </button>
+              
+              <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-400">
+                <svg className="w-4 h-4 text-[#367666]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Безопасная оплата через Kaspi.kz</span>
+              </div>
+              
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="w-full mt-4 py-3 rounded-xl border border-gray-200 text-gray-500 font-medium hover:bg-gray-50 transition"
+              >
+                Вернуться
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
