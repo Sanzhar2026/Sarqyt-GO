@@ -164,7 +164,7 @@ export default function OffersPage() {
       <div className="p-3">
         {bags.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-5xl mb-3">🎁</div>
+           <div className="text-5xl mb-3 opacity-20 grayscale">🎁</div>
             <p className="text-gray-500 text-sm">Все пакеты временно забронированы</p>
             <button 
               onClick={fetchBags}
