@@ -1,4 +1,4 @@
-// app/cart/page.tsx - ИСПРАВЛЕНА ТОЛЬКО ЛОГИКА ТОКЕНА
+// app/cart/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -108,13 +108,12 @@ export default function CartPage() {
     }
   };
 
-  // ✅ ИСПРАВЛЕНА ФУНКЦИЯ - ИЩЕТ ТОЛЬКО userToken
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('userToken');
+    return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
   };
 
-  // ✅ ИСПРАВЛЕНА ФУНКЦИЯ - ИСПОЛЬЗУЕТ getAuthToken()
+  // ✅ ИСПРАВЛЕНО: ИСПОЛЬЗУЕТ ОТНОСИТЕЛЬНЫЕ ПУТИ
   const authFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     
@@ -124,6 +123,7 @@ export default function CartPage() {
       throw new Error('No token');
     }
     
+    // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ (БЕЗ ПОЛНОГО URL)
     return fetch(url, {
       ...options,
       headers: {
@@ -167,9 +167,10 @@ export default function CartPage() {
     }
   }, [deliveryType]);
 
+  // ✅ ИСПРАВЛЕНО: ОТНОСИТЕЛЬНЫЙ ПУТЬ
   const checkReservation = async () => {
     try {
-      const response = await authFetch('https://toogood-2ncf.onrender.com/api/cart/reservation');
+      const response = await authFetch('/api/cart/reservation');
       if (response.ok) {
         const data = await response.json();
         if (data.reservation) {
@@ -320,6 +321,7 @@ export default function CartPage() {
     }
   };
 
+  // ✅ ИСПРАВЛЕНО: ОТНОСИТЕЛЬНЫЕ ПУТИ
   const createOrders = async () => {
     const token = getAuthToken();
     console.log('🔑 Токен для запроса:', token ? `${token.substring(0, 30)}...` : 'НЕТ ТОКЕНА');
@@ -327,7 +329,8 @@ export default function CartPage() {
     const createdOrders = [];
     
     for (const item of cartItems) {
-      const response = await authFetch('https://toogood-2ncf.onrender.com/api/orders', {
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+      const response = await authFetch('/api/orders', {
         method: 'POST',
         body: JSON.stringify({
           bag_id: item.id,
