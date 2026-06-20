@@ -106,7 +106,7 @@ export default function HomePage() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ (БЕЗ ПОЛНОГО URL)
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
       const response = await fetch('/api/surprise-bags', {
         headers,
         credentials: 'include',
@@ -116,7 +116,6 @@ export default function HomePage() {
       
       if (response.status === 401) {
         console.warn('⚠️ Токен невалидный, пробуем без токена');
-        // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
         const retryResponse = await fetch('/api/surprise-bags', {
           headers: {
             'Content-Type': 'application/json',
@@ -163,6 +162,7 @@ export default function HomePage() {
     }
   }, [getAuthToken]);
 
+  // ✅ showNotification (без изменений)
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
     if (typeof window === 'undefined') return;
     
@@ -191,6 +191,7 @@ export default function HomePage() {
     }
   };
 
+  // ✅ showCourierArrivedNotification (без изменений)
   const showCourierArrivedNotification = (data: any) => {
     if (typeof window === 'undefined') return;
     
