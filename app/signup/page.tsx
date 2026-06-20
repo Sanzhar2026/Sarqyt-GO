@@ -1,4 +1,4 @@
-// app/signup/page.tsx - ИМЯ И ФАМИЛИЯ ОТДЕЛЬНО
+// app/signup/page.tsx - ИСПРАВЛЕННЫЙ
 
 'use client';
 
@@ -14,6 +14,9 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // ✅ ПРАВИЛЬНЫЙ URL БЕКЕНДА
+  const API_URL = 'https://toogood-2ncf.onrender.com';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,8 +51,7 @@ export default function SignupPage() {
     try {
       console.log('📤 Отправка:', { first_name: firstName, last_name: lastName, phone });
 
-      // ✅ ОТПРАВЛЯЕМ ОТДЕЛЬНО
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
