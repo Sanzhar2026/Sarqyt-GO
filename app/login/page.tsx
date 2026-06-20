@@ -1,4 +1,4 @@
-// app/login/page.tsx - ПОЛНАЯ ВЕРСИЯ
+// app/login/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -11,7 +11,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  // ❌ УБЕРИ ЭТО - НЕ НУЖНО
+  // const API_URL = 'https://toogood-2ncf.onrender.com';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +20,8 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      // ✅ ИСПОЛЬЗУЙ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,7 +46,7 @@ export default function LoginPage() {
         
         window.location.href = '/';
       } else {
-        setError(data.detail || 'Неверный телефон или пароль');
+        setError(data.detail || data.message || 'Неверный телефон или пароль');
       }
     } catch (error) {
       console.error('Login error:', error);
