@@ -89,10 +89,12 @@ export default function OfferCard({
   const [bagRating, setBagRating] = useState(0);
   const [bagTotalReviews, setBagTotalReviews] = useState(0);
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  // ❌ УДАЛИТЕ ЭТУ СТРОКУ
+  // const API_URL = 'https://toogood-2ncf.onrender.com';
+  
   const isSearchPage = pathname === '/' || pathname === '/offers';
 
-  // ✅ Функция для получения токена (единый подход)
+  // ✅ Функция для получения токена
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
@@ -101,6 +103,7 @@ export default function OfferCard({
            null;
   };
 
+  // ✅ ИСПРАВЛЕНО: Используем относительный путь
   useEffect(() => {
     const fetchRating = async () => {
       try {
@@ -108,7 +111,8 @@ export default function OfferCard({
         const headers: HeadersInit = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
-        const response = await fetch(`${API_URL}/api/surprise-bags/${id}/rating`, { headers });
+        // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+        const response = await fetch(`/api/surprise-bags/${id}/rating`, { headers });
         if (response.ok) {
           const data = await response.json();
           setBagRating(data.rating || 0);
@@ -119,8 +123,9 @@ export default function OfferCard({
       }
     };
     fetchRating();
-  }, [id, API_URL]);
+  }, [id]);
 
+  // ✅ ИСПРАВЛЕНО: Используем относительный путь
   useEffect(() => {
     const checkAuth = async () => {
       const token = getAuthToken();
@@ -130,7 +135,8 @@ export default function OfferCard({
         return;
       }
       try {
-        const response = await fetch(`${API_URL}/api/auth/me`);
+        // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+        const response = await fetch('/api/auth/me');
         const data = await response.json();
         setIsAuthenticated(data.authenticated);
         if (data.token) sessionStorage.setItem('userToken', data.token);
@@ -141,7 +147,7 @@ export default function OfferCard({
       }
     };
     checkAuth();
-  }, [API_URL]);
+  }, []);
 
   useEffect(() => {
     const favorites = localStorage.getItem('favorites');
@@ -151,11 +157,13 @@ export default function OfferCard({
     }
   }, [id]);
 
+  // ✅ ИСПРАВЛЕНО: Используем относительный путь
   const fetchBagItems = async () => {
     if (bagItems.length > 0) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+      const response = await fetch(`/api/surprise-bags/${id}`);
       if (response.ok) {
         const data = await response.json();
         setBagItems(data.items || []);
@@ -189,7 +197,7 @@ export default function OfferCard({
     setIsFavorite(!isFavorite);
   };
 
-  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ addToCart
+  // ✅ ИСПРАВЛЕНО: Используем относительный путь
   const addToCart = async () => {
     const token = getAuthToken();
     console.log('🔑 Токен в addToCart:', token ? 'Есть ✅' : 'Нет ❌');
@@ -203,7 +211,8 @@ export default function OfferCard({
     setAddingToCart(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/cart/add`, {
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ (ГЛАВНОЕ ИСПРАВЛЕНИЕ!)
+      const response = await fetch('/api/cart/add', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
