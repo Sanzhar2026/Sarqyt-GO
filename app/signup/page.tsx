@@ -1,4 +1,4 @@
-// app/signup/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/signup/page.tsx - ИМЯ И ФАМИЛИЯ ОТДЕЛЬНО
 
 'use client';
 
@@ -14,9 +14,6 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-
-  // ❌ УБЕРИ ЭТУ СТРОКУ
-  // const API_URL = 'https://toogood-2ncf.onrender.com';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,14 +46,12 @@ export default function SignupPage() {
     }
 
     try {
-      console.log('📤 Отправка регистрации:', { first_name: firstName, last_name: lastName, phone });
+      console.log('📤 Отправка:', { first_name: firstName, last_name: lastName, phone });
 
-      // ✅ ИСПОЛЬЗУЙ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+      // ✅ ОТПРАВЛЯЕМ ОТДЕЛЬНО
       const response = await fetch('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           first_name: firstName.trim(),
           last_name: lastName.trim(),
@@ -66,7 +61,7 @@ export default function SignupPage() {
       });
 
       const data = await response.json();
-      console.log('📥 Ответ сервера:', data);
+      console.log('📥 Ответ:', data);
 
       if (response.ok && data.success) {
         setSuccess(true);
@@ -90,7 +85,7 @@ export default function SignupPage() {
         setError(data.detail || 'Ошибка регистрации');
       }
     } catch (error) {
-      console.error('❌ Signup error:', error);
+      console.error('❌ Ошибка:', error);
       setError('Ошибка подключения к серверу');
     } finally {
       setLoading(false);
