@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://toogood-2ncf.onrender.com/api/:path*',
+        destination: 'https://toogood-production.up.railway.app/api/:path*', // ← RAILWAY!
       },
     ];
   },
@@ -26,37 +26,30 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'toogood-2ncf.onrender.com',
+        hostname: 'toogood-production.up.railway.app', // ← RAILWAY!
         port: '',
         pathname: '/**',
       },
     ],
   },
 
-  // ✅ ДОБАВЛЕНО: Оптимизация памяти
+  // Оптимизация памяти
   experimental: {
-    workerThreads: false,  // Отключаем worker threads (экономия памяти)
-    cpus: 1,               // Ограничиваем количество CPU (экономия памяти)
+    workerThreads: false,
+    cpus: 1,
   },
 
-  // ✅ ДОБАВЛЕНО: Уменьшение размера сборки
-  compress: true,          // Включаем сжатие
-  swcMinify: true,         // Используем SWC для минификации (быстрее и меньше памяти)
-
-  // ✅ ДОБАВЛЕНО: Отключение source maps в production (экономия памяти)
+  compress: true,
+  swcMinify: true,
   productionBrowserSourceMaps: false,
 
-  // Опционально: игнорировать ошибки TypeScript при сборке
   typescript: {
     ignoreBuildErrors: true,
   },
 
-  // ✅ ДОБАВЛЕНО: Дополнительные оптимизации
-  reactStrictMode: true,   // Помогает найти проблемы с памятью
-  poweredByHeader: false,  // Убираем X-Powered-By header (экономия)
-  
-  // Настройки для Render.com
-  output: 'standalone',     // Уменьшает размер деплоя (экономия памяти)
+  reactStrictMode: true,
+  poweredByHeader: false,
+  output: 'standalone',
 };
 
 module.exports = nextConfig;
