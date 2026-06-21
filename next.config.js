@@ -4,12 +4,19 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'https://toogood-production.up.railway.app/api/:path*', // ← RAILWAY!
+        destination: 'https://toogood-production.up.railway.app/api/:path*',
+      },
+      {
+        source: '/users/:path*',
+        destination: 'https://toogood-production.up.railway.app/users/:path*',
+      },
+      {
+        source: '/uploads/:path*',
+        destination: 'https://toogood-production.up.railway.app/uploads/:path*',
       },
     ];
   },
 
-  // Настройки изображений
   images: {
     remotePatterns: [
       {
@@ -26,14 +33,13 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'toogood-production.up.railway.app', // ← RAILWAY!
+        hostname: 'toogood-production.up.railway.app',
         port: '',
         pathname: '/**',
       },
     ],
   },
 
-  // Оптимизация памяти
   experimental: {
     workerThreads: false,
     cpus: 1,
