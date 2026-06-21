@@ -16,7 +16,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  const API_URL = 'https://toogood-production.up.railway.app';
 
   // Генерация 6-значного кода
   const generateCode = () => {

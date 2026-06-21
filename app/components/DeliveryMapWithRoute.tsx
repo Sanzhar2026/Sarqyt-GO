@@ -74,7 +74,7 @@ export default function DeliveryMapWithRoute({
         
         console.log('🔄 Загрузка маршрута:', { startLat, startLon, endLat, endLon });
         
-        const response = await fetch(`https://toogood-2ncf.onrender.com/api/delivery/route/${orderId}`, {
+        const response = await fetch(`https://toogood-production.up.railway.app/api/delivery/route/${orderId}`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',

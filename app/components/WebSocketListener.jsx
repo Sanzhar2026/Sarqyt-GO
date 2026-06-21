@@ -16,7 +16,7 @@ export function WebSocketListener() {
       return;
     }
 
-    const ws = new WebSocket(`wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(token)}`);
+    const ws = new WebSocket(`wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(token)}`);
     
     ws.onopen = () => {
       console.log('✅ WebSocket connected');

@@ -19,11 +19,11 @@ export default function GlobalNotifications() {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  const API_URL = 'https://toogood-production.up.railway.app';
 
   useEffect(() => {
     // Подключаемся к WebSocket при загрузке
-    const websocket = new WebSocket('wss://toogood-2ncf.onrender.com/ws');
+    const websocket = new WebSocket('wss://https://toogood-production.up.railway.app/ws');
     
     websocket.onopen = () => {
       console.log('🌐 Global WebSocket connected');
@@ -99,7 +99,7 @@ export default function GlobalNotifications() {
     websocket.onclose = () => {
       console.log('Global WebSocket disconnected, reconnecting in 5s...');
       setTimeout(() => {
-        const newWs = new WebSocket('wss://toogood-2ncf.onrender.com/ws');
+        const newWs = new WebSocket('wss://toogood-production.up.railway.app/ws');
         setWs(newWs);
       }, 5000);
     };

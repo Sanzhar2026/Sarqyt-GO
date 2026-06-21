@@ -51,7 +51,7 @@ export default function OffersPage() {
 
   const fetchBags = async () => {
     try {
-      const response = await fetch('https://toogood-2ncf.onrender.com/api/surprise-bags');
+      const response = await fetch('https://toogood-production.up.railway.app/api/surprise-bags');
       const data = await response.json();
       setBags(data);
     } catch (error) {
@@ -87,7 +87,7 @@ export default function OffersPage() {
       console.log('🛒 Добавление в корзину:', bag.id, bag.name);
       
       // ✅ ИСПРАВЛЕНО: передаем Bearer токен!
-      const response = await authFetch('https://toogood-2ncf.onrender.com/api/cart/add', {
+      const response = await authFetch('https://toogood-production.up.railway.app/api/cart/add', {
         method: 'POST',
         body: JSON.stringify({ bag_id: bag.id, quantity: 1 })
       });

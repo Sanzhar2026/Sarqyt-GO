@@ -64,7 +64,7 @@ export default function OrderDetailPage() {
   const [location, setLocation] = useState<{ lat: number; lon: number; city: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  const API_URL = 'https://toogood-production.up.railway.app';
 
   // ✅ Функция для получения токена
   const getAuthToken = () => {
@@ -138,7 +138,7 @@ export default function OrderDetailPage() {
     const orderId = params?.id;
     if (!orderId) return;
 
-    const ws = new WebSocket('wss://toogood-2ncf.onrender.com/ws');
+    const ws = new WebSocket('wss://toogood-production.up.railway.app/ws');
     
     ws.onopen = () => {
       console.log('WebSocket connected for order');

@@ -34,7 +34,7 @@ export default function SuppliersMap({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  const API_URL = 'https://toogood-production.up.railway.app';
 
   // Загрузка Leaflet
   useEffect(() => {

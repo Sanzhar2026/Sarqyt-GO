@@ -1,6 +1,6 @@
 // lib/cart-api.ts - новый файл для работы с корзиной через API
 
-const API_URL = 'https://toogood-2ncf.onrender.com';
+const API_URL = 'https://toogood-production.up.railway.app';
 
 export async function getCart() {
   const response = await fetch(`${API_URL}/api/cart`, {

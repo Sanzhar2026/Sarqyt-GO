@@ -18,7 +18,7 @@ export default function CourierLogin() {
   
   const redirectingRef = useRef(false);
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  const API_URL = 'https://toogood-production.up.railway.app';
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;

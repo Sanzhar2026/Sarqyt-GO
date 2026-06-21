@@ -67,7 +67,7 @@ export default function RootClient({ children }: { children: React.ReactNode }) 
     // Проверка авторизации
     const checkAuth = async () => {
       try {
-        const response = await fetch('https://toogood-2ncf.onrender.com/api/check-auth', {
+        const response = await fetch('https://toogood-production.up.railway.app/api/check-auth', {
           credentials: 'include'
         });
         const data = await response.json();

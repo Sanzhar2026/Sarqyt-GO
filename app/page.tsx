@@ -76,7 +76,7 @@ export default function HomePage() {
 
   // ✅ WebSocket с токеном
   const wsUrl = userToken 
-    ? `wss://toogood-2ncf.onrender.com/ws?token=${encodeURIComponent(userToken)}` 
+    ? `wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(userToken)}` 
     : null;
   
   const { isConnected, lastMessage } = useWebSocket(wsUrl);

@@ -74,7 +74,7 @@ export default function SurpriseBagCard({
   const [bagRating, setBagRating] = useState(rating);
   const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
 
-  const API_URL = 'https://toogood-2ncf.onrender.com';
+  const API_URL = 'https://toogood-production.up.railway.app';
 
   // ✅ Единая функция для получения токена
   const getAuthToken = () => {

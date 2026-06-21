@@ -1,7 +1,7 @@
 // lib/api.ts
 import axios from 'axios'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://toogood-2ncf.onrender.com'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://toogood-production.up.railway.app'
 
 export interface User {
   id: number
@@ -107,7 +107,7 @@ export async function logout(): Promise<void> {
 // Get nearby suppliers (for homepage)
 // app/lib/api.ts - исправленный
 
-const API_URL = 'https://toogood-2ncf.onrender.com';
+const API_URL = 'https://toogood-production.up.railway.app';
 
 // lib/api.ts - функция getNearbyBags
 
