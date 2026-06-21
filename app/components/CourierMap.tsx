@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/components/CourierMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -24,10 +24,9 @@ const loadLeaflet = async () => {
   return L;
 };
 
-// ✅ ORS API KEY
+// ORS API KEY
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMDU3ZGE4OTkxODQ2M2JhNmVlZDgzM2QzMDE2OTYwIiwiaCI6Im11cm11cjY0In0=';
 
-// ✅ ФУНКЦИЯ ПОЛУЧЕНИЯ МАРШРУТА
 const getRouteFromORS = async (startLat: number, startLon: number, endLat: number, endLon: number) => {
   try {
     console.log('🔄 ORS запрос...');
@@ -61,7 +60,6 @@ const getRouteFromORS = async (startLat: number, startLon: number, endLat: numbe
   }
 };
 
-// ✅ ДЕКОДИРОВАНИЕ POLYLINE
 const decodePolyline = (encoded: string) => {
   let index = 0, lat = 0, lng = 0;
   const coords = [];
@@ -93,6 +91,7 @@ const decodePolyline = (encoded: string) => {
 
 const LIGHT_MAP_TILE = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
+// ✅ ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС
 interface CourierMapProps {
   restaurantLocation?: { lat: number; lon: number };
   customerLocation?: { lat: number; lon: number };
@@ -101,6 +100,8 @@ interface CourierMapProps {
   routeColor?: string;
   routeWidth?: number;
   courierLocation?: { lat: number; lon: number };
+  // ✅ orderId ДОБАВЛЕН (но не используется, можно убрать)
+  orderId?: string | number;
 }
 
 export default function CourierMap({ 
@@ -111,6 +112,7 @@ export default function CourierMap({
   routeColor = "#94a3b8",
   routeWidth = 3,
   courierLocation,
+  orderId, // ✅ Просто игнорируем, если не нужен
 }: CourierMapProps) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -191,7 +193,7 @@ export default function CourierMap({
     console.log('🗺️ Карта инициализирована');
   }, [mapLoaded, mapCenter]);
 
-  // ✅ ПОСТРОЕНИЕ МАРШРУТА ЧЕРЕЗ ORS
+  // Построение маршрута через ORS
   useEffect(() => {
     if (!mapInstanceRef.current || !showRoute) return;
     if (!restaurantLocation?.lat || !restaurantLocation?.lon || 
@@ -229,7 +231,6 @@ export default function CourierMap({
           setRouteBuilt(true);
           console.log(`✅ Маршрут построен! Точек: ${points.length}`);
           
-          // Центрируем карту по маршруту
           mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
         } else {
           console.log('❌ ORS не вернул маршрут');
@@ -239,7 +240,6 @@ export default function CourierMap({
       }
     };
 
-    // Запускаем с задержкой, чтобы карта точно загрузилась
     setTimeout(buildRoute, 500);
   }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded, routeBuilt]);
 
@@ -297,7 +297,6 @@ export default function CourierMap({
 
   return (
     <div className="relative w-full h-full" style={{ height }}>
-      {/* Индикатор загрузки маршрута */}
       {showRoute && !routeBuilt && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-white/90 backdrop-blur rounded-lg shadow-lg px-4 py-2 text-sm border border-gray-200">
           <div className="flex items-center gap-2">
