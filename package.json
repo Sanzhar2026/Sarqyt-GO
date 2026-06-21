@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+
     "build": "next build",
+     "vercel-build": "npm install --legacy-peer-deps && npm run build",
     "start": "NODE_OPTIONS='--max-old-space-size=450' next start",
     "start:render": "NODE_OPTIONS='--max-old-space-size=450' next start --port $PORT"
   },
