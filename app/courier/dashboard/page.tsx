@@ -148,7 +148,7 @@ export default function CourierDashboard() {
       wsRef.current.close();
     }
     
-    const wsUrl = `wss://https://toogood-production.up.railway.app/ws/courier-tracking?token=${encodeURIComponent(token)}`;
+    const wsUrl = `wss://toogood-production.up.railway.app/ws/courier-tracking?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     

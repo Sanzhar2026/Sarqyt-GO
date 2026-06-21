@@ -1,4 +1,4 @@
-// app/courier/login/page.tsx - С ОБНОВЛЕННЫМ ДИЗАЙНОМ
+// app/courier/login/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -18,7 +18,8 @@ export default function CourierLogin() {
   
   const redirectingRef = useRef(false);
 
-  const API_URL = 'https://toogood-production.up.railway.app';
+  // ❌ УБЕРИ ЭТУ СТРОКУ!
+  // const API_URL = 'https://toogood-production.up.railway.app';
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
@@ -48,7 +49,8 @@ export default function CourierLogin() {
         }
         
         if (token) {
-          const response = await fetch(`${API_URL}/api/courier/status`, {
+          // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+          const response = await fetch('/api/courier/status', {
             headers: { 
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
@@ -85,7 +87,7 @@ export default function CourierLogin() {
     return () => {
       isMounted = false;
     };
-  }, [API_URL]);
+  }, []); // ✅ УБРАЛИ API_URL ИЗ ЗАВИСИМОСТЕЙ
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +101,8 @@ export default function CourierLogin() {
     try {
       console.log('🔐 Попытка входа курьера:', phone);
       
-      const response = await fetch(`${API_URL}/api/courier/login`, {
+      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
+      const response = await fetch('/api/courier/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password }),
@@ -168,7 +171,6 @@ export default function CourierLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-lg">
         
-        {/* Иконка грузовика - прозрачная */}
         <div className="flex justify-center mb-4">
           <div className="w-20 h-20 rounded-2xl bg-emerald-50/50 flex items-center justify-center">
             <Truck size={40} className="text-emerald-600/60" strokeWidth={1.5} />
