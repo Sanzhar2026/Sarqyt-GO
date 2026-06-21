@@ -1,4 +1,4 @@
-// app/profile/page.tsx - С ИКОНКОЙ МАШИНЫ
+// app/profile/page.tsx
 
 'use client';
 
@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Truck } from 'lucide-react'; // ← ИМПОРТ ИКОНКИ
+import AvatarCropper from '../components/AvatarCropper';
 
 interface UserData {
   id: number;
@@ -27,6 +27,8 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
@@ -74,7 +76,8 @@ export default function ProfilePage() {
     fetchUser();
   }, [router]);
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Обработка выбора файла для аватара
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -83,15 +86,23 @@ export default function ProfilePage() {
       return;
     }
 
+    setSelectedFile(file);
+    setShowCropper(true);
+  };
+
+  // Обработка обрезанного аватара
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setShowCropper(false);
+    setUploading(true);
+
     const token = getAuthToken();
     if (!token) {
       router.push('/login');
       return;
     }
 
-    setUploading(true);
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append('avatar', croppedBlob, 'avatar.webp');
 
     try {
       const response = await fetch(`/users/${user?.id}/avatar`, {
@@ -103,7 +114,6 @@ export default function ProfilePage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
         setAvatarUrl(`/users/avatar-file/${user?.id}?t=${Date.now()}`);
         alert('Аватар обновлен!');
       } else {
@@ -114,6 +124,7 @@ export default function ProfilePage() {
       alert('Ошибка при загрузке');
     } finally {
       setUploading(false);
+      setSelectedFile(null);
     }
   };
 
@@ -135,8 +146,6 @@ export default function ProfilePage() {
       year: 'numeric'
     });
   };
-
-  const isCourier = user?.role === 'courier';
 
   if (loading) {
     return (
@@ -185,6 +194,18 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Кроппер */}
+      {showCropper && selectedFile && (
+        <AvatarCropper
+          imageFile={selectedFile}
+          onCropComplete={handleCropComplete}
+          onCancel={() => {
+            setShowCropper(false);
+            setSelectedFile(null);
+          }}
+        />
+      )}
+
       {/* Заголовок */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
         <div className="flex items-center justify-between">
@@ -214,7 +235,7 @@ export default function ProfilePage() {
                     unoptimized
                   />
                 ) : (
-                  <span className="text-4xl font-bold text-gray-500">
+                  <span className="text-4xl font-bold text-gray-400">
                     {userInitials}
                   </span>
                 )}
@@ -233,7 +254,7 @@ export default function ProfilePage() {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={handleAvatarUpload}
+                  onChange={handleAvatarSelect}
                   disabled={uploading}
                 />
               </label>
@@ -250,79 +271,43 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          {/* Данные пользователя */}
+          {/* Данные пользователя (БЕЗ ИНИЦИАЛОВ) */}
           <div className="space-y-4 border-t border-gray-100 pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
-                И
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Имя</p>
-                <p className="font-medium text-gray-800">{fullName || '—'}</p>
-              </div>
+            <div>
+              <p className="text-xs text-gray-400">Имя</p>
+              <p className="font-medium text-gray-800">{fullName || '—'}</p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
-                Т
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Телефон</p>
-                <p className="font-medium text-gray-800">{user.phone || '—'}</p>
-              </div>
+            <div>
+              <p className="text-xs text-gray-400">Телефон</p>
+              <p className="font-medium text-gray-800">{user.phone || '—'}</p>
             </div>
 
             {user.email && (
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
-                  E
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">Email</p>
-                  <p className="font-medium text-gray-800">{user.email}</p>
-                </div>
+              <div>
+                <p className="text-xs text-gray-400">Email</p>
+                <p className="font-medium text-gray-800">{user.email}</p>
               </div>
             )}
 
-            {/* ✅ РОЛЬ С ИКОНКОЙ МАШИНЫ (серо-прозрачная) */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
-                Р
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Роль</p>
-                <p className="font-medium text-gray-800 capitalize">
-                  {isCourier ? (
-                    <span className="flex items-center gap-1.5">
-                      <Truck 
-                        className="w-4 h-4 text-gray-400/60" 
-                        strokeWidth={1.5}
-                      />
-                      Курьер
-                    </span>
-                  ) : (
-                    user.role || 'Клиент'
-                  )}
-                </p>
-              </div>
+            <div>
+              <p className="text-xs text-gray-400">Роль</p>
+              <p className="font-medium text-gray-800 capitalize">
+                {user.role || 'Клиент'}
+              </p>
             </div>
 
             {user.created_at && (
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
-                  Д
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400">Дата регистрации</p>
-                  <p className="font-medium text-gray-800">{formatDate(user.created_at)}</p>
-                </div>
+              <div>
+                <p className="text-xs text-gray-400">Дата регистрации</p>
+                <p className="font-medium text-gray-800">{formatDate(user.created_at)}</p>
               </div>
             )}
           </div>
 
           {/* Кнопки */}
           <div className="mt-6 space-y-3">
-            {!isCourier && (
+            {user.role !== 'courier' && (
               <Link href="/courier/register">
                 <button className="w-full bg-[#fbbf24] text-gray-800 py-3.5 rounded-2xl font-semibold text-base hover:bg-[#f59e0b] transition shadow-md">
                   🚚 Стать курьером
@@ -330,9 +315,10 @@ export default function ProfilePage() {
               </Link>
             )}
 
+            {/* Кнопка "Выйти" — БОРДОВАЯ */}
             <button 
               onClick={handleLogout}
-              className="w-full bg-red-500 text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-red-600 transition shadow-md"
+              className="w-full bg-red-800 text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-red-900 transition shadow-md"
             >
               Выйти
             </button>
