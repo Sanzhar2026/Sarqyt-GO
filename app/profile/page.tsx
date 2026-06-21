@@ -1,226 +1,348 @@
-// app/signup/page.tsx - С ВЕРИФИКАЦИЕЙ
+// app/profile/page.tsx - С ИКОНКОЙ МАШИНЫ
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
+import { Truck } from 'lucide-react'; // ← ИМПОРТ ИКОНКИ
 
-export default function SignupPage() {
-  const [step, setStep] = useState<'phone' | 'verify'>('phone');
-  const [phone, setPhone] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+interface UserData {
+  id: number;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  phone: string;
+  email?: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const [user, setUser] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  const API_URL = 'https://toogood-production.up.railway.app';
-
-  // Генерация 6-значного кода
-  const generateCode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
   };
 
-  // Шаг 1: Отправка номера
-  const sendVerification = async () => {
-    if (!phone) {
-      setError('Номер телефона обязателен');
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      router.push('/login');
       return;
     }
     
-    const code = generateCode();
-    setGeneratedCode(code);
-    setVerificationCode(code);
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+          
+          try {
+            const avatarResponse = await fetch(`/users/avatar-file/${data.user.id}`);
+            if (avatarResponse.ok) {
+              setAvatarUrl(`/users/avatar-file/${data.user.id}?t=${Date.now()}`);
+            }
+          } catch (e) {
+            // Аватара нет
+          }
+        } else {
+          router.push('/login');
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки профиля:', error);
+        setError('Не удалось загрузить данные');
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    alert(`✅ Ваш код подтверждения: ${code}`);
-    
-    setStep('verify');
-    setError('');
-  };
+    fetchUser();
+  }, [router]);
 
-  // Шаг 2: Регистрация
-  const handleSignup = async () => {
-    if (!fullName) {
-      setError('Введите полное имя');
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      setError('Пароли не совпадают');
-      return;
-    }
-    
-    if (password.length < 4) {
-      setError('Пароль не менее 4 символов');
-      return;
-    }
-    
-    if (verificationCode !== generatedCode) {
-      setError('Неверный код подтверждения');
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Пожалуйста, выберите изображение');
       return;
     }
 
-    setLoading(true);
-    setError('');
+    const token = getAuthToken();
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('avatar', file);
 
     try {
-      const response = await fetch(`${API_URL}/api/verify-and-register`, {
+      const response = await fetch(`/users/${user?.id}/avatar`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          phone: phone.trim(),
-          full_name: fullName.trim(),
-          password: password,
-          verification_code: verificationCode,
-        }),
+        body: formData
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        if (data.token) {
-          localStorage.setItem('userToken', data.token);
-          sessionStorage.setItem('userToken', data.token);
-        }
-        
-        sessionStorage.setItem('isLoggedIn', 'true');
-        window.location.href = '/';
+      if (response.ok) {
+        const data = await response.json();
+        setAvatarUrl(`/users/avatar-file/${user?.id}?t=${Date.now()}`);
+        alert('Аватар обновлен!');
       } else {
-        setError(data.detail || 'Ошибка регистрации');
+        alert('Ошибка при загрузке аватара');
       }
     } catch (error) {
-      console.error('Signup error:', error);
-      setError('Ошибка подключения к серверу');
+      console.error('Upload error:', error);
+      alert('Ошибка при загрузке');
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#367666]/10 to-white p-6">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-center text-[#367666] mb-8">Регистрация</h1>
-          
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-2xl text-sm border border-red-100">
-              ❌ {error}
-            </div>
-          )}
+  const handleLogout = () => {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+      sessionStorage.removeItem('userToken');
+      localStorage.removeItem('userToken');
+      sessionStorage.removeItem('isLoggedIn');
+      router.push('/login');
+    }
+  };
 
-          {step === 'phone' ? (
-            // ШАГ 1: ВВОД ТЕЛЕФОНА
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Номер телефона *</label>
-                <input 
-                  type="tel" 
-                  value={phone} 
-                  onChange={(e) => setPhone(e.target.value)} 
-                  placeholder="+77071234567" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
-                />
-              </div>
-              <button 
-                onClick={sendVerification} 
-                disabled={loading} 
-                className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg hover:bg-[#2a5a4d] transition disabled:opacity-70 shadow-md"
-              >
-                Получить код
-              </button>
-            </div>
-          ) : (
-            // ШАГ 2: ВВОД КОДА И ДАННЫХ
-            <div className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
-                <p className="text-sm text-gray-600">Ваш код подтверждения:</p>
-                <p className="text-3xl font-bold text-[#367666] tracking-[0.5em] font-mono">
-                  {generatedCode}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newCode = generateCode();
-                    setGeneratedCode(newCode);
-                    setVerificationCode(newCode);
-                    alert(`✅ Новый код: ${newCode}`);
-                  }}
-                  className="text-xs text-[#367666] hover:underline mt-2"
-                >
-                  Сгенерировать новый код
-                </button>
-              </div>
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Введите код *</label>
-                <input 
-                  type="text" 
-                  value={verificationCode} 
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
-                  placeholder="000000" 
-                  maxLength={6}
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition text-center text-2xl tracking-[0.5em] font-mono"
-                />
-              </div>
+  const isCourier = user?.role === 'courier';
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Полное имя *</label>
-                <input 
-                  type="text" 
-                  value={fullName} 
-                  onChange={(e) => setFullName(e.target.value)} 
-                  placeholder="Иван Иванов" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
-                />
-              </div>
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
+      </div>
+    );
+  }
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Пароль *</label>
-                <input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="Минимум 4 символа" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
-                />
-              </div>
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-sm">
+          <div className="text-5xl mb-4">😢</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Ошибка</h2>
+          <p className="text-gray-500">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Подтвердите пароль *</label>
-                <input 
-                  type="password" 
-                  value={confirmPassword} 
-                  onChange={(e) => setConfirmPassword(e.target.value)} 
-                  placeholder="Повторите пароль" 
-                  className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
-                />
-              </div>
-
-              <button 
-                onClick={handleSignup} 
-                disabled={loading} 
-                className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg mt-4 hover:bg-[#2a5a4d] transition disabled:opacity-70 shadow-md"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Регистрация...
-                  </span>
-                ) : 'Зарегистрироваться'}
-              </button>
-            </div>
-          )}
-
-          <p className="text-center text-gray-500 mt-6">
-            Уже есть аккаунт?{' '}
-            <Link href="/login" className="text-[#367666] font-semibold hover:underline">
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-sm">
+          <div className="text-5xl mb-4">👤</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Пользователь не найден</h2>
+          <Link href="/login">
+            <button className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl">
               Войти
+            </button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const fullName = user.full_name || `${user.first_name} ${user.last_name}`;
+  const userInitials = user.first_name?.[0]?.toUpperCase() || '?';
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Заголовок */}
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Профиль</h1>
+          <button 
+            onClick={() => router.back()}
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 -mt-4">
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          {/* Аватарка */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                {avatarUrl ? (
+                  <Image 
+                    src={avatarUrl}
+                    alt="Avatar"
+                    width={96}
+                    height={96}
+                    className="object-cover w-full h-full"
+                    unoptimized
+                  />
+                ) : (
+                  <span className="text-4xl font-bold text-gray-500">
+                    {userInitials}
+                  </span>
+                )}
+              </div>
+              
+              <label 
+                htmlFor="avatar-upload"
+                className={`absolute bottom-0 right-0 bg-[#367666] text-white p-2 rounded-full cursor-pointer hover:bg-[#2a5a4d] transition shadow-md ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <input 
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={uploading}
+                />
+              </label>
+            </div>
+            {uploading && (
+              <p className="text-sm text-gray-500 mt-2">Загрузка...</p>
+            )}
+            <h2 className="text-xl font-bold text-gray-800 mt-3">
+              {fullName || 'Пользователь'}
+            </h2>
+            <p className="text-sm text-gray-500 flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              {user.is_active ? 'Активен' : 'Неактивен'}
+            </p>
+          </div>
+
+          {/* Данные пользователя */}
+          <div className="space-y-4 border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
+                И
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Имя</p>
+                <p className="font-medium text-gray-800">{fullName || '—'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
+                Т
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Телефон</p>
+                <p className="font-medium text-gray-800">{user.phone || '—'}</p>
+              </div>
+            </div>
+
+            {user.email && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
+                  E
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Email</p>
+                  <p className="font-medium text-gray-800">{user.email}</p>
+                </div>
+              </div>
+            )}
+
+            {/* ✅ РОЛЬ С ИКОНКОЙ МАШИНЫ (серо-прозрачная) */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
+                Р
+              </div>
+              <div>
+                <p className="text-xs text-gray-400">Роль</p>
+                <p className="font-medium text-gray-800 capitalize">
+                  {isCourier ? (
+                    <span className="flex items-center gap-1.5">
+                      <Truck 
+                        className="w-4 h-4 text-gray-400/60" 
+                        strokeWidth={1.5}
+                      />
+                      Курьер
+                    </span>
+                  ) : (
+                    user.role || 'Клиент'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {user.created_at && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
+                  Д
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Дата регистрации</p>
+                  <p className="font-medium text-gray-800">{formatDate(user.created_at)}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Кнопки */}
+          <div className="mt-6 space-y-3">
+            {!isCourier && (
+              <Link href="/courier/register">
+                <button className="w-full bg-[#fbbf24] text-gray-800 py-3.5 rounded-2xl font-semibold text-base hover:bg-[#f59e0b] transition shadow-md">
+                  🚚 Стать курьером
+                </button>
+              </Link>
+            )}
+
+            <button 
+              onClick={handleLogout}
+              className="w-full bg-red-500 text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-red-600 transition shadow-md"
+            >
+              Выйти
+            </button>
+
+            <Link href="/">
+              <button className="w-full bg-gray-100 text-gray-600 py-3 rounded-2xl font-medium text-sm hover:bg-gray-200 transition">
+                ← На главную
+              </button>
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </div>
