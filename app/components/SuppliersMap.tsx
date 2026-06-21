@@ -33,8 +33,6 @@ export default function SuppliersMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
-  
-  const API_URL = 'https://toogood-production.up.railway.app';
 
   // Загрузка Leaflet
   useEffect(() => {
@@ -58,43 +56,32 @@ export default function SuppliersMap({
     loadLeaflet();
   }, []);
 
- const fetchNearbySuppliers = async (lat: number, lon: number) => {
-  try {
-    // ✅ Проверяем координаты
-    console.log('📡 Отправка запроса с координатами:', { lat, lon });
-    
-    if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
-      console.error('❌ Некорректные координаты:', lat, lon);
+  const fetchNearbySuppliers = async (lat: number, lon: number) => {
+    try {
+      if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
+        setSuppliers([]);
+        setLoading(false);
+        return;
+      }
+      
+      const url = `/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        setSuppliers([]);
+        setLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      setSuppliers(data.suppliers || []);
+    } catch (error) {
+      console.error('Ошибка запроса:', error);
       setSuppliers([]);
+    } finally {
       setLoading(false);
-      return;
     }
-    
-    const url = `/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`;
-    console.log('🔗 Полный URL запроса:', url);
-    
-    const response = await fetch(url);
-    console.log('📡 Статус ответа:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Тело ошибки:', errorText);
-      setSuppliers([]);
-      setLoading(false);
-      return;
-    }
-    
-    const data = await response.json();
-    console.log('✅ Получены данные:', data);
-    
-    setSuppliers(data.suppliers || []);
-  } catch (error) {
-    console.error('❌ Ошибка запроса:', error);
-    setSuppliers([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Получение геолокации
   useEffect(() => {
@@ -105,8 +92,7 @@ export default function SuppliersMap({
         (position) => {
           fetchNearbySuppliers(position.coords.latitude, position.coords.longitude);
         },
-        (error) => { 
-          console.error('Geolocation error:', error); 
+        () => { 
           setLoading(false);
         }
       );
@@ -136,64 +122,64 @@ export default function SuppliersMap({
     
     const bounds: any[] = [];
     
-    // Маркер пользователя
+    // Маркер пользователя (прыгающая точка, без иконки)
     if (showUserLocation && userLat && userLon) {
       const userIcon = window.L.divIcon({
-        html: `<div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm shadow-lg border-2 border-white ring-2 ring-blue-300">📍</div>`,
-        iconSize: [32, 32],
+        html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-bounce"></div>`,
+        iconSize: [16, 16],
         className: 'custom-div-icon'
       });
       
       window.L.marker([userLat, userLon], { icon: userIcon })
         .addTo(mapInstanceRef.current)
-        .bindPopup('<strong>📍 Вы здесь</strong>');
+        .bindPopup('Вы здесь');
       
       bounds.push([userLat, userLon]);
     }
     
-  validSuppliersWithCoords.forEach(supplier => {
-  if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
-  
-  const icon = window.L.divIcon({
-    html: `<div class="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl shadow-lg border-2 border-white">🏪</div>`,
-    iconSize: [40, 40],
-    className: 'custom-div-icon'
-  });
-  
-  const popupContent = `
-    <div class="text-center min-w-[220px] p-1">
-      <div class="font-bold text-lg mb-1">🏪 ${supplier.business_name || 'Магазин'}</div>
-      <div class="text-sm text-gray-600 mb-2">${supplier.address || 'Адрес не указан'}</div>
-      <div class="flex justify-center gap-3 mb-2 text-sm">
-        <span>⭐ ${supplier.rating || 4.5}</span>
-        <span>📦 ${supplier.surprise_bags_count || 0} сюрпризов</span>
-        <span>📍 ${supplier.distance_km?.toFixed(1) || '?'} км</span>
-      </div>
-      <button class="mt-2 bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm w-full view-supplier-btn" data-id="${supplier.id}" data-name="${supplier.business_name}">
-        🎁 Посмотреть сюрпризы
-      </button>
-    </div>
-  `;
-  
-  const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
-    .addTo(mapInstanceRef.current)
-    .bindPopup(popupContent);
-  
-  // ✅ Привязываем обработчик при открытии попапа
-  marker.on('popupopen', () => {
-    const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
-    if (btn) {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        router.push(`/supplier/${supplier.id}`);
+    // Маркеры поставщиков (прыгающие точки, без иконок)
+    validSuppliersWithCoords.forEach(supplier => {
+      if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
+      
+      const icon = window.L.divIcon({
+        html: `<div class="w-5 h-5 bg-emerald-500 rounded-full border-2 border-white shadow-lg hover:scale-125 transition-transform animate-bounce"></div>`,
+        iconSize: [20, 20],
+        className: 'custom-div-icon'
       });
-    }
-  });
-  
-  bounds.push([supplier.lat, supplier.lon]);
-});
+      
+      // ✅ ПОПАП БЕЗ ИКОНОК!
+      const popupContent = `
+        <div class="text-center min-w-[200px] p-2">
+          <div class="font-bold text-lg mb-1">${supplier.business_name || 'Магазин'}</div>
+          <div class="text-sm text-gray-600 mb-2">${supplier.address || 'Адрес не указан'}</div>
+          <div class="flex justify-center gap-4 mb-2 text-sm">
+            <span>${supplier.rating || 4.5} ★</span>
+            <span>${supplier.surprise_bags_count || 0} пакетов</span>
+            <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
+          </div>
+          <button class="mt-2 bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm w-full view-supplier-btn" data-id="${supplier.id}" data-name="${supplier.business_name}">
+            Смотреть сюрпризы
+          </button>
+        </div>
+      `;
+      
+      const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup(popupContent);
+      
+      marker.on('popupopen', () => {
+        const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
+        if (btn) {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            router.push(`/supplier/${supplier.id}`);
+          });
+        }
+      });
+      
+      bounds.push([supplier.lat, supplier.lon]);
+    });
     
-    // Обработчик кликов - переход на страницу магазина
     setTimeout(() => {
       document.querySelectorAll('.view-supplier-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -201,12 +187,10 @@ export default function SuppliersMap({
           const id = parseInt((e.target as HTMLElement).getAttribute('data-id') || '0');
           const name = (e.target as HTMLElement).getAttribute('data-name') || '';
           
-          // ✅ РЕДИРЕКТ НА СТРАНИЦУ МАГАЗИНА
           if (id) {
             router.push(`/supplier/${id}`);
           }
           
-          // Если передан onSupplierClick - вызываем его
           if (onSupplierClick && id) {
             onSupplierClick(id, name);
           }
@@ -233,7 +217,6 @@ export default function SuppliersMap({
     return (
       <div className="w-full h-full bg-gray-100 rounded-xl flex items-center justify-center">
         <div className="text-center">
-          <div className="text-4xl mb-2">📍</div>
           <p className="text-gray-500 text-sm">Рядом нет магазинов</p>
           <button 
             onClick={() => {
@@ -257,7 +240,7 @@ export default function SuppliersMap({
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full rounded-xl" />
       <div className="absolute bottom-2 right-2 bg-white rounded-lg shadow-lg px-2 py-1 text-xs z-10">
-        📍 {suppliers.length} магазинов рядом
+        {suppliers.length} магазинов рядом
       </div>
     </div>
   );
