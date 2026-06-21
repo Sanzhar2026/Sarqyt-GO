@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/page.tsx - ПОЛНАЯ ВЕРСИЯ С ПОДДЕРЖКОЙ INSTAGRAM
 
 'use client';
 
@@ -9,7 +9,6 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Store, Gift } from 'lucide-react';
 import OfferCard from './components/OfferCard';
-import { useGeolocation } from './hooks/useGeolocation';
 import { useWebSocket } from './hooks/useWebSocket';
 import { setGlobalHideBottomNav } from './layout';
 import { useLanguage } from './layout';
@@ -32,9 +31,15 @@ interface SurpriseBag {
   is_active?: boolean;
 }
 
+interface LocationData {
+  lat: number;
+  lon: number;
+  city: string;
+  source: 'geolocation' | 'ip' | 'default';
+}
+
 export default function HomePage() {
   const router = useRouter();
-  const location = useGeolocation();
   const { lang, setLang } = useLanguage(); 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [bags, setBags] = useState<SurpriseBag[]>([]);
@@ -44,48 +49,124 @@ export default function HomePage() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [userToken, setUserToken] = useState<string | null>(null);
+  const [location, setLocation] = useState<LocationData | null>(null);
+  const [locationLoading, setLocationLoading] = useState(true);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
-  // ✅ Получение токена - ТОЛЬКО userToken
+  // ============================================================
+  // ОПРЕДЕЛЕНИЕ INSTAGRAM БРАУЗЕРА
+  // ============================================================
+  const isInstagramBrowser = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    
+    const ua = navigator.userAgent.toLowerCase();
+    return (
+      ua.includes('instagram') ||
+      ua.includes('fbav') ||
+      ua.includes('fban') ||
+      ua.includes('whatsapp') ||
+      (ua.includes('mobile') && !ua.includes('safari')) ||
+      window.innerWidth < 400
+    );
+  }, []);
+
+  // ============================================================
+  // ПОЛУЧЕНИЕ ЛОКАЦИИ (GPS или IP)
+  // ============================================================
+  const getLocationByIP = async (): Promise<{ lat: number; lon: number; city: string }> => {
+    try {
+      const response = await fetch('https://ipapi.co/json/');
+      const data = await response.json();
+      if (data.latitude && data.longitude) {
+        return {
+          lat: data.latitude,
+          lon: data.longitude,
+          city: data.city || data.region || 'Актобе'
+        };
+      }
+    } catch (e) {
+      console.warn('⚠️ IP геолокация не работает');
+    }
+    return { lat: 50.318754, lon: 57.368359, city: 'Актобе' };
+  };
+
+  const getLocation = useCallback(async () => {
+    setLocationLoading(true);
+    
+    // ✅ Если Instagram — сразу IP
+    if (isInstagramBrowser()) {
+      console.log('📱 Instagram браузер — используем IP геолокацию');
+      const ipLocation = await getLocationByIP();
+      setLocation({
+        ...ipLocation,
+        source: 'ip'
+      });
+      setLocationLoading(false);
+      return;
+    }
+
+    // ✅ Пробуем GPS
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`
+            );
+            const data = await response.json();
+            const city = data.address?.city || data.address?.town || data.address?.village || 'Актобе';
+            setLocation({
+              lat: latitude,
+              lon: longitude,
+              city: city,
+              source: 'geolocation'
+            });
+          } catch (e) {
+            setLocation({
+              lat: latitude,
+              lon: longitude,
+              city: 'Актобе',
+              source: 'geolocation'
+            });
+          }
+          setLocationLoading(false);
+        },
+        async (err) => {
+          console.warn('⚠️ GPS ошибка:', err);
+          const ipLocation = await getLocationByIP();
+          setLocation({
+            ...ipLocation,
+            source: 'ip'
+          });
+          setLocationLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      // GPS недоступен — IP
+      const ipLocation = await getLocationByIP();
+      setLocation({
+        ...ipLocation,
+        source: 'ip'
+      });
+      setLocationLoading(false);
+    }
+  }, [isInstagramBrowser]);
+
+  // ============================================================
+  // ПОЛУЧЕНИЕ ТОКЕНА
+  // ============================================================
   const getAuthToken = useCallback(() => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
   }, []);
 
-  // ✅ Получаем токен при монтировании
-  useEffect(() => {
-    const token = getAuthToken();
-    setUserToken(token);
-    console.log('🔑 Токен на главной:', token ? 'Есть ✅' : 'Нет ❌');
-    console.log('🔑 userToken из sessionStorage:', sessionStorage.getItem('userToken'));
-    
-    const userStr = sessionStorage.getItem('user');
-    if (userStr) {
-      try {
-        const parsed = JSON.parse(userStr);
-        setUser({
-          name: parsed.full_name || parsed.name,
-          id: parsed.id,
-          phone: parsed.phone
-        });
-      } catch(e) {}
-    }
-  }, [getAuthToken]);
-
-  // ✅ WebSocket с токеном
-  const wsUrl = userToken 
-    ? `wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(userToken)}` 
-    : null;
-  
-  const { isConnected, lastMessage } = useWebSocket(wsUrl);
-
-  const refreshAfterOrder = useCallback(async () => {
-    await fetchBags();
-  }, []);
-
-  // ✅ ИСПРАВЛЕНА ФУНКЦИЯ fetchBags - ТОЛЬКО ОТНОСИТЕЛЬНЫЙ ПУТЬ
+  // ============================================================
+  // ЗАГРУЗКА СЮРПРИЗОВ
+  // ============================================================
   const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
     
@@ -106,8 +187,14 @@ export default function HomePage() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
-      const response = await fetch('/api/surprise-bags', {
+      // ✅ Добавляем координаты в запрос (если есть)
+      let url = '/api/surprise-bags';
+      if (location?.lat && location?.lon) {
+        url += `?lat=${location.lat}&lon=${location.lon}`;
+        console.log(`📍 Отправляем координаты: ${location.lat}, ${location.lon}`);
+      }
+      
+      const response = await fetch(url, {
         headers,
         credentials: 'include',
       });
@@ -160,9 +247,110 @@ export default function HomePage() {
         if (isInitial) setLoading(false);
       }
     }
+  }, [getAuthToken, location]);
+
+  // ============================================================
+  // useEffect: ПОЛУЧЕНИЕ ЛОКАЦИИ ПРИ ЗАГРУЗКЕ
+  // ============================================================
+  useEffect(() => {
+    getLocation();
+  }, [getLocation]);
+
+  // ============================================================
+  // useEffect: ПОЛУЧЕНИЕ ТОКЕНА
+  // ============================================================
+  useEffect(() => {
+    const token = getAuthToken();
+    setUserToken(token);
+    console.log('🔑 Токен на главной:', token ? 'Есть ✅' : 'Нет ❌');
+    
+    const userStr = sessionStorage.getItem('user');
+    if (userStr) {
+      try {
+        const parsed = JSON.parse(userStr);
+        setUser({
+          name: parsed.full_name || parsed.name,
+          id: parsed.id,
+          phone: parsed.phone
+        });
+      } catch(e) {}
+    }
   }, [getAuthToken]);
 
-  // ✅ showNotification (без изменений)
+  // ============================================================
+  // WebSocket
+  // ============================================================
+  const wsUrl = userToken 
+    ? `wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(userToken)}` 
+    : null;
+  
+  const { isConnected, lastMessage } = useWebSocket(wsUrl);
+
+  // ============================================================
+  // useEffect: ЗАГРУЗКА СЮРПРИЗОВ ПОСЛЕ ПОЛУЧЕНИЯ ЛОКАЦИИ
+  // ============================================================
+  useEffect(() => {
+    if (locationLoading || showSplash) return;
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+      fetchBags(true, true);
+    }
+  }, [locationLoading, showSplash, fetchBags]);
+
+  // ============================================================
+  // ОБРАБОТКА СООБЩЕНИЙ WEBSOCKET
+  // ============================================================
+  useEffect(() => {
+    if (!lastMessage) return;
+    
+    console.log('📨 Получено WS сообщение:', lastMessage);
+    
+    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
+      fetchBags(false, false);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Новый сюрприз!', {
+          body: 'Появился новый сюрприз рядом с вами!',
+          icon: '/logo.png'
+        });
+      }
+    }
+    
+    if (lastMessage.type === 'delete_bag') {
+      fetchBags(false, false);
+    }
+    
+    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
+      const { bag_id, available_quantity, is_active } = lastMessage.data;
+      
+      setBags(prevBags => {
+        const updatedBags = prevBags.map(bag => 
+          bag.id === bag_id 
+            ? { ...bag, available_quantity: available_quantity, is_active: is_active ?? bag.is_active }
+            : bag
+        );
+        const filteredBags = updatedBags.filter(bag => bag.available_quantity > 0);
+        if (filteredBags.length !== prevBags.length) setLastUpdate(new Date());
+        return filteredBags;
+      });
+    }
+    
+    if (lastMessage.type === 'courier_arrived') {
+      showCourierArrivedNotification(lastMessage.data);
+    }
+    
+    if (lastMessage.type === 'order_assigned') {
+      const { courier_name, courier_phone, estimated_time } = lastMessage.data;
+      showNotification(
+        'Курьер назначен!',
+        `${courier_name} (${courier_phone}) везет ваш заказ. Ожидайте ${estimated_time || 30} минут.`,
+        'info'
+      );
+    }
+  }, [lastMessage, fetchBags]);
+
+  // ============================================================
+  // УВЕДОМЛЕНИЯ
+  // ============================================================
   const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
     if (typeof window === 'undefined') return;
     
@@ -191,7 +379,6 @@ export default function HomePage() {
     }
   };
 
-  // ✅ showCourierArrivedNotification (без изменений)
   const showCourierArrivedNotification = (data: any) => {
     if (typeof window === 'undefined') return;
     
@@ -251,63 +438,21 @@ export default function HomePage() {
     }, 6000);
   };
 
-  const handleSupplierClick = (supplierId: number, supplierName: string) => {
-    router.push(`/supplier/${supplierId}`);
-  };
-
-  // ✅ Обработка WebSocket сообщений
-  useEffect(() => {
-    if (!lastMessage) return;
-    
-    console.log('📨 Получено WS сообщение:', lastMessage);
-    
-    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
-      fetchBags(false, false);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Новый сюрприз!', {
-          body: 'Появился новый сюрприз рядом с вами!',
-          icon: '/logo.png'
-        });
-      }
-    }
-    
-    if (lastMessage.type === 'delete_bag') {
-      fetchBags(false, false);
-    }
-    
-    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
-      const { bag_id, available_quantity, is_active } = lastMessage.data;
-      
-      setBags(prevBags => {
-        const updatedBags = prevBags.map(bag => 
-          bag.id === bag_id 
-            ? { ...bag, available_quantity: available_quantity, is_active: is_active ?? bag.is_active }
-            : bag
-        );
-        const filteredBags = updatedBags.filter(bag => bag.available_quantity > 0);
-        if (filteredBags.length !== prevBags.length) setLastUpdate(new Date());
-        return filteredBags;
-      });
-    }
-    
-    if (lastMessage.type === 'courier_arrived') {
-      showCourierArrivedNotification(lastMessage.data);
-    }
-    
-    if (lastMessage.type === 'order_assigned') {
-      const { courier_name, courier_phone, estimated_time } = lastMessage.data;
-      showNotification(
-        'Курьер назначен!',
-        `${courier_name} (${courier_phone}) везет ваш заказ. Ожидайте ${estimated_time || 30} минут.`,
-        'info'
-      );
-    }
-  }, [lastMessage, fetchBags]);
+  const refreshAfterOrder = useCallback(async () => {
+    await fetchBags();
+  }, [fetchBags]);
 
   const handleManualRefresh = () => {
     fetchBags(true, false);
   };
 
+  const handleSupplierClick = (supplierId: number, supplierName: string) => {
+    router.push(`/supplier/${supplierId}`);
+  };
+
+  // ============================================================
+  // NOTIFICATIONS PERMISSION
+  // ============================================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -316,6 +461,9 @@ export default function HomePage() {
     }
   }, []);
 
+  // ============================================================
+  // SPLASH SCREEN
+  // ============================================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -340,6 +488,9 @@ export default function HomePage() {
     }
   }, []);
 
+  // ============================================================
+  // ПОЛЬЗОВАТЕЛЬ
+  // ============================================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -358,7 +509,6 @@ export default function HomePage() {
     const fetchUser = async () => {
       try {
         const token = getAuthToken();
-        // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
         const res = await fetch('/api/check-auth', { 
           credentials: 'include',
           headers: {
@@ -384,20 +534,18 @@ export default function HomePage() {
     fetchUser();
   }, [getAuthToken]);
 
-  useEffect(() => {
-    if (showSplash) return;
-    if (!initialLoadDoneRef.current) {
-      initialLoadDoneRef.current = true;
-      fetchBags(true, true);
-    }
-  }, [showSplash, fetchBags]);
-
+  // ============================================================
+  // CLEANUP
+  // ============================================================
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
   }, []);
 
+  // ============================================================
+  // REFRESH OFFERS
+  // ============================================================
   useEffect(() => {
     const handleRefreshOffers = () => {
       fetchBags(false, false);
@@ -406,6 +554,9 @@ export default function HomePage() {
     return () => window.removeEventListener('refreshOffers', handleRefreshOffers);
   }, [fetchBags]);
 
+  // ============================================================
+  // ПЕРЕВОДЫ
+  // ============================================================
   const t = {
     kz: {
       greeting: 'Сәлем',
@@ -447,6 +598,9 @@ export default function HomePage() {
     }
   };
 
+  // ============================================================
+  // ЛОГОТИП
+  // ============================================================
   const LogoCircle = () => {
     const [imgError, setImgError] = useState(false);
     
@@ -477,6 +631,9 @@ export default function HomePage() {
     );
   };
 
+  // ============================================================
+  // ЗАГРУЗКА
+  // ============================================================
   if (showSplash) {
     return (
       <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
@@ -487,7 +644,7 @@ export default function HomePage() {
     );
   }
 
-  if (loading) {
+  if (loading || locationLoading) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-gray-50">
         <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full"></div>
@@ -495,9 +652,12 @@ export default function HomePage() {
     );
   }
 
+  // ============================================================
+  // ОСНОВНОЙ РЕНДЕР
+  // ============================================================
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header с логотипом и номером телефона */}
+      {/* Header */}
       <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">
@@ -507,6 +667,11 @@ export default function HomePage() {
           {user?.phone && (
             <p className="text-sm text-white/80 mt-1 font-medium">
               {user.phone}
+            </p>
+          )}
+          {location?.city && (
+            <p className="text-xs text-white/60 mt-0.5">
+              📍 {location.city} {location.source === 'ip' && '(по IP)'}
             </p>
           )}
         </div>
@@ -557,7 +722,6 @@ export default function HomePage() {
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>
-            {/* Заголовок с иконкой Store */}
             <div className="mb-4">
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <Store size={20} className="text-gray-400/60" />
@@ -621,8 +785,8 @@ export default function HomePage() {
         ) : (
           <div className="w-full h-[500px]">
             <SuppliersMap 
-              userLat={location.lat} 
-              userLon={location.lon}
+              userLat={location?.lat || 50.318754} 
+              userLon={location?.lon || 57.368359}
               onSupplierClick={handleSupplierClick}
               showUserLocation={true}
             />
