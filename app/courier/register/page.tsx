@@ -33,8 +33,6 @@ export default function CourierRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [registered, setRegistered] = useState(false);
-  
-  const API_URL = 'https://toogood-2ncf.onrender.com';
 
   const t = {
     kz: {
@@ -119,7 +117,7 @@ export default function CourierRegisterPage() {
     setLoading(true);
     
     try {
-      const res = await fetch(`${API_URL}/courier/register`, {
+      const res = await fetch(`/courier/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

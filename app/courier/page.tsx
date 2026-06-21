@@ -18,9 +18,6 @@ export default function CourierLogin() {
   
   const redirectingRef = useRef(false);
 
-  // ❌ УБЕРИ ЭТО!
-  // const API_URL = 'https://toogood-production.up.railway.app';
-
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
@@ -101,7 +98,7 @@ export default function CourierLogin() {
     try {
       console.log('🔐 Попытка входа курьера:', phone);
       
-      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ (БЕЗ API_URL!)
+
       const response = await fetch('/api/courier/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

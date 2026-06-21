@@ -18,9 +18,6 @@ export default function CourierLogin() {
   
   const redirectingRef = useRef(false);
 
-  // ❌ УБЕРИ ЭТУ СТРОКУ!
-  // const API_URL = 'https://toogood-production.up.railway.app';
-
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
@@ -87,7 +84,7 @@ export default function CourierLogin() {
     return () => {
       isMounted = false;
     };
-  }, []); // ✅ УБРАЛИ API_URL ИЗ ЗАВИСИМОСТЕЙ
+  }, []); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
