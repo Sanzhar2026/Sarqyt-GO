@@ -76,7 +76,6 @@ export default function ProfilePage() {
     fetchUser();
   }, [router]);
 
-  // Обработка выбора файла для аватара
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -90,7 +89,6 @@ export default function ProfilePage() {
     setShowCropper(true);
   };
 
-  // Обработка обрезанного аватара
   const handleCropComplete = async (croppedBlob: Blob) => {
     setShowCropper(false);
     setUploading(true);
@@ -164,7 +162,7 @@ export default function ProfilePage() {
           <p className="text-gray-500">{error}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl"
+            className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl hover:bg-[#2a5a4d] transition"
           >
             Попробовать снова
           </button>
@@ -180,7 +178,7 @@ export default function ProfilePage() {
           <div className="text-5xl mb-4">👤</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Пользователь не найден</h2>
           <Link href="/login">
-            <button className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl">
+            <button className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl hover:bg-[#2a5a4d] transition">
               Войти
             </button>
           </Link>
@@ -194,7 +192,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Кроппер */}
       {showCropper && selectedFile && (
         <AvatarCropper
           imageFile={selectedFile}
@@ -206,13 +203,12 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Заголовок */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Профиль</h1>
           <button 
             onClick={() => router.back()}
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition"
           >
             ✕
           </button>
@@ -271,7 +267,7 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          {/* Данные пользователя (БЕЗ ИНИЦИАЛОВ) */}
+          {/* Данные пользователя */}
           <div className="space-y-4 border-t border-gray-100 pt-4">
             <div>
               <p className="text-xs text-gray-400">Имя</p>
@@ -305,27 +301,26 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Кнопки */}
+          {/* ✅ ВСЕ КНОПКИ ЗЕЛЕНЫЕ */}
           <div className="mt-6 space-y-3">
             {user.role !== 'courier' && (
               <Link href="/courier/register">
-                <button className="w-full bg-[#fbbf24] text-gray-800 py-3.5 rounded-2xl font-semibold text-base hover:bg-[#f59e0b] transition shadow-md">
-                  🚚 Стать курьером
+                <button className="w-full bg-[#367666] text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-[#2a5a4d] transition shadow-md">
+                  Стать курьером
                 </button>
               </Link>
             )}
 
-            {/* Кнопка "Выйти" — БОРДОВАЯ */}
             <button 
               onClick={handleLogout}
-              className="w-full bg-red-800 text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-red-900 transition shadow-md"
+              className="w-full bg-[#367666] text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-[#2a5a4d] transition shadow-md"
             >
               Выйти
             </button>
 
             <Link href="/">
-              <button className="w-full bg-gray-100 text-gray-600 py-3 rounded-2xl font-medium text-sm hover:bg-gray-200 transition">
-                ← На главную
+              <button className="w-full bg-[#367666] text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-[#2a5a4d] transition shadow-md">
+                На главную
               </button>
             </Link>
           </div>
