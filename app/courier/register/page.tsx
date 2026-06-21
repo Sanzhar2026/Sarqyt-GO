@@ -1,4 +1,3 @@
-// app/courier/register/page.tsx - С ПРОЗРАЧНЫМИ ИКОНКАМИ
 
 'use client';
 
@@ -117,7 +116,7 @@ export default function CourierRegisterPage() {
     setLoading(true);
     
     try {
-      const res = await fetch(`/courier/register`, {
+      const res = await fetch(`/api/courier/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
