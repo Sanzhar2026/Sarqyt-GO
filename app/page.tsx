@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ВЕРСИЯ С ПОДДЕРЖКОЙ INSTAGRAM
+// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ С ПОДДЕРЖКОЙ INSTAGRAM
 
 'use client';
 
@@ -92,68 +92,75 @@ export default function HomePage() {
     return { lat: 50.318754, lon: 57.368359, city: 'Актобе' };
   };
 
-  const getLocation = useCallback(async () => {
-    setLocationLoading(true);
-    
-    // ✅ Если Instagram — сразу IP
-    if (isInstagramBrowser()) {
-      console.log('📱 Instagram браузер — используем IP геолокацию');
-      const ipLocation = await getLocationByIP();
-      setLocation({
-        ...ipLocation,
-        source: 'ip'
-      });
-      setLocationLoading(false);
-      return;
-    }
+  // ============================================================
+  // useEffect: ПОЛУЧЕНИЕ ЛОКАЦИИ (С ПРОВЕРКОЙ INSTAGRAM!)
+  // ============================================================
+  useEffect(() => {
+    const initLocation = async () => {
+      // ✅ СНАЧАЛА ПРОВЕРЯЕМ INSTAGRAM!
+      if (isInstagramBrowser()) {
+        console.log('📱 Instagram браузер — используем IP геолокацию');
+        setLocationLoading(true);
+        const ipLocation = await getLocationByIP();
+        setLocation({
+          ...ipLocation,
+          source: 'ip'
+        });
+        setLocationLoading(false);
+        return;
+      }
 
-    // ✅ Пробуем GPS
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`
-            );
-            const data = await response.json();
-            const city = data.address?.city || data.address?.town || data.address?.village || 'Актобе';
+      // ✅ ЕСЛИ НЕ INSTAGRAM — ПРОБУЕМ GPS
+      setLocationLoading(true);
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            try {
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`
+              );
+              const data = await response.json();
+              const city = data.address?.city || data.address?.town || data.address?.village || 'Актобе';
+              setLocation({
+                lat: latitude,
+                lon: longitude,
+                city: city,
+                source: 'geolocation'
+              });
+            } catch (e) {
+              setLocation({
+                lat: latitude,
+                lon: longitude,
+                city: 'Актобе',
+                source: 'geolocation'
+              });
+            }
+            setLocationLoading(false);
+          },
+          async (err) => {
+            console.warn('⚠️ GPS ошибка:', err);
+            const ipLocation = await getLocationByIP();
             setLocation({
-              lat: latitude,
-              lon: longitude,
-              city: city,
-              source: 'geolocation'
+              ...ipLocation,
+              source: 'ip'
             });
-          } catch (e) {
-            setLocation({
-              lat: latitude,
-              lon: longitude,
-              city: 'Актобе',
-              source: 'geolocation'
-            });
-          }
-          setLocationLoading(false);
-        },
-        async (err) => {
-          console.warn('⚠️ GPS ошибка:', err);
-          const ipLocation = await getLocationByIP();
-          setLocation({
-            ...ipLocation,
-            source: 'ip'
-          });
-          setLocationLoading(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    } else {
-      // GPS недоступен — IP
-      const ipLocation = await getLocationByIP();
-      setLocation({
-        ...ipLocation,
-        source: 'ip'
-      });
-      setLocationLoading(false);
-    }
+            setLocationLoading(false);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      } else {
+        const ipLocation = await getLocationByIP();
+        setLocation({
+          ...ipLocation,
+          source: 'ip'
+        });
+        setLocationLoading(false);
+      }
+    };
+
+    initLocation();
   }, [isInstagramBrowser]);
 
   // ============================================================
@@ -248,13 +255,6 @@ export default function HomePage() {
       }
     }
   }, [getAuthToken, location]);
-
-  // ============================================================
-  // useEffect: ПОЛУЧЕНИЕ ЛОКАЦИИ ПРИ ЗАГРУЗКЕ
-  // ============================================================
-  useEffect(() => {
-    getLocation();
-  }, [getLocation]);
 
   // ============================================================
   // useEffect: ПОЛУЧЕНИЕ ТОКЕНА
