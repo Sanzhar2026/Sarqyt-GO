@@ -1,3 +1,5 @@
+// app/orders/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -14,20 +16,31 @@ export default function OrdersPage() {
   const router = useRouter();
   const t = translations[lang]
 
-  // Добавить защиту
-  useEffect(() => {
-    const token = sessionStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-    }
-  }, [router]);
+  // ✅ ПРАВИЛЬНОЕ ПОЛУЧЕНИЕ ТОКЕНА
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
+  };
 
   useEffect(() => {
+    const token = getAuthToken();
+    if (!token) {
+      console.log('❌ Нет токена, редирект на логин');
+      router.push('/login');
+      return;
+    }
+    console.log('✅ Токен есть, загружаем заказы');
+    
     getUserOrders()
       .then(setOrders)
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+      .catch(err => {
+        console.error('Ошибка загрузки заказов:', err);
+        if (err.status === 401) {
+          router.push('/login');
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [router]);
 
   if (loading) {
     return (
