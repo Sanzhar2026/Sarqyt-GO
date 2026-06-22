@@ -1,10 +1,7 @@
-// app/components/CourierMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
 
-// Загружаем Leaflet динамически
 let L: any;
 
 const loadLeaflet = async () => {
@@ -24,7 +21,6 @@ const loadLeaflet = async () => {
   return L;
 };
 
-// ORS API KEY
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjYyMDU3ZGE4OTkxODQ2M2JhNmVlZDgzM2QzMDE2OTYwIiwiaCI6Im11cm11cjY0In0=';
 
 const getRouteFromORS = async (startLat: number, startLon: number, endLat: number, endLon: number) => {
@@ -89,9 +85,20 @@ const decodePolyline = (encoded: string) => {
   return coords;
 };
 
+const getStraightLineRoute = (startLat: number, startLon: number, endLat: number, endLon: number) => {
+  const points = [];
+  for (let i = 0; i <= 100; i++) {
+    const t = i / 100;
+    points.push([
+      startLat + (endLat - startLat) * t,
+      startLon + (endLon - startLon) * t
+    ]);
+  }
+  return points;
+};
+
 const LIGHT_MAP_TILE = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
-// ✅ ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС
 interface CourierMapProps {
   restaurantLocation?: { lat: number; lon: number };
   customerLocation?: { lat: number; lon: number };
@@ -100,7 +107,6 @@ interface CourierMapProps {
   routeColor?: string;
   routeWidth?: number;
   courierLocation?: { lat: number; lon: number };
-  // ✅ orderId ДОБАВЛЕН (но не используется, можно убрать)
   orderId?: string | number;
 }
 
@@ -112,7 +118,7 @@ export default function CourierMap({
   routeColor = "#94a3b8",
   routeWidth = 3,
   courierLocation,
-  orderId, // ✅ Просто игнорируем, если не нужен
+  orderId,
 }: CourierMapProps) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -123,9 +129,6 @@ export default function CourierMap({
   const mapInstanceRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
   
-  const API_URL = 'https://toogood-production.up.railway.app';
-
-  // Получение геолокации
   useEffect(() => {
     if (!navigator.geolocation) {
       setUserLocation({ lat: 50.289, lon: 57.149 });
@@ -146,7 +149,6 @@ export default function CourierMap({
     );
   }, []);
 
-  // Определяем центр карты
   useEffect(() => {
     if (restaurantLocation?.lat && restaurantLocation?.lon) {
       setMapCenter([restaurantLocation.lat, restaurantLocation.lon]);
@@ -159,7 +161,6 @@ export default function CourierMap({
     }
   }, [restaurantLocation, customerLocation, userLocation]);
 
-  // Загрузка карты
   useEffect(() => {
     const initMap = async () => {
       await loadLeaflet();
@@ -168,7 +169,6 @@ export default function CourierMap({
     initMap();
   }, []);
 
-  // Инициализация карты
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || mapInstanceRef.current) return;
     if (!mapCenter) return;
@@ -193,7 +193,6 @@ export default function CourierMap({
     console.log('🗺️ Карта инициализирована');
   }, [mapLoaded, mapCenter]);
 
-  // Построение маршрута через ORS
   useEffect(() => {
     if (!mapInstanceRef.current || !showRoute) return;
     if (!restaurantLocation?.lat || !restaurantLocation?.lon || 
@@ -211,43 +210,67 @@ export default function CourierMap({
           customerLocation.lat, customerLocation.lon
         );
 
+        console.log('📦 ORS данные:', data);
+
         if (routeLayerRef.current) {
           routeLayerRef.current.remove();
           routeLayerRef.current = null;
         }
 
-        if (data && data.features && data.features.length > 0) {
-          const coordinates = data.features[0].geometry.coordinates;
-          const points = coordinates.map((coord: number[]) => [coord[1], coord[0]]);
+        if (data && data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const geometry = route.geometry;
+          const decodedPoints = decodePolyline(geometry);
           
-          routeLayerRef.current = L.polyline(points, {
-            color: routeColor,
-            weight: routeWidth,
-            opacity: 0.8,
-            lineCap: 'round',
-            lineJoin: 'round',
-          }).addTo(mapInstanceRef.current);
+          if (decodedPoints && decodedPoints.length > 0) {
+            routeLayerRef.current = L.polyline(decodedPoints, {
+              color: routeColor,
+              weight: routeWidth,
+              opacity: 0.8,
+              lineCap: 'round',
+              lineJoin: 'round',
+            }).addTo(mapInstanceRef.current);
 
-          setRouteBuilt(true);
-          console.log(`✅ Маршрут построен! Точек: ${points.length}`);
-          
-          mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), { padding: [50, 50] });
-        } else {
-          console.log('❌ ORS не вернул маршрут');
+            setRouteBuilt(true);
+            console.log(`✅ Маршрут построен! Точек: ${decodedPoints.length}`);
+            
+            mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), { 
+              padding: [50, 50] 
+            });
+            return;
+          }
         }
+        
+        console.log('⚠️ ORS не вернул маршрут, используем прямую линию');
+        const points = getStraightLineRoute(
+          restaurantLocation.lat, restaurantLocation.lon,
+          customerLocation.lat, customerLocation.lon
+        );
+        
+        routeLayerRef.current = L.polyline(points, {
+          color: routeColor,
+          weight: routeWidth,
+          opacity: 0.8,
+          lineCap: 'round',
+          lineJoin: 'round',
+        }).addTo(mapInstanceRef.current);
+        
+        setRouteBuilt(true);
+        mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), { 
+          padding: [50, 50] 
+        });
+        
       } catch (error) {
-        console.error('❌ Ошибка:', error);
+        console.error('❌ Ошибка построения маршрута:', error);
       }
     };
 
     setTimeout(buildRoute, 500);
   }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded, routeBuilt]);
 
-  // Маркеры
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     
-    // Ресторан
     if (restaurantLocation?.lat && restaurantLocation?.lon) {
       const icon = L.divIcon({
         html: `<div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg">🍽️</div>`,
@@ -259,7 +282,6 @@ export default function CourierMap({
         .bindPopup('Ресторан');
     }
     
-    // Клиент
     if (customerLocation?.lat && customerLocation?.lon) {
       const icon = L.divIcon({
         html: `<div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg">🏠</div>`,
@@ -271,7 +293,6 @@ export default function CourierMap({
         .bindPopup('Клиент');
     }
     
-    // Пользователь
     if (userLocation?.lat && userLocation?.lon) {
       const icon = L.divIcon({
         html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg"></div>`,
