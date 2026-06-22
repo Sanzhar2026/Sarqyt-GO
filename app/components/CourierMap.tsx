@@ -1,3 +1,5 @@
+// app/components/CourierMap.tsx - ЗЕЛЕНАЯ ЛИНИЯ
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -115,8 +117,8 @@ export default function CourierMap({
   customerLocation,
   height = "100%",
   showRoute = false,
-  routeColor = "#94a3b8",
-  routeWidth = 3,
+  routeColor = "#367666",   // ✅ ЗЕЛЕНЫЙ!
+  routeWidth = 4,            // ✅ ТОЛСТЫЙ!
   courierLocation,
   orderId,
 }: CourierMapProps) {
@@ -128,7 +130,7 @@ export default function CourierMap({
   const mapRef = useRef<any>(null);
   const mapInstanceRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
-  
+
   useEffect(() => {
     if (!navigator.geolocation) {
       setUserLocation({ lat: 50.289, lon: 57.149 });
@@ -223,9 +225,10 @@ export default function CourierMap({
           const decodedPoints = decodePolyline(geometry);
           
           if (decodedPoints && decodedPoints.length > 0) {
+            // ✅ ЗЕЛЕНАЯ ЛИНИЯ
             routeLayerRef.current = L.polyline(decodedPoints, {
-              color: routeColor,
-              weight: routeWidth,
+              color: routeColor,      // #367666
+              weight: routeWidth,     // 4px
               opacity: 0.8,
               lineCap: 'round',
               lineJoin: 'round',
@@ -247,9 +250,10 @@ export default function CourierMap({
           customerLocation.lat, customerLocation.lon
         );
         
+        // ✅ ЗЕЛЕНАЯ ЛИНИЯ (FALLBACK)
         routeLayerRef.current = L.polyline(points, {
-          color: routeColor,
-          weight: routeWidth,
+          color: routeColor,      // #367666
+          weight: routeWidth,     // 4px
           opacity: 0.8,
           lineCap: 'round',
           lineJoin: 'round',
@@ -268,9 +272,11 @@ export default function CourierMap({
     setTimeout(buildRoute, 500);
   }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded, routeBuilt]);
 
+  // Маркеры
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     
+    // Ресторан
     if (restaurantLocation?.lat && restaurantLocation?.lon) {
       const icon = L.divIcon({
         html: `<div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg">🍽️</div>`,
@@ -282,6 +288,7 @@ export default function CourierMap({
         .bindPopup('Ресторан');
     }
     
+    // Клиент
     if (customerLocation?.lat && customerLocation?.lon) {
       const icon = L.divIcon({
         html: `<div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg">🏠</div>`,
@@ -293,6 +300,7 @@ export default function CourierMap({
         .bindPopup('Клиент');
     }
     
+    // Пользователь
     if (userLocation?.lat && userLocation?.lon) {
       const icon = L.divIcon({
         html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg"></div>`,
