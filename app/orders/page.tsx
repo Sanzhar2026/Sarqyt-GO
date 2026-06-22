@@ -1,4 +1,4 @@
-// app/orders/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/orders/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client'
 
@@ -27,11 +27,11 @@ export default function OrdersPage() {
     }
     
     console.log('✅ Токен есть, загружаем заказы')
-    console.log('🔑 Токен:', token.substring(0, 20) + '...')
     
     getUserOrders()
       .then((data) => {
         console.log('📦 Получено заказов:', data?.length || 0)
+        console.log('📋 Первый заказ:', data?.[0])
         setOrders(data || [])
         setError(null)
       })
@@ -40,7 +40,6 @@ export default function OrdersPage() {
         setError(err.message || 'Ошибка загрузки заказов')
         
         if (err.status === 401 || err.message?.includes('401')) {
-          // Токен невалидный - удаляем и редиректим
           sessionStorage.removeItem('userToken')
           sessionStorage.removeItem('user')
           localStorage.removeItem('access_token')
@@ -52,19 +51,36 @@ export default function OrdersPage() {
       })
   }, [router])
 
-  // Рендер загрузки
+  // ✅ Функция для получения названия заказа
+  const getOrderName = (order: Order): string => {
+    return order.bag_name || 
+           order.surprise_bag_name || 
+           `Заказ #${order.order_number}`
+  }
+
+  // ✅ Функция для получения суммы заказа
+  const getOrderAmount = (order: Order): number => {
+    return order.amount_paid || order.amount || 0
+  }
+
+  // ✅ Функция для получения продавца
+  const getSupplierName = (order: Order): string => {
+    return order.supplier_name || 'Продавец'
+  }
+
+  // ✅ Функция для получения адреса
+  const getAddress = (order: Order): string => {
+    return order.customer_address || order.address || 'Адрес не указан'
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666] mx-auto"></div>
-          <p className="text-gray-500 mt-4 text-sm">Загрузка заказов...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
       </div>
     )
   }
 
-  // Рендер ошибки
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
@@ -73,17 +89,7 @@ export default function OrdersPage() {
           <h2 className="text-xl font-bold text-gray-800 mb-2">Ошибка</h2>
           <p className="text-gray-500 mb-6">{error}</p>
           <button
-            onClick={() => {
-              setError(null)
-              setLoading(true)
-              const token = getAuthToken()
-              if (token) {
-                getUserOrders()
-                  .then(setOrders)
-                  .catch((err) => setError(err.message))
-                  .finally(() => setLoading(false))
-              }
-            }}
+            onClick={() => window.location.reload()}
             className="bg-[#367666] text-white px-6 py-3 rounded-xl hover:bg-[#2a5a4d] transition"
           >
             Попробовать снова
@@ -155,11 +161,16 @@ export default function OrdersPage() {
                       </p>
                     </div>
                     <h3 className="font-semibold text-lg mt-1 text-gray-800 line-clamp-1">
-                      {order.bag_name || order.surprise_bag_name || 'Сюрприз-пакет'}
+                      {getOrderName(order)}
                     </h3>
                     <p className="text-gray-500 text-sm line-clamp-1">
-                      {order.supplier_name || 'Продавец'}
+                      {order.delivery_type === 'delivery' ? '🚚 Доставка' : '🏪 Самовывоз'}
                     </p>
+                    {order.address && (
+                      <p className="text-gray-400 text-xs line-clamp-1 mt-0.5">
+                        📍 {order.address}
+                      </p>
+                    )}
                   </div>
                   <div className="ml-3 flex-shrink-0">
                     <OrderStatusBadge status={order.status} lang={lang} />
@@ -170,7 +181,7 @@ export default function OrdersPage() {
                   <div>
                     <p className="text-xs text-gray-400">Сумма</p>
                     <p className="text-[#367666] font-bold text-lg">
-                      {order.amount_paid || 0} ₸
+                      {getOrderAmount(order)} ₸
                     </p>
                   </div>
                   <div className="text-right">
