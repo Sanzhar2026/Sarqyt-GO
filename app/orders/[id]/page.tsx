@@ -1,3 +1,5 @@
+// app/orders/[id]/page.tsx - БЕЗ ИКОНОК
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -57,7 +59,6 @@ export default function OrderDetailPage() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundReason, setRefundReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -66,7 +67,6 @@ export default function OrderDetailPage() {
 
   const API_URL = 'https://toogood-production.up.railway.app';
 
-  // ✅ Функция для получения токена
   const getAuthToken = () => {
     return sessionStorage.getItem('userToken') || 
            sessionStorage.getItem('authToken') || 
@@ -74,26 +74,21 @@ export default function OrderDetailPage() {
            null;
   };
 
-  // ✅ Проверка роли пользователя (ВАЖНО!)
   useEffect(() => {
     const userStr = sessionStorage.getItem('user');
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
         setUserRole(user.role || 'customer');
-        console.log('👤 Роль пользователя из sessionStorage:', user.role || 'customer');
       } catch (e) {
-        console.error('Ошибка парсинга user:', e);
         setUserRole('customer');
       }
     } else {
-      // Если нет user в sessionStorage, пробуем из токена
       const token = getAuthToken();
       if (token) {
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
           setUserRole(payload.role || 'customer');
-          console.log('👤 Роль из токена:', payload.role || 'customer');
         } catch (e) {
           setUserRole('customer');
         }
@@ -103,7 +98,6 @@ export default function OrderDetailPage() {
     }
   }, []);
 
-  // Загрузка заказа
   const fetchOrder = async () => {
     const orderId = params?.id;
     if (!orderId) return;
@@ -133,7 +127,6 @@ export default function OrderDetailPage() {
     fetchOrder();
   }, [params?.id]);
 
-  // WebSocket для получения уведомлений
   useEffect(() => {
     const orderId = params?.id;
     if (!orderId) return;
@@ -162,7 +155,6 @@ export default function OrderDetailPage() {
     return () => ws.close();
   }, [params?.id]);
 
-  // Таймер обратного отсчета
   useEffect(() => {
     if (order?.status === 'out_for_delivery' && order?.delivery_deadline) {
       const interval = setInterval(() => {
@@ -187,7 +179,6 @@ export default function OrderDetailPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // ✅ КЛИЕНТ ПОДТВЕРЖДАЕТ ПОЛУЧЕНИЕ
   const handleConfirmDelivery = async () => {
     setConfirmLoading(true);
     try {
@@ -209,7 +200,7 @@ export default function OrderDetailPage() {
       
       const data = await response.json();
       if (data.success) {
-        showToast('✅ Спасибо! Заказ получен.', 'success');
+        showToast('Спасибо! Заказ получен.', 'success');
         setShowConfirmModal(false);
         fetchOrder();
       } else {
@@ -223,7 +214,6 @@ export default function OrderDetailPage() {
     }
   };
 
-  // ЗАПРОС ВОЗВРАТА
   const handleRequestRefund = async () => {
     if (!refundReason.trim()) {
       alert('Укажите причину возврата');
@@ -267,6 +257,7 @@ export default function OrderDetailPage() {
       ready_for_pickup: 'bg-orange-500',
       out_for_delivery: 'bg-indigo-500',
       nearby: 'bg-green-500',
+      waiting_confirmation: 'bg-yellow-500',
       delivered: 'bg-green-600',
       cancelled: 'bg-red-500'
     };
@@ -281,6 +272,7 @@ export default function OrderDetailPage() {
       ready_for_pickup: { kz: 'Дайын', ru: 'Готов к выдаче' },
       out_for_delivery: { kz: 'Жеткізілуде', ru: 'Доставляется' },
       nearby: { kz: 'Жақын жерде', ru: 'Курьер рядом' },
+      waiting_confirmation: { kz: 'Растауды күту', ru: 'Ожидает подтверждения' },
       delivered: { kz: 'Жеткізілді', ru: 'Доставлен' },
       cancelled: { kz: 'Бас тартылды', ru: 'Отменен' }
     };
@@ -334,9 +326,9 @@ export default function OrderDetailPage() {
     );
   }
 
-  // ✅ Проверяем роль
   const isCustomer = userRole === 'customer';
   const isCourier = userRole === 'courier';
+  const isWaitingConfirmation = order.status === 'waiting_confirmation';
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -348,7 +340,7 @@ export default function OrderDetailPage() {
         <h1 className="text-2xl font-bold">Заказ #{order.order_number}</h1>
         <p className="opacity-90 mt-1">от {new Date(order.created_at).toLocaleDateString()}</p>
         <p className="text-xs opacity-70 mt-1">
-          {isCourier ? '🚚 Вы вошли как курьер' : '👤 Вы вошли как клиент'}
+          {isCourier ? 'Вы вошли как курьер' : 'Вы вошли как клиент'}
         </p>
       </div>
 
@@ -380,11 +372,31 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* ✅ КНОПКА ДЛЯ КЛИЕНТА - ПОЯВЛЯЕТСЯ ТОЛЬКО ДЛЯ КЛИЕНТА */}
-        {order.status === 'nearby' && isCustomer && (
+        {/* Для клиента: Ожидание подтверждения */}
+        {isCustomer && isWaitingConfirmation && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
+            <h2 className="font-bold text-xl text-yellow-700 mb-2">Заказ передан курьером</h2>
+            {order.assigned_courier && (
+              <p className="text-yellow-600 text-sm mb-2">
+                {order.assigned_courier.first_name} {order.assigned_courier.last_name} передал вам заказ
+              </p>
+            )}
+            <p className="text-yellow-600 text-sm mb-4">
+              Подтвердите получение заказа, чтобы завершить доставку.
+            </p>
+            <button
+              onClick={() => setShowConfirmModal(true)}
+              className="w-full bg-[#367666] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#2a5a4d] transition shadow-md"
+            >
+              ПОДТВЕРДИТЬ ПОЛУЧЕНИЕ
+            </button>
+          </div>
+        )}
+
+        {/* Для клиента: Курьер рядом */}
+        {isCustomer && order.status === 'nearby' && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm animate-pulse">
-            <div className="text-5xl mb-3">🚪</div>
-            <h2 className="font-bold text-xl text-green-700 mb-2">Курьер рядом!</h2>
+            <h2 className="font-bold text-xl text-green-700 mb-2">Курьер рядом</h2>
             {order.assigned_courier && (
               <p className="text-green-600 text-sm mb-2">
                 {order.assigned_courier.first_name} {order.assigned_courier.last_name} ожидает вас
@@ -397,25 +409,31 @@ export default function OrderDetailPage() {
               onClick={() => setShowConfirmModal(true)}
               className="w-full bg-[#367666] text-white py-4 rounded-xl font-semibold text-lg hover:bg-[#2a5a4d] transition shadow-md"
             >
-              ✅ ПОЛУЧИЛ ЗАКАЗ
+              ПОЛУЧИЛ ЗАКАЗ
             </button>
           </div>
         )}
 
-        {/* ⚠️ ДЛЯ КУРЬЕРА - показывает что клиент должен подтвердить */}
-        {order.status === 'nearby' && isCourier && (
+        {/* Для курьера: Ожидание подтверждения */}
+        {isCourier && isWaitingConfirmation && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6 text-center shadow-sm">
-            <div className="text-4xl mb-2">⏳</div>
             <p className="text-blue-700 font-medium">Ожидайте подтверждения от клиента</p>
             <p className="text-blue-600 text-sm">Клиент получит уведомление и подтвердит получение</p>
+          </div>
+        )}
+
+        {/* Для курьера: Курьер рядом */}
+        {isCourier && order.status === 'nearby' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6 text-center shadow-sm">
+            <p className="text-blue-700 font-medium">Вы прибыли к клиенту</p>
+            <p className="text-blue-600 text-sm">Клиент должен подтвердить получение</p>
           </div>
         )}
 
         {/* Заказ в пути */}
         {order.status === 'out_for_delivery' && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3">🚗</div>
-            <h2 className="font-bold text-xl text-blue-700 mb-2">Ваш заказ в пути!</h2>
+            <h2 className="font-bold text-xl text-blue-700 mb-2">Ваш заказ в пути</h2>
             <p className="text-blue-600 text-sm">Курьер уже выехал к вам</p>
             <div className="mt-4">
               <p className="text-3xl font-mono font-bold text-blue-600">
@@ -429,8 +447,7 @@ export default function OrderDetailPage() {
         {/* Заказ доставлен */}
         {order.status === 'delivered' && (
           <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3">✅</div>
-            <h2 className="font-bold text-xl text-green-700 mb-2">Заказ успешно доставлен!</h2>
+            <h2 className="font-bold text-xl text-green-700 mb-2">Заказ успешно доставлен</h2>
             <p className="text-green-600 text-sm mt-1">Спасибо, что выбрали нас</p>
           </div>
         )}
@@ -438,14 +455,13 @@ export default function OrderDetailPage() {
         {/* Запрос на возврат отправлен */}
         {order.refund_status === 'requested' && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-6 text-center shadow-sm">
-            <div className="text-5xl mb-3">⏳</div>
             <h2 className="font-bold text-xl text-yellow-700 mt-2">Запрос на возврат отправлен</h2>
             <p className="text-yellow-600 text-sm mt-1">Администратор рассмотрит ваш запрос</p>
           </div>
         )}
 
         {/* Карта */}
-        {(order.status === 'out_for_delivery' || order.status === 'nearby' || order.status === 'delivered') && (
+        {(order.status === 'out_for_delivery' || order.status === 'nearby' || order.status === 'waiting_confirmation' || order.status === 'delivered') && (
           <div className="bg-white rounded-2xl p-6 mb-6 shadow-sm">
             <h2 className="font-bold text-lg mb-4">Карта доставки</h2>
             <DeliveryMap
@@ -509,8 +525,8 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Кнопка возврата - ТОЛЬКО ДЛЯ КЛИЕНТА */}
-        {isCustomer && order.status === 'out_for_delivery' && order.payment_status !== 'refunded' && (
+        {/* Кнопка возврата - только для клиента */}
+        {isCustomer && (order.status === 'out_for_delivery' || order.status === 'waiting_confirmation' || order.status === 'nearby') && order.payment_status !== 'refunded' && (
           <button
             onClick={() => setShowRefundModal(true)}
             className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition"
@@ -520,12 +536,11 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      {/* ✅ МОДАЛЬНОЕ ОКНО - ТОЛЬКО ДЛЯ КЛИЕНТА */}
+      {/* Модальное окно подтверждения - только для клиента */}
       {showConfirmModal && isCustomer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 animate-fade-in">
             <div className="text-center mb-6">
-              <div className="text-6xl mb-3">📦</div>
               <h2 className="text-2xl font-bold text-gray-800">Подтвердите получение</h2>
               <p className="text-gray-500 text-sm mt-2">
                 Вы уверены, что получили заказ?<br />
@@ -550,7 +565,7 @@ export default function OrderDetailPage() {
                 disabled={confirmLoading}
                 className="flex-1 bg-[#367666] text-white py-3 rounded-xl font-semibold hover:bg-[#2a5a4d] transition disabled:opacity-50"
               >
-                {confirmLoading ? 'Подтверждение...' : '✅ Да, получил'}
+                {confirmLoading ? 'Подтверждение...' : 'Да, получил'}
               </button>
               <button
                 onClick={() => setShowConfirmModal(false)}
@@ -563,12 +578,11 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* Модальное окно отказа - ТОЛЬКО ДЛЯ КЛИЕНТА */}
+      {/* Модальное окно отказа - только для клиента */}
       {showRefundModal && isCustomer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <div className="text-center mb-4">
-              <div className="text-5xl mb-2">❌</div>
               <h2 className="text-xl font-bold">Отказ от заказа</h2>
               <p className="text-gray-500 text-sm mt-1">
                 Укажите причину отказа. Администратор рассмотрит ваш запрос.
