@@ -1,11 +1,13 @@
+// lib/api.ts - ПОЛНАЯ ВЕРСИЯ С ЭКСПОРТОМ getAuthToken
+
 import axios from 'axios'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://toogood-production.up.railway.app'
 
 // ============================================================
-// ✅ ЕДИНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ТОКЕНА
+// ✅ ЭКСПОРТИРУЕМАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ТОКЕНА
 // ============================================================
-const getAuthToken = () => {
+export const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
            sessionStorage.getItem('authToken') || 
@@ -200,10 +202,10 @@ export async function getOrder(orderId: number): Promise<any> {
 }
 
 // ============================================================
-// ✅ GET USER ORDERS - ИСПРАВЛЕНО!
+// GET USER ORDERS
 // ============================================================
 export async function getUserOrders(): Promise<Order[]> {
-  const token = getAuthToken()  // ← ИСПОЛЬЗУЕМ getAuthToken()!
+  const token = getAuthToken()
   
   const response = await fetch(`${API_BASE}/api/my-orders`, {
     method: 'GET',
@@ -211,7 +213,6 @@ export async function getUserOrders(): Promise<Order[]> {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     }
-    // ❌ НЕТ credentials: 'include'
   })
   
   if (!response.ok) {
@@ -223,7 +224,7 @@ export async function getUserOrders(): Promise<Order[]> {
 }
 
 // ============================================================
-// ✅ GET ORDER BY ID (FULL) - ИСПРАВЛЕНО!
+// GET ORDER BY ID (FULL)
 // ============================================================
 export async function getOrderById(orderId: number): Promise<Order> {
   const token = getAuthToken()
@@ -244,7 +245,7 @@ export async function getOrderById(orderId: number): Promise<Order> {
 }
 
 // ============================================================
-// ✅ GET ALL ORDERS - ИСПРАВЛЕНО!
+// GET ALL ORDERS
 // ============================================================
 export async function getAllOrders(): Promise<Order[]> {
   const token = getAuthToken()
@@ -266,7 +267,7 @@ export async function getAllOrders(): Promise<Order[]> {
 }
 
 // ============================================================
-// ✅ UPDATE ORDER STATUS - ИСПРАВЛЕНО!
+// UPDATE ORDER STATUS
 // ============================================================
 export async function updateOrderStatus(orderId: number, status: string): Promise<{ success: boolean }> {
   const token = getAuthToken()
@@ -303,7 +304,6 @@ export async function login(email: string, password: string): Promise<{ success:
   
   if (response.ok && data.success) {
     if (data.access_token) {
-      // ✅ СОХРАНЯЕМ В ОБА МЕСТА!
       localStorage.setItem('access_token', data.access_token)
       sessionStorage.setItem('userToken', data.access_token)
     }
@@ -347,7 +347,7 @@ export async function register(
 }
 
 // ============================================================
-// ✅ GET USER BY ID - ИСПРАВЛЕНО!
+// GET USER BY ID
 // ============================================================
 export async function getUserById(userId: number): Promise<User> {
   const token = getAuthToken()
