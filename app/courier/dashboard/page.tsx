@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ПОЛНАЯ ВЕРСИЯ
+// app/courier/dashboard/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -12,7 +12,7 @@ const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: f
 // ============ ИКОНКИ ============
 const CarIcon = ({ size = 24, className = "" }) => (
   <div className={`inline-flex items-center justify-center ${className}`}>
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/80">
       <path d="M5 17h14M5 17a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2M5 17a2 2 0 1 0 4 0M19 17a2 2 0 1 0-4 0" />
       <path d="M7 9V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2" />
     </svg>
@@ -825,21 +825,25 @@ export default function CourierDashboard() {
     );
   }
 
-  // ============ ОСНОВНОЙ РЕНДЕР ============
+  // ============ ОСНОВНОЙ РЕНДЕР (ХЕДЕР ЗЕЛЕНЫЙ!) ============
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      <div className="bg-emerald-500 text-white px-6 pt-12 pb-4">
+      {/* ✅ ХЕДЕР СТАЛ ЗЕЛЕНЫМ, КАК ВО ВСЕМ ПРИЛОЖЕНИИ */}
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-4">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <CarIcon size={28} className="text-white" />
+              <CarIcon size={28} className="text-white/90" />
               Панель курьера
             </h1>
             <p className="text-emerald-100 text-sm mt-1">
               {status?.first_name} {status?.last_name}
             </p>
           </div>
-          <button onClick={goToProfile} className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition">
+          <button 
+            onClick={goToProfile} 
+            className="bg-white/20 hover:bg-white/30 rounded-full p-2 transition"
+          >
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
