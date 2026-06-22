@@ -1,7 +1,17 @@
 import axios from 'axios'
 
-// ✅ ЕДИНЫЙ ИСТОЧНИК ИСТИНЫ
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://toogood-production.up.railway.app'
+
+// ============================================================
+// ✅ ЕДИНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ТОКЕНА
+// ============================================================
+const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') || 
+           localStorage.getItem('access_token') ||
+           null;
+};
 
 export interface User {
   id: number
@@ -87,7 +97,7 @@ export async function getBagById(id: number): Promise<SurpriseBag> {
 // GET CURRENT USER
 // ============================================================
 export async function getCurrentUser(): Promise<User | null> {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()
   if (!token) return null
   
   try {
@@ -108,17 +118,19 @@ export async function getCurrentUser(): Promise<User | null> {
 // ============================================================
 export async function logout(): Promise<void> {
   localStorage.removeItem('access_token')
-  localStorage.removeItem('user')
+  sessionStorage.removeItem('userToken')
+  sessionStorage.removeItem('authToken')
+  sessionStorage.removeItem('courierToken')
+  sessionStorage.removeItem('user')
   window.location.href = '/login'
 }
 
 // ============================================================
-// GET NEARBY BAGS - ✅ ИСПРАВЛЕНО!
+// GET NEARBY BAGS
 // ============================================================
 export async function getNearbyBags(lat: number, lon: number, radius: number = 10): Promise<Supplier[]> {
   const response = await fetch(
     `${API_BASE}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`
-    // ❌ УБРАЛ credentials: 'include'
   )
   
   if (!response.ok) {
@@ -146,7 +158,7 @@ export async function createOrder(
   lon: number,
   address: string
 ): Promise<{ order_id: number; order_number: string; status: string }> {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()
   
   const response = await fetch(`${API_BASE}/api/orders`, {
     method: 'POST',
@@ -173,7 +185,7 @@ export async function createOrder(
 // GET ORDER BY ID
 // ============================================================
 export async function getOrder(orderId: number): Promise<any> {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()
   
   const response = await fetch(`${API_BASE}/api/orders/${orderId}`, {
     headers: {
@@ -188,10 +200,10 @@ export async function getOrder(orderId: number): Promise<any> {
 }
 
 // ============================================================
-// GET USER ORDERS - ✅ ИСПРАВЛЕНО!
+// ✅ GET USER ORDERS - ИСПРАВЛЕНО!
 // ============================================================
 export async function getUserOrders(): Promise<Order[]> {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()  // ← ИСПОЛЬЗУЕМ getAuthToken()!
   
   const response = await fetch(`${API_BASE}/api/my-orders`, {
     method: 'GET',
@@ -199,7 +211,7 @@ export async function getUserOrders(): Promise<Order[]> {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     }
-    // ❌ УБРАЛ credentials: 'include'
+    // ❌ НЕТ credentials: 'include'
   })
   
   if (!response.ok) {
@@ -211,10 +223,10 @@ export async function getUserOrders(): Promise<Order[]> {
 }
 
 // ============================================================
-// GET ORDER BY ID (FULL) - ✅ ИСПРАВЛЕНО!
+// ✅ GET ORDER BY ID (FULL) - ИСПРАВЛЕНО!
 // ============================================================
 export async function getOrderById(orderId: number): Promise<Order> {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()
   
   const response = await fetch(`${API_BASE}/api/orders/${orderId}`, {
     method: 'GET',
@@ -222,7 +234,6 @@ export async function getOrderById(orderId: number): Promise<Order> {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     }
-    // ❌ УБРАЛ credentials: 'include'
   })
   
   if (!response.ok) {
@@ -233,10 +244,10 @@ export async function getOrderById(orderId: number): Promise<Order> {
 }
 
 // ============================================================
-// GET ALL ORDERS - ✅ ИСПРАВЛЕНО!
+// ✅ GET ALL ORDERS - ИСПРАВЛЕНО!
 // ============================================================
 export async function getAllOrders(): Promise<Order[]> {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()
   
   const response = await fetch(`${API_BASE}/api/orders`, {
     method: 'GET',
@@ -244,7 +255,6 @@ export async function getAllOrders(): Promise<Order[]> {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     }
-    // ❌ УБРАЛ credentials: 'include'
   })
   
   if (!response.ok) {
@@ -256,10 +266,10 @@ export async function getAllOrders(): Promise<Order[]> {
 }
 
 // ============================================================
-// UPDATE ORDER STATUS - ✅ ИСПРАВЛЕНО!
+// ✅ UPDATE ORDER STATUS - ИСПРАВЛЕНО!
 // ============================================================
 export async function updateOrderStatus(orderId: number, status: string): Promise<{ success: boolean }> {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()
   
   const response = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
     method: 'PUT',
@@ -293,9 +303,12 @@ export async function login(email: string, password: string): Promise<{ success:
   
   if (response.ok && data.success) {
     if (data.access_token) {
+      // ✅ СОХРАНЯЕМ В ОБА МЕСТА!
       localStorage.setItem('access_token', data.access_token)
+      sessionStorage.setItem('userToken', data.access_token)
     }
     localStorage.setItem('user', JSON.stringify(data.user))
+    sessionStorage.setItem('user', JSON.stringify(data.user))
     return { success: true, user: data.user, access_token: data.access_token }
   }
   
@@ -334,10 +347,10 @@ export async function register(
 }
 
 // ============================================================
-// GET USER BY ID - ✅ ИСПРАВЛЕНО!
+// ✅ GET USER BY ID - ИСПРАВЛЕНО!
 // ============================================================
 export async function getUserById(userId: number): Promise<User> {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()
   
   const response = await fetch(`${API_BASE}/api/users/${userId}`, {
     method: 'GET',
@@ -345,7 +358,6 @@ export async function getUserById(userId: number): Promise<User> {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     }
-    // ❌ УБРАЛ credentials: 'include'
   })
   
   if (!response.ok) {
