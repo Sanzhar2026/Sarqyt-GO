@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/courier/dashboard/page.tsx - УПРОЩЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -675,11 +675,11 @@ export default function CourierDashboard() {
     if (!currentOrder) return null;
     
     const stageLabels = {
-      'to_restaurant': '🚗 Еду в ресторан',
-      'to_customer': '🚗 Еду к клиенту',
-      'arrived': '📍 Прибыл к клиенту',
-      'waiting_confirmation': '⏳ Ожидание подтверждения',
-      'completed': '✅ Доставка завершена'
+      'to_restaurant': 'Еду в ресторан',
+      'to_customer': 'Еду к клиенту',
+      'arrived': 'Прибыл к клиенту',
+      'waiting_confirmation': 'Ожидание подтверждения',
+      'completed': 'Доставка завершена'
     };
     
     const stageActions = {
@@ -688,7 +688,7 @@ export default function CourierDashboard() {
           onClick={pickupOrder}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-semibold transition"
         >
-          📦 Забрал заказ
+          Забрал заказ
         </button>
       ),
       'to_customer': (
@@ -696,7 +696,7 @@ export default function CourierDashboard() {
           onClick={courierArrived}
           className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-semibold transition"
         >
-          🚗 Я приехал
+          Я приехал
         </button>
       ),
       'arrived': (
@@ -704,21 +704,18 @@ export default function CourierDashboard() {
           onClick={completeDelivery}
           className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl font-semibold transition"
         >
-          ✅ Доставка отдана
+          Доставка отдана
         </button>
       ),
       'waiting_confirmation': (
-        <div className="flex flex-col items-center gap-3 py-4">
-          <div className="flex items-center gap-2">
-            <div className="animate-spin h-6 w-6 border-2 border-yellow-500 border-t-transparent rounded-full"></div>
-            <p className="text-yellow-600 font-medium">Ожидаем подтверждения от клиента...</p>
-          </div>
+        <div className="flex flex-col items-center gap-2 py-4">
+          <p className="text-yellow-600 font-medium">Ожидаем подтверждения от клиента</p>
           <p className="text-sm text-gray-500">Клиент получил заказ и должен подтвердить получение</p>
         </div>
       ),
       'completed': (
         <div className="text-center py-2">
-          <p className="text-green-600 font-semibold">✅ Доставка завершена!</p>
+          <p className="text-green-600 font-semibold">Доставка завершена!</p>
         </div>
       )
     };
@@ -775,10 +772,10 @@ export default function CourierDashboard() {
           <div className="absolute top-4 left-4 right-4 z-[1000] bg-white/95 backdrop-blur rounded-xl p-2 shadow-lg border border-gray-200">
             <p className="text-xs text-gray-500">Маршрут доставки</p>
             <p className="font-semibold text-gray-800 text-sm">
-              {orderStage === 'to_restaurant' ? '📍 Ресторан' : 
-               orderStage === 'to_customer' ? '📍 Клиент' : 
-               orderStage === 'arrived' ? '📍 Вы на месте' : 
-               orderStage === 'waiting_confirmation' ? '⏳ Ожидание' : '✅ Доставлено'}
+              {orderStage === 'to_restaurant' ? 'Ресторан' : 
+               orderStage === 'to_customer' ? 'Клиент' : 
+               orderStage === 'arrived' ? 'Вы на месте' : 
+               orderStage === 'waiting_confirmation' ? 'Ожидание' : 'Доставлено'}
             </p>
           </div>
         </div>
@@ -825,10 +822,9 @@ export default function CourierDashboard() {
     );
   }
 
-  // ============ ОСНОВНОЙ РЕНДЕР (ХЕДЕР ЗЕЛЕНЫЙ!) ============
+  // ============ ОСНОВНОЙ РЕНДЕР ============
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      {/* ✅ ХЕДЕР СТАЛ ЗЕЛЕНЫМ, КАК ВО ВСЕМ ПРИЛОЖЕНИИ */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-4">
         <div className="flex justify-between items-center">
           <div>
@@ -884,15 +880,11 @@ export default function CourierDashboard() {
             <p className="text-gray-400">Включите режим "На линии" чтобы видеть заказы</p>
           </div>
         ) : orderStage === 'waiting_confirmation' && currentOrder ? (
+          // ✅ УПРОЩЕННОЕ ОЖИДАНИЕ — БЕЗ ПЕСОЧНЫХ ЧАСОВ!
           <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-8 text-center shadow-lg">
-            <div className="text-6xl mb-4">⏳</div>
             <h3 className="font-bold text-2xl text-yellow-700 mb-2">Ожидание подтверждения</h3>
             <p className="text-yellow-600 text-base mb-2">Вы передали заказ клиенту.</p>
             <p className="text-yellow-600 text-sm">Клиент должен подтвердить получение в приложении.</p>
-            <div className="flex items-center justify-center gap-3 mt-6">
-              <div className="animate-spin h-6 w-6 border-3 border-yellow-500 border-t-transparent rounded-full"></div>
-              <p className="text-sm text-yellow-600 font-medium">Ожидаем подтверждения...</p>
-            </div>
           </div>
         ) : orderStage === 'completed' ? (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-200 bg-green-50 text-center">
@@ -909,13 +901,13 @@ export default function CourierDashboard() {
               }}
               className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-semibold transition"
             >
-              📋 К списку заказов
+              К списку заказов
             </button>
           </div>
         ) : orderStage === 'list' ? (
           <div>
             <h2 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-              <span>📋 Доступные заказы</span>
+              <span>Доступные заказы</span>
               <span className="text-sm text-gray-400">({availableOrders.length})</span>
             </h2>
             <div className="space-y-3">
