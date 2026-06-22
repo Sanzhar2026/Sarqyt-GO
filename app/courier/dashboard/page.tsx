@@ -1,4 +1,4 @@
-// app/courier/dashboard/page.tsx - УПРОЩЕННАЯ ВЕРСИЯ
+// app/courier/dashboard/page.tsx - СЕРОВАТО-БЕЛЫЙ ФОН
 
 'use client';
 
@@ -709,13 +709,13 @@ export default function CourierDashboard() {
       ),
       'waiting_confirmation': (
         <div className="flex flex-col items-center gap-2 py-4">
-          <p className="text-yellow-600 font-medium">Ожидаем подтверждения от клиента</p>
+          <p className="text-gray-700 font-medium">Ожидание подтверждения</p>
           <p className="text-sm text-gray-500">Клиент получил заказ и должен подтвердить получение</p>
         </div>
       ),
       'completed': (
         <div className="text-center py-2">
-          <p className="text-green-600 font-semibold">Доставка завершена!</p>
+          <p className="text-green-600 font-semibold">Доставка завершена</p>
         </div>
       )
     };
@@ -724,7 +724,7 @@ export default function CourierDashboard() {
       'to_restaurant': 'border-blue-200 bg-blue-50',
       'to_customer': 'border-blue-200 bg-blue-50',
       'arrived': 'border-emerald-200 bg-emerald-50',
-      'waiting_confirmation': 'border-yellow-200 bg-yellow-50',
+      'waiting_confirmation': 'border-gray-200 bg-gray-50',
       'completed': 'border-green-200 bg-green-50'
     };
     
@@ -880,11 +880,11 @@ export default function CourierDashboard() {
             <p className="text-gray-400">Включите режим "На линии" чтобы видеть заказы</p>
           </div>
         ) : orderStage === 'waiting_confirmation' && currentOrder ? (
-          // ✅ УПРОЩЕННОЕ ОЖИДАНИЕ — БЕЗ ПЕСОЧНЫХ ЧАСОВ!
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-8 text-center shadow-lg">
-            <h3 className="font-bold text-2xl text-yellow-700 mb-2">Ожидание подтверждения</h3>
-            <p className="text-yellow-600 text-base mb-2">Вы передали заказ клиенту.</p>
-            <p className="text-yellow-600 text-sm">Клиент должен подтвердить получение в приложении.</p>
+          // ✅ СЕРОВАТО-БЕЛЫЙ ФОН (БЕЗ ЖЕЛТОГО!)
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 text-center shadow-sm">
+            <h3 className="font-bold text-2xl text-gray-700 mb-2">Ожидание подтверждения</h3>
+            <p className="text-gray-600 text-base mb-2">Вы передали заказ клиенту.</p>
+            <p className="text-gray-500 text-sm">Клиент должен подтвердить получение в приложении.</p>
           </div>
         ) : orderStage === 'completed' ? (
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-green-200 bg-green-50 text-center">
