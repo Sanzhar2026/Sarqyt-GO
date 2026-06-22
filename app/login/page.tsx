@@ -12,8 +12,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   // ❌ УБЕРИ - НЕ НУЖНО!
-  // const API_URL = 'https://toogood-2ncf.onrender.com';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

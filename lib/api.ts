@@ -1,6 +1,6 @@
-// lib/api.ts
 import axios from 'axios'
 
+// ✅ ЕДИНЫЙ ИСТОЧНИК ИСТИНЫ
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://toogood-production.up.railway.app'
 
 export interface User {
@@ -11,9 +11,10 @@ export interface User {
   role: string
   is_active: boolean
 }
+
 export interface Props {
   key: number
-  name: string           // ← ADD THIS
+  name: string
   businessName: string
   distance: string
   price: number
@@ -21,6 +22,7 @@ export interface Props {
   discount: number
   onClick: () => void
 }
+
 export interface Supplier {
   id: number
   business_name: string
@@ -28,18 +30,18 @@ export interface Supplier {
   rating: number
   surprise_bags: SurpriseBag[]
 }
-// lib/api.ts - добавьте в типы WebSocket сообщений
 
 export interface WebSocketMessage {
-  type: 'new_bag' | 'update_bag' | 'delete_bag' | 'bag_quantity_updated';
+  type: 'new_bag' | 'update_bag' | 'delete_bag' | 'bag_quantity_updated'
   data?: {
-    bag_id: number;
-    available_quantity: number;
-    is_active: boolean;
-    old_quantity?: number;
-  };
-  timestamp?: string;
+    bag_id: number
+    available_quantity: number
+    is_active: boolean
+    old_quantity?: number
+  }
+  timestamp?: string
 }
+
 export interface SurpriseBag {
   id: number
   name: string
@@ -53,15 +55,14 @@ export interface SurpriseBag {
   available_quantity: number
   pickup_start_time?: string
   pickup_end_time?: string
-  is_active?: boolean; 
+  is_active?: boolean
 }
 
-// Order interface
 export interface Order {
   id: number
   order_number: string
   bag_name: string
-  surprise_bag_name?: string  // ← Added this optional property
+  surprise_bag_name?: string
   supplier_name: string
   amount_paid: number
   status: string
@@ -69,10 +70,11 @@ export interface Order {
   customer_address?: string
 }
 
-// Alias for Supplier (same interface, different name if needed)
 export type NearbySupplier = Supplier
 
-// Get bag by ID (for offers/[id] page)
+// ============================================================
+// GET BAG BY ID
+// ============================================================
 export async function getBagById(id: number): Promise<SurpriseBag> {
   const response = await fetch(`${API_BASE}/api/suppliers/bag/${id}`)
   if (!response.ok) {
@@ -81,6 +83,9 @@ export async function getBagById(id: number): Promise<SurpriseBag> {
   return response.json()
 }
 
+// ============================================================
+// GET CURRENT USER
+// ============================================================
 export async function getCurrentUser(): Promise<User | null> {
   const token = localStorage.getItem('access_token')
   if (!token) return null
@@ -98,52 +103,56 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
+// ============================================================
+// LOGOUT
+// ============================================================
 export async function logout(): Promise<void> {
   localStorage.removeItem('access_token')
   localStorage.removeItem('user')
   window.location.href = '/login'
 }
 
-// Get nearby suppliers (for homepage)
-// app/lib/api.ts - исправленный
-
-const API_URL = 'https://toogood-production.up.railway.app';
-
-// lib/api.ts - функция getNearbyBags
-
+// ============================================================
+// GET NEARBY BAGS - ✅ ИСПРАВЛЕНО!
+// ============================================================
 export async function getNearbyBags(lat: number, lon: number, radius: number = 10): Promise<Supplier[]> {
   const response = await fetch(
-    `${API_URL}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`,
-    { credentials: 'include' }
-  );
+    `${API_BASE}/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=${radius}`
+    // ❌ УБРАЛ credentials: 'include'
+  )
   
   if (!response.ok) {
-    throw new Error('Failed to fetch nearby bags');
+    throw new Error('Failed to fetch nearby bags')
   }
   
-  const data = await response.json();
+  const data = await response.json()
   
-  // ✅ ДОПОЛНИТЕЛЬНАЯ ФИЛЬТРАЦИЯ на клиенте
   const filteredSuppliers = (data.suppliers || [])
     .map((supplier: any) => ({
       ...supplier,
       surprise_bags: (supplier.surprise_bags || []).filter((bag: any) => bag.available_quantity > 0)
     }))
-    .filter((supplier: any) => supplier.surprise_bags.length > 0);
+    .filter((supplier: any) => supplier.surprise_bags.length > 0)
   
-  return filteredSuppliers;
+  return filteredSuppliers
 }
-// Create order
+
+// ============================================================
+// CREATE ORDER
+// ============================================================
 export async function createOrder(
   bagId: number,
   lat: number,
   lon: number,
   address: string
 ): Promise<{ order_id: number; order_number: string; status: string }> {
+  const token = localStorage.getItem('access_token')
+  
   const response = await fetch(`${API_BASE}/api/orders`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
     },
     body: JSON.stringify({
       bag_id: bagId,
@@ -160,18 +169,27 @@ export async function createOrder(
   return response.json()
 }
 
-// Get order by ID
+// ============================================================
+// GET ORDER BY ID
+// ============================================================
 export async function getOrder(orderId: number): Promise<any> {
-  const response = await fetch(`${API_BASE}/api/orders/${orderId}`)
+  const token = localStorage.getItem('access_token')
+  
+  const response = await fetch(`${API_BASE}/api/orders/${orderId}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  })
   if (!response.ok) {
     throw new Error(`Failed to fetch order: ${response.status}`)
   }
   return response.json()
 }
 
-// ============ NEW FUNCTIONS ADDED ============
-
-// Get all orders for current user
+// ============================================================
+// GET USER ORDERS - ✅ ИСПРАВЛЕНО!
+// ============================================================
 export async function getUserOrders(): Promise<Order[]> {
   const token = localStorage.getItem('access_token')
   
@@ -180,8 +198,8 @@ export async function getUserOrders(): Promise<Order[]> {
     headers: {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
-    },
-    credentials: 'include',
+    }
+    // ❌ УБРАЛ credentials: 'include'
   })
   
   if (!response.ok) {
@@ -192,7 +210,9 @@ export async function getUserOrders(): Promise<Order[]> {
   return data.orders || []
 }
 
-// Get order by ID with full details
+// ============================================================
+// GET ORDER BY ID (FULL) - ✅ ИСПРАВЛЕНО!
+// ============================================================
 export async function getOrderById(orderId: number): Promise<Order> {
   const token = localStorage.getItem('access_token')
   
@@ -201,8 +221,8 @@ export async function getOrderById(orderId: number): Promise<Order> {
     headers: {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
-    },
-    credentials: 'include',
+    }
+    // ❌ УБРАЛ credentials: 'include'
   })
   
   if (!response.ok) {
@@ -212,7 +232,9 @@ export async function getOrderById(orderId: number): Promise<Order> {
   return response.json()
 }
 
-// Get all orders (for admin/supplier)
+// ============================================================
+// GET ALL ORDERS - ✅ ИСПРАВЛЕНО!
+// ============================================================
 export async function getAllOrders(): Promise<Order[]> {
   const token = localStorage.getItem('access_token')
   
@@ -221,8 +243,8 @@ export async function getAllOrders(): Promise<Order[]> {
     headers: {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
-    },
-    credentials: 'include',
+    }
+    // ❌ УБРАЛ credentials: 'include'
   })
   
   if (!response.ok) {
@@ -233,7 +255,9 @@ export async function getAllOrders(): Promise<Order[]> {
   return data.orders || data
 }
 
-// Update order status (for supplier/admin)
+// ============================================================
+// UPDATE ORDER STATUS - ✅ ИСПРАВЛЕНО!
+// ============================================================
 export async function updateOrderStatus(orderId: number, status: string): Promise<{ success: boolean }> {
   const token = localStorage.getItem('access_token')
   
@@ -243,7 +267,6 @@ export async function updateOrderStatus(orderId: number, status: string): Promis
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
     },
-    credentials: 'include',
     body: JSON.stringify({ status }),
   })
   
@@ -254,7 +277,9 @@ export async function updateOrderStatus(orderId: number, status: string): Promis
   return response.json()
 }
 
-// Login function
+// ============================================================
+// LOGIN
+// ============================================================
 export async function login(email: string, password: string): Promise<{ success: boolean; user: User; access_token?: string }> {
   const response = await fetch(`${API_BASE}/api/login`, {
     method: 'POST',
@@ -262,7 +287,6 @@ export async function login(email: string, password: string): Promise<{ success:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ email, password }),
-    credentials: 'include',
   })
   
   const data = await response.json()
@@ -278,7 +302,9 @@ export async function login(email: string, password: string): Promise<{ success:
   throw new Error(data.error || 'Invalid credentials')
 }
 
-// Register function
+// ============================================================
+// REGISTER
+// ============================================================
 export async function register(
   firstName: string, 
   lastName: string, 
@@ -296,7 +322,6 @@ export async function register(
       email: email,
       password: password,
     }),
-    credentials: 'include',
   })
   
   const data = await response.json()
@@ -308,7 +333,9 @@ export async function register(
   return data
 }
 
-// Get user by ID
+// ============================================================
+// GET USER BY ID - ✅ ИСПРАВЛЕНО!
+// ============================================================
 export async function getUserById(userId: number): Promise<User> {
   const token = localStorage.getItem('access_token')
   
@@ -317,8 +344,8 @@ export async function getUserById(userId: number): Promise<User> {
     headers: {
       'Content-Type': 'application/json',
       ...(token && { 'Authorization': `Bearer ${token}` })
-    },
-    credentials: 'include',
+    }
+    // ❌ УБРАЛ credentials: 'include'
   })
   
   if (!response.ok) {
