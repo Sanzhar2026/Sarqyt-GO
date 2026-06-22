@@ -65,7 +65,7 @@ export default function OrderDetailPage() {
   const [location, setLocation] = useState<{ lat: number; lon: number; city: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
 
-  const API_URL = 'https://toogood-production.up.railway.app';
+  // const API_URL = 'https://toogood-production.up.railway.app';
 
   const getAuthToken = () => {
     return sessionStorage.getItem('userToken') || 
@@ -104,7 +104,7 @@ export default function OrderDetailPage() {
     
     try {
       const token = getAuthToken();
-      const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
+      const response = await fetch(`/api/orders/${orderId}`, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -190,7 +190,7 @@ export default function OrderDetailPage() {
         return;
       }
       
-      const response = await fetch(`${API_URL}/api/customer/confirm-delivery/${order?.id}`, {
+      const response = await fetch(`/api/customer/confirm-delivery/${order?.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +223,7 @@ export default function OrderDetailPage() {
     setSubmitting(true);
     try {
       const token = getAuthToken();
-      const response = await fetch(`${API_URL}/api/order/${order?.id}/reject`, {
+      const response = await fetch(`/api/order/${order?.id}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
