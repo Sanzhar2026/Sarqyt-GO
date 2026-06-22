@@ -1,4 +1,4 @@
-// app/profile/page.tsx
+// app/profile/page.tsx - УЛУЧШЕННЫЙ ДИЗАЙН
 
 'use client';
 
@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import AvatarCropper from '../components/AvatarCropper';
+import { User, Phone, Mail, Shield, Calendar, LogOut, Home, Truck } from 'lucide-react';
 
 interface UserData {
   id: number;
@@ -148,7 +149,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#367666]"></div>
       </div>
     );
   }
@@ -191,7 +192,7 @@ export default function ProfilePage() {
   const userInitials = user.first_name?.[0]?.toUpperCase() || '?';
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {showCropper && selectedFile && (
         <AvatarCropper
           imageFile={selectedFile}
@@ -203,7 +204,8 @@ export default function ProfilePage() {
         />
       )}
 
-      <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
+      {/* Шапка */}
+      <div className="bg-[#367666] text-white px-6 pt-12 pb-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Профиль</h1>
           <button 
@@ -217,10 +219,11 @@ export default function ProfilePage() {
 
       <div className="px-4 -mt-4">
         <div className="bg-white rounded-2xl shadow-sm p-6">
+          
           {/* Аватарка */}
           <div className="flex flex-col items-center mb-6">
             <div className="relative">
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+              <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-md">
                 {avatarUrl ? (
                   <Image 
                     src={avatarUrl}
@@ -231,7 +234,7 @@ export default function ProfilePage() {
                     unoptimized
                   />
                 ) : (
-                  <span className="text-4xl font-bold text-gray-400">
+                  <span className="text-3xl font-bold text-gray-400">
                     {userInitials}
                   </span>
                 )}
@@ -239,9 +242,9 @@ export default function ProfilePage() {
               
               <label 
                 htmlFor="avatar-upload"
-                className={`absolute bottom-0 right-0 bg-[#367666] text-white p-2 rounded-full cursor-pointer hover:bg-[#2a5a4d] transition shadow-md ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`absolute bottom-0 right-0 bg-[#367666] text-white p-1.5 rounded-full cursor-pointer hover:bg-[#2a5a4d] transition shadow-md ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -256,56 +259,89 @@ export default function ProfilePage() {
               </label>
             </div>
             {uploading && (
-              <p className="text-sm text-gray-500 mt-2">Загрузка...</p>
+              <p className="text-xs text-gray-400 mt-2">Загрузка...</p>
             )}
-            <h2 className="text-xl font-bold text-gray-800 mt-3">
+            <h2 className="text-lg font-bold text-gray-800 mt-3">
               {fullName || 'Пользователь'}
             </h2>
-            <p className="text-sm text-gray-500 flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            <p className="text-sm text-gray-500 flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
               {user.is_active ? 'Активен' : 'Неактивен'}
             </p>
           </div>
 
           {/* Данные пользователя */}
-          <div className="space-y-4 border-t border-gray-100 pt-4">
-            <div>
-              <p className="text-xs text-gray-400">Имя</p>
-              <p className="font-medium text-gray-800">{fullName || '—'}</p>
+          <div className="space-y-3 border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
+                <User size={14} className="text-gray-400" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Имя</p>
+                <p className="text-sm font-medium text-gray-800">{fullName || '—'}</p>
+              </div>
             </div>
 
-            <div>
-              <p className="text-xs text-gray-400">Телефон</p>
-              <p className="font-medium text-gray-800">{user.phone || '—'}</p>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
+                <Phone size={14} className="text-gray-400" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Телефон</p>
+                <p className="text-sm font-medium text-gray-800">{user.phone || '—'}</p>
+              </div>
             </div>
 
             {user.email && (
-              <div>
-                <p className="text-xs text-gray-400">Email</p>
-                <p className="font-medium text-gray-800">{user.email}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
+                  <Mail size={14} className="text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Email</p>
+                  <p className="text-sm font-medium text-gray-800">{user.email}</p>
+                </div>
               </div>
             )}
 
-            <div>
-              <p className="text-xs text-gray-400">Роль</p>
-              <p className="font-medium text-gray-800 capitalize">
-                {user.role || 'Клиент'}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
+                <Shield size={14} className="text-gray-400" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Роль</p>
+                <p className="text-sm font-medium text-gray-800 capitalize">
+                  {user.role === 'courier' ? (
+                    <span className="flex items-center gap-1">
+                      <Truck size={14} className="text-gray-400" />
+                      Курьер
+                    </span>
+                  ) : (
+                    user.role || 'Клиент'
+                  )}
+                </p>
+              </div>
             </div>
 
             {user.created_at && (
-              <div>
-                <p className="text-xs text-gray-400">Дата регистрации</p>
-                <p className="font-medium text-gray-800">{formatDate(user.created_at)}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
+                  <Calendar size={14} className="text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Дата регистрации</p>
+                  <p className="text-sm font-medium text-gray-800">{formatDate(user.created_at)}</p>
+                </div>
               </div>
             )}
           </div>
 
-          {/* ✅ ВСЕ КНОПКИ ЗЕЛЕНЫЕ */}
-          <div className="mt-6 space-y-3">
+          {/* Кнопки - ТОНКИЕ И ИЗЯЩНЫЕ */}
+          <div className="mt-6 space-y-2.5">
             {user.role !== 'courier' && (
               <Link href="/courier/register">
-                <button className="w-full bg-[#367666] text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-[#2a5a4d] transition shadow-md">
+                <button className="w-full bg-[#367666]/10 text-[#367666] text-sm font-medium py-2.5 rounded-xl hover:bg-[#367666]/20 transition flex items-center justify-center gap-2">
+                  <Truck size={16} className="opacity-60" />
                   Стать курьером
                 </button>
               </Link>
@@ -313,13 +349,15 @@ export default function ProfilePage() {
 
             <button 
               onClick={handleLogout}
-              className="w-full bg-[#367666] text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-[#2a5a4d] transition shadow-md"
+              className="w-full bg-red-50 text-red-600 text-sm font-medium py-2.5 rounded-xl hover:bg-red-100 transition flex items-center justify-center gap-2"
             >
+              <LogOut size={16} className="opacity-60" />
               Выйти
             </button>
 
             <Link href="/">
-              <button className="w-full bg-[#367666] text-white py-3.5 rounded-2xl font-semibold text-base hover:bg-[#2a5a4d] transition shadow-md">
+              <button className="w-full bg-gray-50 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-100 transition flex items-center justify-center gap-2">
+                <Home size={16} className="opacity-60" />
                 На главную
               </button>
             </Link>
