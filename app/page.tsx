@@ -1,4 +1,4 @@
-// app/page.tsx - УПРОЩЕННАЯ ВЕРСИЯ (без Instagram логики)
+// app/page.tsx - С НОВЫМ LO.JPEG
 
 'use client';
 
@@ -386,46 +386,22 @@ export default function HomePage() {
   };
 
   // ============================================================
-  // ЛОГОТИП
-  // ============================================================
-  const LogoCircle = () => {
-    const [imgError, setImgError] = useState(false);
-    
-    if (imgError) {
-      return (
-        <div className="w-56 h-56 mx-auto rounded-full bg-white/20 flex items-center justify-center shadow-2xl">
-          <div className="text-4xl font-bold tracking-tight">
-            <span className="text-black">SARQYT</span>
-            <span className="text-[#FF9500]">GO</span>
-          </div>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="w-56 h-56 mx-auto rounded-full overflow-hidden shadow-2xl">
-        <div className="relative w-full h-full scale-[1.4]">
-          <Image 
-            src="/logotype.jpeg" 
-            alt="SARQYT GO" 
-            fill
-            className="object-cover"
-            priority
-            onError={() => setImgError(true)}
-          />
-        </div>
-      </div>
-    );
-  };
-
-  // ============================================================
-  // ЗАГРУЗКА
+  // ЗАГРУЗКА - FLASH SCREEN С LO.JPEG
   // ============================================================
   if (showSplash) {
     return (
-      <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
-        <div className="text-center">
-          <LogoCircle />
+      <div className="fixed inset-0 z-50">
+        <div className="relative w-full h-full">
+          <Image 
+            src="/LO.jpeg" 
+            alt="Sarqyt GO" 
+            fill
+            className="object-cover"
+            priority
+            quality={100}
+          />
+          {/* Легкий оверлей для читаемости */}
+          <div className="absolute inset-0 bg-black/20" />
         </div>
       </div>
     );
