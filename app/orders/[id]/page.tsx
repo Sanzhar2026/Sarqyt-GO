@@ -1,4 +1,4 @@
-// app/orders/[id]/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ С ПРАВИЛЬНЫМИ ПОЛЯМИ
+// app/orders/[id]/page.tsx - БЕЗ ЭМОДЗИ
 
 'use client'
 
@@ -53,7 +53,6 @@ export default function OrderDetailPage() {
       })
   }, [orderId, router])
 
-  // Функция подтверждения получения заказа
   const handleConfirmDelivery = async () => {
     if (!order) return
     
@@ -67,7 +66,7 @@ export default function OrderDetailPage() {
 
       console.log('📤 Подтверждение получения заказа:', order.id)
       
-      const response = await fetch(`/api/orders/${order.id}/confirm-delivery`, {
+      const response = await fetch(`/api/orders/${order.id}/confirm`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -78,32 +77,29 @@ export default function OrderDetailPage() {
       if (response.ok) {
         const data = await response.json()
         console.log('✅ Заказ подтвержден:', data)
-        alert('✅ Заказ успешно подтвержден!')
+        alert('Заказ успешно подтвержден! Спасибо!')
         
-        // Обновляем статус заказа
         setOrder({
           ...order,
           status: 'delivered'
         })
         
-        // Обновляем страницу через 2 секунды
         setTimeout(() => {
           router.push('/orders')
         }, 2000)
       } else {
         const errorData = await response.json()
         console.error('❌ Ошибка подтверждения:', errorData)
-        alert(errorData.detail || '❌ Ошибка при подтверждении заказа')
+        alert(errorData.detail || 'Ошибка при подтверждении заказа')
       }
     } catch (err) {
       console.error('❌ Ошибка сети:', err)
-      alert('❌ Ошибка сети. Попробуйте позже.')
+      alert('Ошибка сети. Попробуйте позже.')
     } finally {
       setConfirming(false)
     }
   }
 
-  // Функция отмены заказа
   const handleCancelOrder = async () => {
     if (!order) return
     
@@ -128,7 +124,7 @@ export default function OrderDetailPage() {
 
       if (response.ok) {
         console.log('✅ Заказ отменен')
-        alert('✅ Заказ успешно отменен!')
+        alert('Заказ успешно отменен!')
         
         setOrder({
           ...order,
@@ -141,37 +137,24 @@ export default function OrderDetailPage() {
       } else {
         const errorData = await response.json()
         console.error('❌ Ошибка отмены:', errorData)
-        alert(errorData.detail || '❌ Ошибка при отмене заказа')
+        alert(errorData.detail || 'Ошибка при отмене заказа')
       }
     } catch (err) {
       console.error('❌ Ошибка сети:', err)
-      alert('❌ Ошибка сети. Попробуйте позже.')
+      alert('Ошибка сети. Попробуйте позже.')
     }
   }
 
-  // ✅ Функция для получения названия заказа
   const getOrderName = (order: Order): string => {
     return order.bag_name || 
            order.surprise_bag_name || 
            `Заказ #${order.order_number}`
   }
 
-  // ✅ Функция для получения суммы заказа (используем amount)
   const getOrderAmount = (order: Order): number => {
     return order.amount || order.amount_paid || 0
   }
 
-  // ✅ Функция для получения адреса (используем address)
-  const getAddress = (order: Order): string => {
-    return order.address || 'Адрес не указан'
-  }
-
-  // ✅ Функция для получения типа доставки
-  const getDeliveryType = (order: Order): string => {
-    return order.delivery_type || 'pickup'
-  }
-
-  // ✅ Функция для получения имени поставщика
   const getSupplierName = (order: Order): string => {
     return order.supplier_name || 'Не указан'
   }
@@ -262,7 +245,7 @@ export default function OrderDetailPage() {
             <div className="flex justify-between">
               <span className="text-gray-500">Способ получения</span>
               <span className="text-gray-800">
-                {getDeliveryType(order) === 'delivery' ? '🚚 Доставка' : '🏪 Самовывоз'}
+                {order.delivery_type === 'delivery' ? 'Доставка' : 'Самовывоз'}
               </span>
             </div>
             {order.address && (
@@ -271,59 +254,13 @@ export default function OrderDetailPage() {
                 <span className="text-gray-800 text-right max-w-[60%]">{order.address}</span>
               </div>
             )}
-            {order.courier_id && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">ID курьера</span>
-                <span className="text-gray-800">#{order.courier_id}</span>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* История статусов - если есть */}
-        {/* @ts-ignore */}
-        {order.status_history && order.status_history.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <h3 className="font-semibold text-gray-800 mb-3">История статусов</h3>
-            <div className="space-y-3">
-              {/* @ts-ignore */}
-              {order.status_history.map((history: any, index: number) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-3 h-3 rounded-full mt-1 ${
-                      index === 0 ? 'bg-[#367666]' : 'bg-gray-300'
-                    }`}></div>
-                    {index < order.status_history.length - 1 && (
-                      <div className="w-0.5 h-full bg-gray-200"></div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {getStatusText(history.status)}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(history.created_at).toLocaleString('ru-RU', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                    {history.comment && (
-                      <p className="text-xs text-gray-500 mt-1">{history.comment}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Кнопки действий */}
         <div className="flex flex-col gap-3 pt-4">
-          {/* Кнопка подтверждения получения */}
-          {order.status === 'out_for_delivery' && (
+          {/* Кнопка подтверждения получения - только для waiting_confirmation */}
+          {order.status === 'waiting_confirmation' && (
             <button
               onClick={handleConfirmDelivery}
               disabled={confirming}
@@ -335,28 +272,24 @@ export default function OrderDetailPage() {
                   <span>Подтверждение...</span>
                 </>
               ) : (
-                <>
-                  <span>✅</span>
-                  <span>Подтвердить получение</span>
-                </>
+                <span>Подтвердить получение</span>
               )}
             </button>
           )}
 
           {/* Кнопка отмены заказа */}
-          {['pending', 'confirmed'].includes(order.status) && (
+          {['pending', 'confirmed', 'waiting_confirmation'].includes(order.status) && (
             <button
               onClick={handleCancelOrder}
               className="w-full bg-red-500 text-white py-4 rounded-2xl font-semibold hover:bg-red-600 transition active:scale-[0.98]"
             >
-              ❌ Отменить заказ
+              Отменить заказ
             </button>
           )}
 
-          {/* Кнопка возврата */}
           <Link href="/orders">
             <button className="w-full bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold hover:bg-gray-200 transition active:scale-[0.98]">
-              ← Вернуться к заказам
+              Вернуться к заказам
             </button>
           </Link>
         </div>
