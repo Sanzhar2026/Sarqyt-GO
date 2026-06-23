@@ -1,4 +1,4 @@
-// app/layout.tsx - МАКСИМАЛЬНО АВТОМАТИЧЕСКОЕ ОТКРЫТИЕ
+// app/layout.tsx - ПРОСТОЙ ВАРИАНТ С БАННЕРОМ
 
 'use client';
 import { WebSocketListener } from './components/WebSocketListener';
@@ -63,7 +63,7 @@ export default function RootLayout({
 }) {
   const [hideBottomNav, setHideBottomNav] = useState(true);
   const [isInstagram, setIsInstagram] = useState(false);
-  const [redirectAttempted, setRedirectAttempted] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
     const checkHideStatus = () => {
@@ -73,10 +73,9 @@ export default function RootLayout({
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ ПРОВЕРКА INSTAGRAM И МАКСИМАЛЬНО АВТОМАТИЧЕСКОЕ ОТКРЫТИЕ
+  // ✅ ПРОВЕРКА INSTAGRAM
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (redirectAttempted) return;
     
     const ua = navigator.userAgent.toLowerCase();
     const isInstagramBrowser = (
@@ -90,86 +89,14 @@ export default function RootLayout({
     
     setIsInstagram(isInstagramBrowser);
     
-    if (isInstagramBrowser && !redirectAttempted) {
-      setRedirectAttempted(true);
-      console.log('📱 Instagram браузер обнаружен! Пытаемся открыть в браузере...');
-      
-      const currentUrl = window.location.href;
-      
-      // СПОСОБ 1: Через setTimeout с задержкой
+    if (isInstagramBrowser) {
+      console.log('📱 Instagram браузер обнаружен!');
+      // Показываем баннер через 1 секунду
       setTimeout(() => {
-        // Для Android
-        if (navigator.userAgent.includes('Android')) {
-          // Пробуем Chrome
-          const chromeIntent = `intent://${currentUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end;`;
-          window.location.href = chromeIntent;
-          
-          // Если не сработало - пробуем через 1 секунду другой способ
-          setTimeout(() => {
-            // Пробуем через window.open
-            window.open(currentUrl, '_blank');
-            
-            // Пробуем через Web Intent
-            const webIntent = `intent://${currentUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;end;`;
-            window.location.href = webIntent;
-          }, 1000);
-        } 
-        // Для iOS
-        else if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
-          // Пробуем Safari
-          const safariUrl = currentUrl.replace(/^https?:\/\//, '');
-          window.location.href = `x-safari-${safariUrl}`;
-          
-          // Fallback через 1 секунду
-          setTimeout(() => {
-            window.open(currentUrl, '_blank');
-            // Пробуем другой способ
-            window.location.href = `https://${safariUrl}`;
-          }, 1000);
-        } 
-        // Для других
-        else {
-          window.open(currentUrl, '_blank');
-        }
-      }, 100);
-
-      // СПОСОБ 2: Через iframe (работает в некоторых случаях)
-      setTimeout(() => {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = currentUrl;
-        document.body.appendChild(iframe);
-        
-        setTimeout(() => {
-          iframe.remove();
-        }, 5000);
-      }, 500);
-
-      // СПОСОБ 3: Через meta refresh
-      setTimeout(() => {
-        const meta = document.createElement('meta');
-        meta.httpEquiv = 'refresh';
-        meta.content = `0; url=${currentUrl}`;
-        document.head.appendChild(meta);
-      }, 200);
-
-      // СПОСОБ 4: Через location.replace
-      setTimeout(() => {
-        window.location.replace(currentUrl);
-      }, 300);
-
-      // СПОСОБ 5: Через a клик
-      setTimeout(() => {
-        const link = document.createElement('a');
-        link.href = currentUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        setTimeout(() => link.remove(), 100);
-      }, 400);
+        setShowBanner(true);
+      }, 1000);
     }
-  }, [redirectAttempted]);
+  }, []);
 
   // ✅ ГЕОЛОКАЦИЯ ТОЛЬКО ДЛЯ НЕ-INSTAGRAM
   useEffect(() => {
@@ -204,34 +131,6 @@ export default function RootLayout({
     }
   }, [isInstagram]);
 
-  // ✅ ПОКАЗЫВАЕМ ЭКРАН ВО ВРЕМЯ ПЕРЕХОДА
-  if (isInstagram) {
-    return (
-      <html lang="kz" suppressHydrationWarning>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes, viewport-fit=cover" />
-          <title>Sarqyt GO</title>
-          {/* Meta refresh как дополнительный способ */}
-          <meta httpEquiv="refresh" content="0; url=/redirect" />
-        </head>
-        <body className="bg-gray-50">
-          <div className="min-h-dvh flex flex-col items-center justify-center bg-[#367666]">
-            <div className="text-center text-white">
-              <div className="text-6xl mb-4">🚀</div>
-              <h1 className="text-2xl font-bold mb-2">Sarqyt GO</h1>
-              <p className="text-white/80">Открываем в браузере...</p>
-              <div className="mt-4 w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p className="text-white/50 text-xs mt-4">
-                Если не открывается, нажмите три точки в правом верхнем углу<br />
-                и выберите "Открыть в браузере"
-              </p>
-            </div>
-          </div>
-        </body>
-      </html>
-    );
-  }
-
   return (
     <LanguageProvider>
       <GeolocationProvider>
@@ -241,7 +140,73 @@ export default function RootLayout({
             <title>Sarqyt GO</title>
           </head>
           <body className="bg-gray-50">
-            <div className="max-w-md mx-auto bg-white shadow-lg min-h-dvh flex flex-col">
+            <div className="max-w-md mx-auto bg-white shadow-lg min-h-dvh flex flex-col relative">
+              {/* БАННЕР ДЛЯ INSTAGRAM */}
+              {isInstagram && showBanner && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                  <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl">
+                    <div className="text-center">
+                      <div className="text-5xl mb-4">📱</div>
+                      <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                        Откройте в браузере
+                      </h2>
+                      <p className="text-gray-500 text-sm mb-6">
+                        Приложение Sarqyt GO лучше работает в обычном браузере.<br />
+                        Нажмите кнопку ниже, чтобы продолжить.
+                      </p>
+                      
+                      <button
+                        onClick={() => {
+                          const currentUrl = window.location.href;
+                          
+                          // Копируем ссылку
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(currentUrl);
+                          }
+                          
+                          // Пытаемся открыть
+                          if (navigator.userAgent.includes('Android')) {
+                            const intentUrl = `intent://${currentUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end;`;
+                            window.open(intentUrl, '_blank');
+                          } else if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+                            const safariUrl = currentUrl.replace(/^https?:\/\//, '');
+                            window.open(`x-safari-${safariUrl}`, '_blank');
+                          } else {
+                            window.open(currentUrl, '_blank');
+                          }
+                          
+                          // Если не открылось - показываем инструкцию
+                          setTimeout(() => {
+                            alert('📋 Ссылка скопирована! Откройте браузер и вставьте её в адресную строку.');
+                          }, 3000);
+                        }}
+                        className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg hover:bg-[#2a5a4d] transition shadow-lg shadow-[#367666]/30"
+                      >
+                        Открыть в браузере
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          const currentUrl = window.location.href;
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(currentUrl).then(() => {
+                              alert('✅ Ссылка скопирована! Откройте браузер и вставьте её.');
+                            });
+                          }
+                        }}
+                        className="w-full mt-3 text-gray-500 py-3 rounded-2xl text-sm hover:bg-gray-50 transition border border-gray-200"
+                      >
+                        📋 Скопировать ссылку
+                      </button>
+                      
+                      <p className="text-xs text-gray-400 mt-4">
+                        Или нажмите три точки в правом верхнем углу и выберите "Открыть в браузере"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex-1">
                 {children}
               </div>
