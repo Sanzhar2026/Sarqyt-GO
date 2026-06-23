@@ -1,4 +1,4 @@
-// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (добавлен isInstagram)
+// app/page.tsx - УПРОЩЕННАЯ ВЕРСИЯ (без Instagram логики)
 
 'use client';
 
@@ -51,72 +51,14 @@ export default function HomePage() {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
-  const [isInstagram, setIsInstagram] = useState(false); // ✅ ДОБАВЛЯЕМ
-  const [redirectAttempted, setRedirectAttempted] = useState(false);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
   // ============================================================
-  // ОПРЕДЕЛЕНИЕ INSTAGRAM И АВТОМАТИЧЕСКИЙ ПЕРЕХОД
-  // ============================================================
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (redirectAttempted) return;
-    
-    const ua = navigator.userAgent.toLowerCase();
-    const isInstagramBrowser = (
-      ua.includes('instagram') ||
-      ua.includes('fbav') ||
-      ua.includes('fban') ||
-      ua.includes('whatsapp') ||
-      ua.includes('messenger') ||
-      (ua.includes('mobile') && !ua.includes('safari') && !ua.includes('chrome') && !ua.includes('firefox'))
-    );
-    
-    // ✅ СОХРАНЯЕМ В СОСТОЯНИЕ
-    setIsInstagram(isInstagramBrowser);
-    
-    // ✅ ЕСЛИ INSTAGRAM - АВТОМАТИЧЕСКИЙ ПЕРЕХОД
-    if (isInstagramBrowser && !redirectAttempted) {
-      setRedirectAttempted(true);
-      console.log('📱 Instagram браузер обнаружен! Автоматический переход в браузер...');
-      
-      const currentUrl = window.location.href;
-      
-      setTimeout(() => {
-        // Для Android - открываем в Chrome
-        if (navigator.userAgent.includes('Android')) {
-          const intentUrl = `intent://${currentUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end;`;
-          window.location.href = intentUrl;
-        } 
-        // Для iOS - открываем в Safari
-        else if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
-          const safariUrl = currentUrl.replace(/^https?:\/\//, '');
-          window.location.href = `x-safari-${safariUrl}`;
-          
-          // Fallback через 2 секунды
-          setTimeout(() => {
-            window.open(currentUrl, '_blank');
-          }, 2000);
-        } 
-        // Для других браузеров
-        else {
-          window.open(currentUrl, '_blank');
-        }
-      }, 300);
-    }
-  }, [redirectAttempted]);
-
-  // ============================================================
   // ПОЛУЧЕНИЕ ГЕОЛОКАЦИИ (ТОЛЬКО GPS)
   // ============================================================
   useEffect(() => {
-    if (isInstagram || redirectAttempted) {
-      setLocationLoading(false);
-      return;
-    }
-
     setLocationLoading(true);
     
     if (!navigator.geolocation) {
@@ -168,7 +110,7 @@ export default function HomePage() {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
-  }, [isInstagram, redirectAttempted]);
+  }, []);
 
   // ============================================================
   // ПОЛУЧЕНИЕ ТОКЕНА
@@ -183,7 +125,6 @@ export default function HomePage() {
   // ============================================================
   const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
-    if (isInstagram || redirectAttempted) return;
     
     if (showLoading && !isInitial) {
       setIsRefreshing(true);
@@ -255,19 +196,18 @@ export default function HomePage() {
         if (isInitial) setLoading(false);
       }
     }
-  }, [getAuthToken, location, isInstagram, redirectAttempted]);
+  }, [getAuthToken, location]);
 
   // ============================================================
   // ЗАГРУЗКА ПОСЛЕ ЛОКАЦИИ
   // ============================================================
   useEffect(() => {
-    if (isInstagram || redirectAttempted) return;
     if (locationLoading || showSplash) return;
     if (!initialLoadDoneRef.current) {
       initialLoadDoneRef.current = true;
       fetchBags(true, true);
     }
-  }, [locationLoading, showSplash, fetchBags, isInstagram, redirectAttempted]);
+  }, [locationLoading, showSplash, fetchBags]);
 
   // ============================================================
   // SPLASH SCREEN
@@ -301,7 +241,6 @@ export default function HomePage() {
   // ============================================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (isInstagram || redirectAttempted) return;
     
     const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
@@ -341,12 +280,12 @@ export default function HomePage() {
       }
     };
     fetchUser();
-  }, [getAuthToken, isInstagram, redirectAttempted]);
+  }, [getAuthToken]);
 
   // ============================================================
   // WebSocket
   // ============================================================
-  const wsUrl = (!isInstagram && !redirectAttempted && userToken) 
+  const wsUrl = userToken 
     ? `wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(userToken)}` 
     : null;
   
@@ -356,7 +295,7 @@ export default function HomePage() {
   // ОБРАБОТКА СООБЩЕНИЙ WEBSOCKET
   // ============================================================
   useEffect(() => {
-    if (!lastMessage || isInstagram || redirectAttempted) return;
+    if (!lastMessage) return;
     
     if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
       fetchBags(false, false);
@@ -380,7 +319,7 @@ export default function HomePage() {
         return filteredBags;
       });
     }
-  }, [lastMessage, fetchBags, isInstagram, redirectAttempted]);
+  }, [lastMessage, fetchBags]);
 
   // ============================================================
   // CLEANUP
@@ -395,14 +334,12 @@ export default function HomePage() {
   // REFRESH OFFERS
   // ============================================================
   useEffect(() => {
-    if (isInstagram || redirectAttempted) return;
-    
     const handleRefreshOffers = () => {
       fetchBags(false, false);
     };
     window.addEventListener('refreshOffers', handleRefreshOffers);
     return () => window.removeEventListener('refreshOffers', handleRefreshOffers);
-  }, [fetchBags, isInstagram, redirectAttempted]);
+  }, [fetchBags]);
 
   // ============================================================
   // ПЕРЕВОДЫ
@@ -480,23 +417,6 @@ export default function HomePage() {
       </div>
     );
   };
-
-  // ============================================================
-  // ПОКАЗЫВАЕМ ЗАГРУЗКУ ДЛЯ INSTAGRAM ПОКА ИДЕТ ПЕРЕХОД
-  // ============================================================
-  if (redirectAttempted || isInstagram) {
-    return (
-      <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
-        <div className="text-center">
-          <LogoCircle />
-          <p className="text-white mt-6 text-lg font-medium">
-            Открываем в браузере...
-          </p>
-          <div className="mt-4 w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-        </div>
-      </div>
-    );
-  }
 
   // ============================================================
   // ЗАГРУЗКА
