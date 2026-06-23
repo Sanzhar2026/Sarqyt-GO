@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНОСТЬЮ ОТКЛЮЧАЕМ ГЕОЛОКАЦИЮ ДЛЯ INSTAGRAM
+// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ ЗАПРОСА ГЕОЛОКАЦИИ ДЛЯ INSTAGRAM)
 
 'use client';
 
@@ -52,6 +52,7 @@ export default function HomePage() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [isInstagram, setIsInstagram] = useState(false);
+  const [geoPermissionDenied, setGeoPermissionDenied] = useState(false);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
@@ -131,9 +132,9 @@ export default function HomePage() {
       
       setLocationLoading(true);
       
-      // ✅ ДЛЯ INSTAGRAM - СРАЗУ IP ГЕОЛОКАЦИЯ, ВООБЩЕ НЕ ТРОГАЕМ GPS
+      // ✅ ДЛЯ INSTAGRAM - СРАЗУ IP ГЕОЛОКАЦИЯ, БЕЗ ЗАПРОСА GPS
       if (isInstagramBrowser) {
-        console.log('📍 Instagram браузер — используем IP геолокацию (GPS полностью отключен)');
+        console.log('📍 Instagram браузер — используем IP геолокацию (без запроса GPS)');
         const ipLocation = await getLocationByIP();
         setLocation({
           ...ipLocation,
@@ -143,7 +144,19 @@ export default function HomePage() {
         return;
       }
 
-      // ✅ ТОЛЬКО ДЛЯ ОБЫЧНЫХ БРАУЗЕРОВ - ПРОБУЕМ GPS
+      // ✅ ДЛЯ ОБЫЧНЫХ БРАУЗЕРОВ - ПРОБУЕМ GPS
+      // НО ЕСЛИ УЖЕ БЫЛ ОТКАЗ - СРАЗУ IP
+      if (geoPermissionDenied) {
+        console.log('📍 GPS запрещен ранее — используем IP');
+        const ipLocation = await getLocationByIP();
+        setLocation({
+          ...ipLocation,
+          source: 'ip'
+        });
+        setLocationLoading(false);
+        return;
+      }
+
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
@@ -172,6 +185,12 @@ export default function HomePage() {
           },
           async (err) => {
             console.warn('⚠️ GPS ошибка:', err.message);
+            
+            // Если пользователь запретил - запоминаем
+            if (err.code === 1) {
+              setGeoPermissionDenied(true);
+            }
+            
             const ipLocation = await getLocationByIP();
             setLocation({
               ...ipLocation,
@@ -192,7 +211,7 @@ export default function HomePage() {
     };
 
     initLocation();
-  }, [checkInstagramBrowser]);
+  }, [checkInstagramBrowser, geoPermissionDenied]);
 
   // ============================================================
   // ПОЛУЧЕНИЕ ТОКЕНА
