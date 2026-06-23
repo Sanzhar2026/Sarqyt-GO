@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - ЗЕЛЕНАЯ ЛИНИЯ
+// app/components/CourierMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (зеленая линия)
 
 'use client';
 
@@ -117,8 +117,8 @@ export default function CourierMap({
   customerLocation,
   height = "100%",
   showRoute = false,
-  routeColor = "#367666",   // ✅ ЗЕЛЕНЫЙ!
-  routeWidth = 4,            // ✅ ТОЛСТЫЙ!
+  routeColor = "#367666",
+  routeWidth = 4,
   courierLocation,
   orderId,
 }: CourierMapProps) {
@@ -219,47 +219,49 @@ export default function CourierMap({
           routeLayerRef.current = null;
         }
 
+        let points: any[] = [];
+
         if (data && data.routes && data.routes.length > 0) {
           const route = data.routes[0];
           const geometry = route.geometry;
           const decodedPoints = decodePolyline(geometry);
           
           if (decodedPoints && decodedPoints.length > 0) {
-            // ✅ ЗЕЛЕНАЯ ЛИНИЯ
-            routeLayerRef.current = L.polyline(decodedPoints, {
-              color: routeColor,      // #367666
-              weight: routeWidth,     // 4px
-              opacity: 0.8,
-              lineCap: 'round',
-              lineJoin: 'round',
-            }).addTo(mapInstanceRef.current);
-
-            setRouteBuilt(true);
-            console.log(`✅ Маршрут построен! Точек: ${decodedPoints.length}`);
-            
-            mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), { 
-              padding: [50, 50] 
-            });
-            return;
+            points = decodedPoints;
+            console.log(`✅ ORS маршрут: ${points.length} точек`);
           }
         }
         
-        console.log('⚠️ ORS не вернул маршрут, используем прямую линию');
-        const points = getStraightLineRoute(
-          restaurantLocation.lat, restaurantLocation.lon,
-          customerLocation.lat, customerLocation.lon
-        );
-        
-        // ✅ ЗЕЛЕНАЯ ЛИНИЯ (FALLBACK)
+        // Если ORS не вернул маршрут - используем прямую линию
+        if (points.length === 0) {
+          console.log('⚠️ ORS не вернул маршрут, используем прямую линию');
+          points = getStraightLineRoute(
+            restaurantLocation.lat, restaurantLocation.lon,
+            customerLocation.lat, customerLocation.lon
+          );
+        }
+
+        // ✅ СОЗДАЕМ ЛИНИЮ С ПРИНУДИТЕЛЬНЫМ ЗЕЛЕНЫМ ЦВЕТОМ
         routeLayerRef.current = L.polyline(points, {
-          color: routeColor,      // #367666
-          weight: routeWidth,     // 4px
-          opacity: 0.8,
+          color: '#367666',        // ЯВНО ЗЕЛЕНЫЙ
+          weight: 4,
+          opacity: 1,              // 100% непрозрачность
           lineCap: 'round',
           lineJoin: 'round',
+          className: 'courier-route-line'  // добавляем класс для CSS
         }).addTo(mapInstanceRef.current);
-        
+
+        // ✅ ПРИНУДИТЕЛЬНО УСТАНАВЛИВАЕМ СТИЛЬ ЧЕРЕЗ DOM
+        const routeElement = routeLayerRef.current._path;
+        if (routeElement) {
+          routeElement.style.stroke = '#367666';
+          routeElement.style.strokeWidth = '4px';
+          routeElement.style.opacity = '1';
+        }
+
         setRouteBuilt(true);
+        console.log('✅ Маршрут построен! Цвет:', '#367666');
+        
         mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), { 
           padding: [50, 50] 
         });
@@ -270,7 +272,7 @@ export default function CourierMap({
     };
 
     setTimeout(buildRoute, 500);
-  }, [showRoute, restaurantLocation, customerLocation, routeColor, routeWidth, mapLoaded, routeBuilt]);
+  }, [showRoute, restaurantLocation, customerLocation, mapLoaded, routeBuilt]);
 
   // Маркеры
   useEffect(() => {
@@ -326,6 +328,18 @@ export default function CourierMap({
 
   return (
     <div className="relative w-full h-full" style={{ height }}>
+      {/* ✅ ДОБАВЛЯЕМ CSS ДЛЯ ПРИНУДИТЕЛЬНОГО ЗЕЛЕНОГО ЦВЕТА */}
+      <style jsx>{`
+        :global(.courier-route-line) {
+          stroke: #367666 !important;
+          stroke-width: 4px !important;
+          opacity: 1 !important;
+        }
+        :global(.leaflet-interactive) {
+          stroke: #367666 !important;
+        }
+      `}</style>
+      
       {showRoute && !routeBuilt && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 bg-white/90 backdrop-blur rounded-lg shadow-lg px-4 py-2 text-sm border border-gray-200">
           <div className="flex items-center gap-2">
