@@ -66,7 +66,7 @@ export default function OrderDetailPage() {
 
       console.log('📤 Подтверждение получения заказа:', order.id)
       
-      const response = await fetch(`/api/orders/${order.id}/confirm`, {
+      const response = await fetch(`/api/customer/confirm-delivery/${order.id}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
