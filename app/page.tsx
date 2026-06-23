@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ С ПОДДЕРЖКОЙ INSTAGRAM
+// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ INSTAGRAM
 
 'use client';
 
@@ -51,14 +51,16 @@ export default function HomePage() {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
+  const [isInstagram, setIsInstagram] = useState(false);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
+  const locationAttemptedRef = useRef(false);
 
   // ============================================================
   // ОПРЕДЕЛЕНИЕ INSTAGRAM БРАУЗЕРА
   // ============================================================
-  const isInstagramBrowser = useCallback(() => {
+  const checkInstagramBrowser = useCallback(() => {
     if (typeof window === 'undefined') return false;
     
     const ua = navigator.userAgent.toLowerCase();
@@ -67,24 +69,46 @@ export default function HomePage() {
       ua.includes('fbav') ||
       ua.includes('fban') ||
       ua.includes('whatsapp') ||
-      (ua.includes('mobile') && !ua.includes('safari')) ||
-      window.innerWidth < 400
+      ua.includes('messenger') ||
+      (ua.includes('mobile') && !ua.includes('safari') && !ua.includes('chrome') && !ua.includes('firefox'))
     );
   }, []);
 
   // ============================================================
-  // ПОЛУЧЕНИЕ ЛОКАЦИИ (GPS или IP)
+  // ПОЛУЧЕНИЕ ЛОКАЦИИ ПО IP
   // ============================================================
   const getLocationByIP = async (): Promise<{ lat: number; lon: number; city: string }> => {
     try {
-      const response = await fetch('https://ipapi.co/json/');
-      const data = await response.json();
-      if (data.latitude && data.longitude) {
-        return {
-          lat: data.latitude,
-          lon: data.longitude,
-          city: data.city || data.region || 'Актобе'
-        };
+      // Пробуем несколько сервисов для надежности
+      const services = [
+        async () => {
+          const res = await fetch('https://ipapi.co/json/');
+          const data = await res.json();
+          return { lat: data.latitude, lon: data.longitude, city: data.city || data.region };
+        },
+        async () => {
+          const res = await fetch('https://ipinfo.io/json');
+          const data = await res.json();
+          const [lat, lon] = (data.loc || '50.318754,57.368359').split(',').map(Number);
+          return { lat, lon, city: data.city || data.region };
+        },
+        async () => {
+          const res = await fetch('https://geolocation-db.com/json/');
+          const data = await res.json();
+          return { lat: data.latitude, lon: data.longitude, city: data.city || data.state };
+        }
+      ];
+
+      for (const service of services) {
+        try {
+          const result = await service();
+          if (result.lat && result.lon) {
+            console.log('✅ IP геолокация получена:', result);
+            return result;
+          }
+        } catch (e) {
+          console.warn('⚠️ Сервис геолокации не ответил');
+        }
       }
     } catch (e) {
       console.warn('⚠️ IP геолокация не работает');
@@ -93,14 +117,23 @@ export default function HomePage() {
   };
 
   // ============================================================
-  // useEffect: ПОЛУЧЕНИЕ ЛОКАЦИИ (С ПРОВЕРКОЙ INSTAGRAM!)
+  // useEffect: ОПРЕДЕЛЕНИЕ INSTAGRAM И ПОЛУЧЕНИЕ ЛОКАЦИИ
   // ============================================================
   useEffect(() => {
     const initLocation = async () => {
-      // ✅ СНАЧАЛА ПРОВЕРЯЕМ INSTAGRAM!
-      if (isInstagramBrowser()) {
-        console.log('📱 Instagram браузер — используем IP геолокацию');
-        setLocationLoading(true);
+      if (locationAttemptedRef.current) return;
+      locationAttemptedRef.current = true;
+      
+      const isInstagramBrowser = checkInstagramBrowser();
+      setIsInstagram(isInstagramBrowser);
+      
+      console.log(`📱 Браузер: ${isInstagramBrowser ? 'Instagram/WhatsApp' : 'Обычный'}`);
+      
+      setLocationLoading(true);
+      
+      // ✅ ДЛЯ INSTAGRAM - СРАЗУ IP ГЕОЛОКАЦИЯ
+      if (isInstagramBrowser) {
+        console.log('📍 Instagram браузер — используем IP геолокацию');
         const ipLocation = await getLocationByIP();
         setLocation({
           ...ipLocation,
@@ -110,9 +143,7 @@ export default function HomePage() {
         return;
       }
 
-      // ✅ ЕСЛИ НЕ INSTAGRAM — ПРОБУЕМ GPS
-      setLocationLoading(true);
-      
+      // ✅ ДЛЯ ОБЫЧНЫХ БРАУЗЕРОВ - ПРОБУЕМ GPS
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
@@ -140,7 +171,7 @@ export default function HomePage() {
             setLocationLoading(false);
           },
           async (err) => {
-            console.warn('⚠️ GPS ошибка:', err);
+            console.warn('⚠️ GPS ошибка:', err.message);
             const ipLocation = await getLocationByIP();
             setLocation({
               ...ipLocation,
@@ -148,7 +179,7 @@ export default function HomePage() {
             });
             setLocationLoading(false);
           },
-          { enableHighAccuracy: true, timeout: 10000 }
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
         );
       } else {
         const ipLocation = await getLocationByIP();
@@ -161,7 +192,7 @@ export default function HomePage() {
     };
 
     initLocation();
-  }, [isInstagramBrowser]);
+  }, [checkInstagramBrowser]);
 
   // ============================================================
   // ПОЛУЧЕНИЕ ТОКЕНА
@@ -184,8 +215,6 @@ export default function HomePage() {
     try {
       const token = getAuthToken();
       
-      console.log('📤 Запрос к /api/surprise-bags с токеном:', token ? '✅' : '❌');
-      
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
       };
@@ -194,7 +223,6 @@ export default function HomePage() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      // ✅ Добавляем координаты в запрос (если есть)
       let url = '/api/surprise-bags';
       if (location?.lat && location?.lon) {
         url += `?lat=${location.lat}&lon=${location.lon}`;
@@ -206,10 +234,7 @@ export default function HomePage() {
         credentials: 'include',
       });
       
-      console.log('📡 Статус /api/surprise-bags:', response.status);
-      
       if (response.status === 401) {
-        console.warn('⚠️ Токен невалидный, пробуем без токена');
         const retryResponse = await fetch('/api/surprise-bags', {
           headers: {
             'Content-Type': 'application/json',
@@ -672,6 +697,7 @@ export default function HomePage() {
           {location?.city && (
             <p className="text-xs text-white/60 mt-0.5">
               📍 {location.city} {location.source === 'ip' && '(по IP)'}
+              {isInstagram && ' 📱 Instagram'}
             </p>
           )}
         </div>
@@ -762,6 +788,11 @@ export default function HomePage() {
               {bags.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-gray-500">{t[lang].noOffers}</p>
+                  {isInstagram && (
+                    <p className="text-xs text-gray-400 mt-2">
+                      📱 Используется IP геолокация для Instagram
+                    </p>
+                  )}
                 </div>
               ) : (
                 bags.map((bag, bagIdx) => (
