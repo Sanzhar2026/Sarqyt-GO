@@ -1,4 +1,4 @@
-// app/page.tsx - АВТОМАТИЧЕСКИЙ ПЕРЕХОД В БРАУЗЕР ДЛЯ INSTAGRAM
+// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (добавлен isInstagram)
 
 'use client';
 
@@ -51,6 +51,7 @@ export default function HomePage() {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
+  const [isInstagram, setIsInstagram] = useState(false); // ✅ ДОБАВЛЯЕМ
   const [redirectAttempted, setRedirectAttempted] = useState(false);
   
   const isMountedRef = useRef(true);
@@ -72,6 +73,9 @@ export default function HomePage() {
       ua.includes('messenger') ||
       (ua.includes('mobile') && !ua.includes('safari') && !ua.includes('chrome') && !ua.includes('firefox'))
     );
+    
+    // ✅ СОХРАНЯЕМ В СОСТОЯНИЕ
+    setIsInstagram(isInstagramBrowser);
     
     // ✅ ЕСЛИ INSTAGRAM - АВТОМАТИЧЕСКИЙ ПЕРЕХОД
     if (isInstagramBrowser && !redirectAttempted) {
