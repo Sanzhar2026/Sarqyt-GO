@@ -1,3 +1,5 @@
+// app/layout.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 'use client';
 import { WebSocketListener } from './components/WebSocketListener';
 import { useState, useEffect, createContext, useContext } from 'react';
@@ -5,7 +7,7 @@ import { usePathname } from 'next/navigation';
 import './globals.css';
 import BottomNav from './components/BottomNav';
 import { GeolocationProvider } from './context/GeolocationContext';
-import GeolocationRequest from './components/GeolocationRequest'; // ← ДОБАВИТЬ!
+import GeolocationRequest from './components/GeolocationRequest';
 
 type Language = 'kz' | 'ru';
 
@@ -60,6 +62,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [hideBottomNav, setHideBottomNav] = useState(true);
+  const [isInstagram, setIsInstagram] = useState(false);
+
+  // ✅ Функция проверки Instagram браузера
+  const checkInstagramBrowser = () => {
+    if (typeof window === 'undefined') return false;
+    
+    const ua = navigator.userAgent.toLowerCase();
+    return (
+      ua.includes('instagram') ||
+      ua.includes('fbav') ||
+      ua.includes('fban') ||
+      ua.includes('whatsapp') ||
+      ua.includes('messenger') ||
+      (ua.includes('mobile') && !ua.includes('safari') && !ua.includes('chrome') && !ua.includes('firefox'))
+    );
+  };
 
   useEffect(() => {
     const checkHideStatus = () => {
@@ -69,8 +87,16 @@ export default function RootLayout({
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ ЗАПРАШИВАЕМ ГЕОЛОКАЦИЮ ПРИ ЗАГРУЗКЕ
+  // ✅ ЗАПРАШИВАЕМ ГЕОЛОКАЦИЮ ТОЛЬКО ДЛЯ НЕ-INSTAGRAM БРАУЗЕРОВ
   useEffect(() => {
+    const isInstagramBrowser = checkInstagramBrowser();
+    setIsInstagram(isInstagramBrowser);
+    
+    if (isInstagramBrowser) {
+      console.log('📱 Instagram браузер — геолокация НЕ запрашивается');
+      return; // ✅ ВЫХОДИМ, НЕ ЗАПРАШИВАЕМ ГЕОЛОКАЦИЮ
+    }
+
     // Проверяем есть ли уже сохраненные координаты
     const savedLat = sessionStorage.getItem('user_lat');
     const savedLon = sessionStorage.getItem('user_lon');
@@ -80,7 +106,7 @@ export default function RootLayout({
       return;
     }
 
-    // Если нет - запрашиваем
+    // Если нет - запрашиваем (только для обычных браузеров)
     if (navigator.geolocation) {
       console.log('📍 Запрашиваем геолокацию...');
       navigator.geolocation.getCurrentPosition(
@@ -115,7 +141,8 @@ export default function RootLayout({
                 {children}
               </div>
               <WebSocketListener />
-              <GeolocationRequest />  {/* ← ДОБАВИТЬ! */}
+              {/* ✅ Показываем GeolocationRequest только если НЕ Instagram */}
+              {!isInstagram && <GeolocationRequest />}
               {!hideBottomNav && <BottomNav />}
             </div>
           </body>
