@@ -1,4 +1,4 @@
-// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ ЗАПРОСА ГЕОЛОКАЦИИ ДЛЯ INSTAGRAM)
+// app/page.tsx - АВТОМАТИЧЕСКИЙ ПЕРЕХОД В БРАУЗЕР ДЛЯ INSTAGRAM
 
 'use client';
 
@@ -35,7 +35,7 @@ interface LocationData {
   lat: number;
   lon: number;
   city: string;
-  source: 'geolocation' | 'ip' | 'default';
+  source: 'geolocation' | 'default';
 }
 
 export default function HomePage() {
@@ -51,21 +51,20 @@ export default function HomePage() {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
-  const [isInstagram, setIsInstagram] = useState(false);
-  const [geoPermissionDenied, setGeoPermissionDenied] = useState(false);
+  const [redirectAttempted, setRedirectAttempted] = useState(false);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
-  const locationAttemptedRef = useRef(false);
 
   // ============================================================
-  // ОПРЕДЕЛЕНИЕ INSTAGRAM БРАУЗЕРА
+  // ОПРЕДЕЛЕНИЕ INSTAGRAM И АВТОМАТИЧЕСКИЙ ПЕРЕХОД
   // ============================================================
-  const checkInstagramBrowser = useCallback(() => {
-    if (typeof window === 'undefined') return false;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (redirectAttempted) return;
     
     const ua = navigator.userAgent.toLowerCase();
-    return (
+    const isInstagramBrowser = (
       ua.includes('instagram') ||
       ua.includes('fbav') ||
       ua.includes('fban') ||
@@ -73,145 +72,99 @@ export default function HomePage() {
       ua.includes('messenger') ||
       (ua.includes('mobile') && !ua.includes('safari') && !ua.includes('chrome') && !ua.includes('firefox'))
     );
-  }, []);
-
-  // ============================================================
-  // ПОЛУЧЕНИЕ ЛОКАЦИИ ПО IP
-  // ============================================================
-  const getLocationByIP = async (): Promise<{ lat: number; lon: number; city: string }> => {
-    try {
-      // Пробуем несколько сервисов для надежности
-      const services = [
-        async () => {
-          const res = await fetch('https://ipapi.co/json/');
-          const data = await res.json();
-          return { lat: data.latitude, lon: data.longitude, city: data.city || data.region || 'Актобе' };
-        },
-        async () => {
-          const res = await fetch('https://ipinfo.io/json');
-          const data = await res.json();
-          const [lat, lon] = (data.loc || '50.318754,57.368359').split(',').map(Number);
-          return { lat, lon, city: data.city || data.region || 'Актобе' };
-        },
-        async () => {
-          const res = await fetch('https://geolocation-db.com/json/');
-          const data = await res.json();
-          return { lat: data.latitude || 50.318754, lon: data.longitude || 57.368359, city: data.city || data.state || 'Актобе' };
+    
+    // ✅ ЕСЛИ INSTAGRAM - АВТОМАТИЧЕСКИЙ ПЕРЕХОД
+    if (isInstagramBrowser && !redirectAttempted) {
+      setRedirectAttempted(true);
+      console.log('📱 Instagram браузер обнаружен! Автоматический переход в браузер...');
+      
+      const currentUrl = window.location.href;
+      
+      setTimeout(() => {
+        // Для Android - открываем в Chrome
+        if (navigator.userAgent.includes('Android')) {
+          const intentUrl = `intent://${currentUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end;`;
+          window.location.href = intentUrl;
+        } 
+        // Для iOS - открываем в Safari
+        else if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+          const safariUrl = currentUrl.replace(/^https?:\/\//, '');
+          window.location.href = `x-safari-${safariUrl}`;
+          
+          // Fallback через 2 секунды
+          setTimeout(() => {
+            window.open(currentUrl, '_blank');
+          }, 2000);
+        } 
+        // Для других браузеров
+        else {
+          window.open(currentUrl, '_blank');
         }
-      ];
-
-      for (const service of services) {
-        try {
-          const result = await service();
-          if (result.lat && result.lon) {
-            console.log('✅ IP геолокация получена:', result);
-            return result;
-          }
-        } catch (e) {
-          console.warn('⚠️ Сервис геолокации не ответил');
-        }
-      }
-    } catch (e) {
-      console.warn('⚠️ IP геолокация не работает');
+      }, 300);
     }
-    return { lat: 50.318754, lon: 57.368359, city: 'Актобе' };
-  };
+  }, [redirectAttempted]);
 
   // ============================================================
-  // useEffect: ОПРЕДЕЛЕНИЕ INSTAGRAM И ПОЛУЧЕНИЕ ЛОКАЦИИ
+  // ПОЛУЧЕНИЕ ГЕОЛОКАЦИИ (ТОЛЬКО GPS)
   // ============================================================
   useEffect(() => {
-    const initLocation = async () => {
-      if (locationAttemptedRef.current) return;
-      locationAttemptedRef.current = true;
-      
-      const isInstagramBrowser = checkInstagramBrowser();
-      setIsInstagram(isInstagramBrowser);
-      
-      console.log(`📱 Браузер: ${isInstagramBrowser ? 'Instagram/WhatsApp' : 'Обычный'}`);
-      
-      setLocationLoading(true);
-      
-      // ✅ ДЛЯ INSTAGRAM - СРАЗУ IP ГЕОЛОКАЦИЯ, БЕЗ ЗАПРОСА GPS
-      if (isInstagramBrowser) {
-        console.log('📍 Instagram браузер — используем IP геолокацию (без запроса GPS)');
-        const ipLocation = await getLocationByIP();
+    if (isInstagram || redirectAttempted) {
+      setLocationLoading(false);
+      return;
+    }
+
+    setLocationLoading(true);
+    
+    if (!navigator.geolocation) {
+      setLocation({
+        lat: 50.318754,
+        lon: 57.368359,
+        city: 'Актобе',
+        source: 'default'
+      });
+      setLocationLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`
+          );
+          const data = await response.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || 'Актобе';
+          setLocation({
+            lat: latitude,
+            lon: longitude,
+            city: city,
+            source: 'geolocation'
+          });
+        } catch (e) {
+          setLocation({
+            lat: latitude,
+            lon: longitude,
+            city: 'Актобе',
+            source: 'geolocation'
+          });
+        }
+        setLocationLoading(false);
+      },
+      (err) => {
+        console.warn('⚠️ GPS ошибка:', err.message);
         setLocation({
-          ...ipLocation,
-          source: 'ip'
+          lat: 50.318754,
+          lon: 57.368359,
+          city: 'Актобе',
+          source: 'default'
         });
         setLocationLoading(false);
-        return;
-      }
-
-      // ✅ ДЛЯ ОБЫЧНЫХ БРАУЗЕРОВ - ПРОБУЕМ GPS
-      // НО ЕСЛИ УЖЕ БЫЛ ОТКАЗ - СРАЗУ IP
-      if (geoPermissionDenied) {
-        console.log('📍 GPS запрещен ранее — используем IP');
-        const ipLocation = await getLocationByIP();
-        setLocation({
-          ...ipLocation,
-          source: 'ip'
-        });
-        setLocationLoading(false);
-        return;
-      }
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            try {
-              const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`
-              );
-              const data = await response.json();
-              const city = data.address?.city || data.address?.town || data.address?.village || 'Актобе';
-              setLocation({
-                lat: latitude,
-                lon: longitude,
-                city: city,
-                source: 'geolocation'
-              });
-            } catch (e) {
-              setLocation({
-                lat: latitude,
-                lon: longitude,
-                city: 'Актобе',
-                source: 'geolocation'
-              });
-            }
-            setLocationLoading(false);
-          },
-          async (err) => {
-            console.warn('⚠️ GPS ошибка:', err.message);
-            
-            // Если пользователь запретил - запоминаем
-            if (err.code === 1) {
-              setGeoPermissionDenied(true);
-            }
-            
-            const ipLocation = await getLocationByIP();
-            setLocation({
-              ...ipLocation,
-              source: 'ip'
-            });
-            setLocationLoading(false);
-          },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-        );
-      } else {
-        const ipLocation = await getLocationByIP();
-        setLocation({
-          ...ipLocation,
-          source: 'ip'
-        });
-        setLocationLoading(false);
-      }
-    };
-
-    initLocation();
-  }, [checkInstagramBrowser, geoPermissionDenied]);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, [isInstagram, redirectAttempted]);
 
   // ============================================================
   // ПОЛУЧЕНИЕ ТОКЕНА
@@ -226,6 +179,7 @@ export default function HomePage() {
   // ============================================================
   const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
+    if (isInstagram || redirectAttempted) return;
     
     if (showLoading && !isInitial) {
       setIsRefreshing(true);
@@ -245,7 +199,6 @@ export default function HomePage() {
       let url = '/api/surprise-bags';
       if (location?.lat && location?.lon) {
         url += `?lat=${location.lat}&lon=${location.lon}`;
-        console.log(`📍 Отправляем координаты: ${location.lat}, ${location.lon}`);
       }
       
       const response = await fetch(url, {
@@ -298,212 +251,19 @@ export default function HomePage() {
         if (isInitial) setLoading(false);
       }
     }
-  }, [getAuthToken, location]);
+  }, [getAuthToken, location, isInstagram, redirectAttempted]);
 
   // ============================================================
-  // useEffect: ПОЛУЧЕНИЕ ТОКЕНА
+  // ЗАГРУЗКА ПОСЛЕ ЛОКАЦИИ
   // ============================================================
   useEffect(() => {
-    const token = getAuthToken();
-    setUserToken(token);
-    console.log('🔑 Токен на главной:', token ? 'Есть ✅' : 'Нет ❌');
-    
-    const userStr = sessionStorage.getItem('user');
-    if (userStr) {
-      try {
-        const parsed = JSON.parse(userStr);
-        setUser({
-          name: parsed.full_name || parsed.name,
-          id: parsed.id,
-          phone: parsed.phone
-        });
-      } catch(e) {}
-    }
-  }, [getAuthToken]);
-
-  // ============================================================
-  // WebSocket
-  // ============================================================
-  const wsUrl = userToken 
-    ? `wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(userToken)}` 
-    : null;
-  
-  const { isConnected, lastMessage } = useWebSocket(wsUrl);
-
-  // ============================================================
-  // useEffect: ЗАГРУЗКА СЮРПРИЗОВ ПОСЛЕ ПОЛУЧЕНИЯ ЛОКАЦИИ
-  // ============================================================
-  useEffect(() => {
+    if (isInstagram || redirectAttempted) return;
     if (locationLoading || showSplash) return;
     if (!initialLoadDoneRef.current) {
       initialLoadDoneRef.current = true;
       fetchBags(true, true);
     }
-  }, [locationLoading, showSplash, fetchBags]);
-
-  // ============================================================
-  // ОБРАБОТКА СООБЩЕНИЙ WEBSOCKET
-  // ============================================================
-  useEffect(() => {
-    if (!lastMessage) return;
-    
-    console.log('📨 Получено WS сообщение:', lastMessage);
-    
-    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
-      fetchBags(false, false);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Новый сюрприз!', {
-          body: 'Появился новый сюрприз рядом с вами!',
-          icon: '/logo.png'
-        });
-      }
-    }
-    
-    if (lastMessage.type === 'delete_bag') {
-      fetchBags(false, false);
-    }
-    
-    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
-      const { bag_id, available_quantity, is_active } = lastMessage.data;
-      
-      setBags(prevBags => {
-        const updatedBags = prevBags.map(bag => 
-          bag.id === bag_id 
-            ? { ...bag, available_quantity: available_quantity, is_active: is_active ?? bag.is_active }
-            : bag
-        );
-        const filteredBags = updatedBags.filter(bag => bag.available_quantity > 0);
-        if (filteredBags.length !== prevBags.length) setLastUpdate(new Date());
-        return filteredBags;
-      });
-    }
-    
-    if (lastMessage.type === 'courier_arrived') {
-      showCourierArrivedNotification(lastMessage.data);
-    }
-    
-    if (lastMessage.type === 'order_assigned') {
-      const { courier_name, courier_phone, estimated_time } = lastMessage.data;
-      showNotification(
-        'Курьер назначен!',
-        `${courier_name} (${courier_phone}) везет ваш заказ. Ожидайте ${estimated_time || 30} минут.`,
-        'info'
-      );
-    }
-  }, [lastMessage, fetchBags]);
-
-  // ============================================================
-  // УВЕДОМЛЕНИЯ
-  // ============================================================
-  const showNotification = (title: string, body: string, type: 'success' | 'info' | 'warning' = 'info') => {
-    if (typeof window === 'undefined') return;
-    
-    const toast = document.createElement('div');
-    toast.className = `fixed top-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-down ${
-      type === 'success' ? 'bg-[#367666]' : type === 'warning' ? 'bg-orange-600' : 'bg-blue-600'
-    }`;
-    toast.innerHTML = `
-      <div class="flex items-center gap-3">
-        <span class="text-2xl">${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '🚚'}</span>
-        <div class="flex-1">
-          <div class="font-bold">${title}</div>
-          <div class="text-sm opacity-90">${body}</div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-      toast.classList.add('animate-fade-out');
-      setTimeout(() => toast.remove(), 300);
-    }, 5000);
-    
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '/logo.png' });
-    }
-  };
-
-  const showCourierArrivedNotification = (data: any) => {
-    if (typeof window === 'undefined') return;
-    
-    const { order_id, order_number, courier_name } = data;
-    
-    const toast = document.createElement('div');
-    toast.className = 'fixed bottom-20 left-4 right-4 z-50 animate-slide-up';
-    toast.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-l-4 border-[#367666]">
-        <div class="p-3">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-[#367666]/10 rounded-full flex items-center justify-center text-lg">🚚</div>
-            <div class="flex-1">
-              <div class="flex items-center justify-between">
-                <h3 class="font-bold text-gray-800 text-sm">Курьер прибыл!</h3>
-                <button id="close-notification-btn" class="text-gray-400 hover:text-gray-600 text-lg leading-none ml-2">✕</button>
-              </div>
-              <p class="text-[#367666] text-xs">Заказ #${order_number} • ${courier_name}</p>
-            </div>
-          </div>
-          
-          <div class="flex gap-2 mt-3">
-            <button id="go-to-order-btn" class="flex-1 bg-[#367666] text-white py-1.5 rounded-xl text-xs font-semibold hover:bg-[#2a5a4d] transition">
-              Перейти
-            </button>
-            <button id="later-btn" class="px-3 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium hover:bg-gray-200 transition">
-              Позже
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    const goToOrder = () => {
-      toast.classList.add('animate-fade-out');
-      setTimeout(() => {
-        toast.remove();
-        router.push(`/orders/${order_id}`);
-      }, 300);
-    };
-    
-    const closeNotification = () => {
-      toast.classList.add('animate-fade-out');
-      setTimeout(() => toast.remove(), 300);
-    };
-    
-    toast.querySelector('#go-to-order-btn')?.addEventListener('click', goToOrder);
-    toast.querySelector('#later-btn')?.addEventListener('click', closeNotification);
-    toast.querySelector('#close-notification-btn')?.addEventListener('click', closeNotification);
-    
-    setTimeout(() => {
-      if (document.body.contains(toast)) {
-        closeNotification();
-      }
-    }, 6000);
-  };
-
-  const refreshAfterOrder = useCallback(async () => {
-    await fetchBags();
-  }, [fetchBags]);
-
-  const handleManualRefresh = () => {
-    fetchBags(true, false);
-  };
-
-  const handleSupplierClick = (supplierId: number, supplierName: string) => {
-    router.push(`/supplier/${supplierId}`);
-  };
-
-  // ============================================================
-  // NOTIFICATIONS PERMISSION
-  // ============================================================
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
+  }, [locationLoading, showSplash, fetchBags, isInstagram, redirectAttempted]);
 
   // ============================================================
   // SPLASH SCREEN
@@ -537,6 +297,7 @@ export default function HomePage() {
   // ============================================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isInstagram || redirectAttempted) return;
     
     const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
@@ -576,7 +337,46 @@ export default function HomePage() {
       }
     };
     fetchUser();
-  }, [getAuthToken]);
+  }, [getAuthToken, isInstagram, redirectAttempted]);
+
+  // ============================================================
+  // WebSocket
+  // ============================================================
+  const wsUrl = (!isInstagram && !redirectAttempted && userToken) 
+    ? `wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(userToken)}` 
+    : null;
+  
+  const { isConnected, lastMessage } = useWebSocket(wsUrl);
+
+  // ============================================================
+  // ОБРАБОТКА СООБЩЕНИЙ WEBSOCKET
+  // ============================================================
+  useEffect(() => {
+    if (!lastMessage || isInstagram || redirectAttempted) return;
+    
+    if (lastMessage.type === 'new_bag' || lastMessage.type === 'update_bag') {
+      fetchBags(false, false);
+    }
+    
+    if (lastMessage.type === 'delete_bag') {
+      fetchBags(false, false);
+    }
+    
+    if (lastMessage.type === 'bag_quantity_updated' && lastMessage.data) {
+      const { bag_id, available_quantity, is_active } = lastMessage.data;
+      
+      setBags(prevBags => {
+        const updatedBags = prevBags.map(bag => 
+          bag.id === bag_id 
+            ? { ...bag, available_quantity: available_quantity, is_active: is_active ?? bag.is_active }
+            : bag
+        );
+        const filteredBags = updatedBags.filter(bag => bag.available_quantity > 0);
+        if (filteredBags.length !== prevBags.length) setLastUpdate(new Date());
+        return filteredBags;
+      });
+    }
+  }, [lastMessage, fetchBags, isInstagram, redirectAttempted]);
 
   // ============================================================
   // CLEANUP
@@ -591,12 +391,14 @@ export default function HomePage() {
   // REFRESH OFFERS
   // ============================================================
   useEffect(() => {
+    if (isInstagram || redirectAttempted) return;
+    
     const handleRefreshOffers = () => {
       fetchBags(false, false);
     };
     window.addEventListener('refreshOffers', handleRefreshOffers);
     return () => window.removeEventListener('refreshOffers', handleRefreshOffers);
-  }, [fetchBags]);
+  }, [fetchBags, isInstagram, redirectAttempted]);
 
   // ============================================================
   // ПЕРЕВОДЫ
@@ -676,6 +478,23 @@ export default function HomePage() {
   };
 
   // ============================================================
+  // ПОКАЗЫВАЕМ ЗАГРУЗКУ ДЛЯ INSTAGRAM ПОКА ИДЕТ ПЕРЕХОД
+  // ============================================================
+  if (redirectAttempted || isInstagram) {
+    return (
+      <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
+        <div className="text-center">
+          <LogoCircle />
+          <p className="text-white mt-6 text-lg font-medium">
+            Открываем в браузере...
+          </p>
+          <div className="mt-4 w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
   // ЗАГРУЗКА
   // ============================================================
   if (showSplash) {
@@ -715,8 +534,7 @@ export default function HomePage() {
           )}
           {location?.city && (
             <p className="text-xs text-white/60 mt-0.5">
-              📍 {location.city} {location.source === 'ip' && '(по IP)'}
-              {isInstagram && ' 📱 Instagram'}
+              📍 {location.city}
             </p>
           )}
         </div>
@@ -790,7 +608,7 @@ export default function HomePage() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold">{t[lang].nearbyOffers}</h3>
               <button 
-                onClick={handleManualRefresh}
+                onClick={() => fetchBags(true, false)}
                 disabled={isRefreshing}
                 className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs hover:bg-[#2a5a4d] transition flex items-center gap-1 disabled:opacity-50"
               >
@@ -807,11 +625,6 @@ export default function HomePage() {
               {bags.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-gray-500">{t[lang].noOffers}</p>
-                  {isInstagram && (
-                    <p className="text-xs text-gray-400 mt-2">
-                      📱 Используется IP геолокация для Instagram
-                    </p>
-                  )}
                 </div>
               ) : (
                 bags.map((bag, bagIdx) => (
@@ -826,7 +639,7 @@ export default function HomePage() {
                     discount={bag.discount_percentage}
                     imageUrl={bag.image_url}
                     description={bag.description}
-                    onOrderSuccess={refreshAfterOrder}
+                    onOrderSuccess={() => fetchBags()}
                   />
                 ))
               )}
@@ -837,7 +650,7 @@ export default function HomePage() {
             <SuppliersMap 
               userLat={location?.lat || 50.318754} 
               userLon={location?.lon || 57.368359}
-              onSupplierClick={handleSupplierClick}
+              onSupplierClick={(id, name) => router.push(`/supplier/${id}`)}
               showUserLocation={true}
             />
           </div>
