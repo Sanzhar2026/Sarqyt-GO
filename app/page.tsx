@@ -1,4 +1,4 @@
-// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ ДЛЯ INSTAGRAM
+// app/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ ЗАПРОСА ГЕОЛОКАЦИИ ДЛЯ INSTAGRAM)
 
 'use client';
 
@@ -52,6 +52,7 @@ export default function HomePage() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [isInstagram, setIsInstagram] = useState(false);
+  const [geoPermissionDenied, setGeoPermissionDenied] = useState(false);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
@@ -84,18 +85,18 @@ export default function HomePage() {
         async () => {
           const res = await fetch('https://ipapi.co/json/');
           const data = await res.json();
-          return { lat: data.latitude, lon: data.longitude, city: data.city || data.region };
+          return { lat: data.latitude, lon: data.longitude, city: data.city || data.region || 'Актобе' };
         },
         async () => {
           const res = await fetch('https://ipinfo.io/json');
           const data = await res.json();
           const [lat, lon] = (data.loc || '50.318754,57.368359').split(',').map(Number);
-          return { lat, lon, city: data.city || data.region };
+          return { lat, lon, city: data.city || data.region || 'Актобе' };
         },
         async () => {
           const res = await fetch('https://geolocation-db.com/json/');
           const data = await res.json();
-          return { lat: data.latitude, lon: data.longitude, city: data.city || data.state };
+          return { lat: data.latitude || 50.318754, lon: data.longitude || 57.368359, city: data.city || data.state || 'Актобе' };
         }
       ];
 
@@ -131,9 +132,9 @@ export default function HomePage() {
       
       setLocationLoading(true);
       
-      // ✅ ДЛЯ INSTAGRAM - СРАЗУ IP ГЕОЛОКАЦИЯ
+      // ✅ ДЛЯ INSTAGRAM - СРАЗУ IP ГЕОЛОКАЦИЯ, БЕЗ ЗАПРОСА GPS
       if (isInstagramBrowser) {
-        console.log('📍 Instagram браузер — используем IP геолокацию');
+        console.log('📍 Instagram браузер — используем IP геолокацию (без запроса GPS)');
         const ipLocation = await getLocationByIP();
         setLocation({
           ...ipLocation,
@@ -144,6 +145,18 @@ export default function HomePage() {
       }
 
       // ✅ ДЛЯ ОБЫЧНЫХ БРАУЗЕРОВ - ПРОБУЕМ GPS
+      // НО ЕСЛИ УЖЕ БЫЛ ОТКАЗ - СРАЗУ IP
+      if (geoPermissionDenied) {
+        console.log('📍 GPS запрещен ранее — используем IP');
+        const ipLocation = await getLocationByIP();
+        setLocation({
+          ...ipLocation,
+          source: 'ip'
+        });
+        setLocationLoading(false);
+        return;
+      }
+
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
@@ -172,6 +185,12 @@ export default function HomePage() {
           },
           async (err) => {
             console.warn('⚠️ GPS ошибка:', err.message);
+            
+            // Если пользователь запретил - запоминаем
+            if (err.code === 1) {
+              setGeoPermissionDenied(true);
+            }
+            
             const ipLocation = await getLocationByIP();
             setLocation({
               ...ipLocation,
@@ -192,7 +211,7 @@ export default function HomePage() {
     };
 
     initLocation();
-  }, [checkInstagramBrowser]);
+  }, [checkInstagramBrowser, geoPermissionDenied]);
 
   // ============================================================
   // ПОЛУЧЕНИЕ ТОКЕНА
