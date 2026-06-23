@@ -1,4 +1,4 @@
-// app/layout.tsx - ПРОСТОЙ ВАРИАНТ С БАННЕРОМ
+// app/layout.tsx - ПРОСТОЙ БАННЕР ДЛЯ INSTAGRAM
 
 'use client';
 import { WebSocketListener } from './components/WebSocketListener';
@@ -63,7 +63,6 @@ export default function RootLayout({
 }) {
   const [hideBottomNav, setHideBottomNav] = useState(true);
   const [isInstagram, setIsInstagram] = useState(false);
-  const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
     const checkHideStatus = () => {
@@ -91,10 +90,6 @@ export default function RootLayout({
     
     if (isInstagramBrowser) {
       console.log('📱 Instagram браузер обнаружен!');
-      // Показываем баннер через 1 секунду
-      setTimeout(() => {
-        setShowBanner(true);
-      }, 1000);
     }
   }, []);
 
@@ -142,7 +137,7 @@ export default function RootLayout({
           <body className="bg-gray-50">
             <div className="max-w-md mx-auto bg-white shadow-lg min-h-dvh flex flex-col relative">
               {/* БАННЕР ДЛЯ INSTAGRAM */}
-              {isInstagram && showBanner && (
+              {isInstagram && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                   <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl">
                     <div className="text-center">
@@ -159,11 +154,6 @@ export default function RootLayout({
                         onClick={() => {
                           const currentUrl = window.location.href;
                           
-                          // Копируем ссылку
-                          if (navigator.clipboard) {
-                            navigator.clipboard.writeText(currentUrl);
-                          }
-                          
                           // Пытаемся открыть
                           if (navigator.userAgent.includes('Android')) {
                             const intentUrl = `intent://${currentUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end;`;
@@ -175,10 +165,10 @@ export default function RootLayout({
                             window.open(currentUrl, '_blank');
                           }
                           
-                          // Если не открылось - показываем инструкцию
-                          setTimeout(() => {
-                            alert('📋 Ссылка скопирована! Откройте браузер и вставьте её в адресную строку.');
-                          }, 3000);
+                          // Копируем ссылку
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(currentUrl);
+                          }
                         }}
                         className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg hover:bg-[#2a5a4d] transition shadow-lg shadow-[#367666]/30"
                       >
