@@ -96,6 +96,12 @@ export interface Order {
   supplier_name?: string
   customer_address?: string
   amount_paid?: number
+
+   status_history?: Array<{
+    status: string
+    created_at: string
+    comment?: string
+  }>
 }
 
 export type NearbySupplier = Supplier
