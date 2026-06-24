@@ -20,9 +20,6 @@ export default function SignupPage() {
   const [resendTimer, setResendTimer] = useState(0);
   const [verifyLoading, setVerifyLoading] = useState(false);
 
-  // ✅ ТВОЙ БЕКЕНД НА RAILWAY
-  const API_URL = 'https://toogood-2ncf.onrender.com';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -54,7 +51,7 @@ export default function SignupPage() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -107,7 +104,7 @@ export default function SignupPage() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/auth/verify-code`, {
+      const response = await fetch('/api/auth/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -152,7 +149,7 @@ export default function SignupPage() {
     if (resendTimer > 0) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/auth/resend-code`, {
+      const response = await fetch('/api/auth/resend-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
@@ -184,9 +181,6 @@ export default function SignupPage() {
     }
   };
 
-  // ============================================================
-  // ШАГ 2: ВВОД КОДА
-  // ============================================================
   if (step === 'verify') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5] p-6">
@@ -278,9 +272,6 @@ export default function SignupPage() {
     );
   }
 
-  // ============================================================
-  // ШАГ 1: ФОРМА РЕГИСТРАЦИИ
-  // ============================================================
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5] p-6">
       <div className="w-full max-w-md">
