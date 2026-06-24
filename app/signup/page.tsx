@@ -93,7 +93,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#367666]/10 to-white p-6">
-      {/* ✅ Scrollable container */}
+      {/* Scrollable container */}
       <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-white rounded-3xl shadow-lg p-8">
           <h1 className="text-3xl font-bold text-center text-[#367666] mb-8">Регистрация</h1>
@@ -197,7 +197,7 @@ export default function SignupPage() {
             </button>
           </form>
 
-          {/* ✅ Forgot password link */}
+          {/* Forgot password link */}
           <div className="mt-4 text-center">
             <Link 
               href="/forgot-password" 
@@ -207,12 +207,15 @@ export default function SignupPage() {
             </Link>
           </div>
 
-          <p className="text-center text-gray-500 mt-4">
-            Уже есть аккаунт?{' '}
-            <Link href="/login" className="text-[#367666] font-semibold hover:underline">
-              Войти
-            </Link>
-          </p>
+          {/* ✅ Improved "Уже есть аккаунт?" section with better visibility */}
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <p className="text-center text-gray-600 text-base">
+              Уже есть аккаунт?{' '}
+              <Link href="/login" className="text-[#367666] font-semibold hover:underline text-base">
+                Войти
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
