@@ -1,4 +1,4 @@
-// app/signup/page.tsx - ТОЛЬКО ОТНОСИТЕЛЬНЫЕ ПУТИ!
+// app/signup/page.tsx
 
 'use client';
 
@@ -14,9 +14,6 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-
-  // ❌ УБЕРИ ЭТУ СТРОКУ - НЕ НУЖНА!
-  // const API_URL = 'https://toogood-2ncf.onrender.com';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +48,6 @@ export default function SignupPage() {
     try {
       console.log('📤 Отправка:', { first_name: firstName, last_name: lastName, phone });
 
-      // ✅ ИСПОЛЬЗУЙ ОТНОСИТЕЛЬНЫЙ ПУТЬ
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +93,8 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#367666]/10 to-white p-6">
-      <div className="w-full max-w-md">
+      {/* ✅ Scrollable container */}
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="bg-white rounded-3xl shadow-lg p-8">
           <h1 className="text-3xl font-bold text-center text-[#367666] mb-8">Регистрация</h1>
           
@@ -122,7 +119,7 @@ export default function SignupPage() {
                 type="text" 
                 value={firstName} 
                 onChange={(e) => setFirstName(e.target.value)} 
-                placeholder="Иван" 
+                placeholder="Имя" 
                 className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 required 
               />
@@ -136,7 +133,7 @@ export default function SignupPage() {
                 type="text" 
                 value={lastName} 
                 onChange={(e) => setLastName(e.target.value)} 
-                placeholder="Иванов" 
+                placeholder="Фамилия" 
                 className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 required 
               />
@@ -150,7 +147,7 @@ export default function SignupPage() {
                 type="tel" 
                 value={phone} 
                 onChange={(e) => setPhone(e.target.value)} 
-                placeholder="+77071234567" 
+                placeholder="+7 777 777 77 77" 
                 className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 required 
               />
@@ -164,7 +161,7 @@ export default function SignupPage() {
                 type="password" 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
-                placeholder="Минимум 6 символов" 
+                placeholder="Пароль" 
                 className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 required 
                 minLength={6}
@@ -179,7 +176,7 @@ export default function SignupPage() {
                 type="password" 
                 value={confirmPassword} 
                 onChange={(e) => setConfirmPassword(e.target.value)} 
-                placeholder="Повторите пароль" 
+                placeholder="Подтвердите пароль" 
                 className="w-full px-5 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base transition" 
                 required 
                 minLength={6}
@@ -200,7 +197,17 @@ export default function SignupPage() {
             </button>
           </form>
 
-          <p className="text-center text-gray-500 mt-6">
+          {/* ✅ Forgot password link */}
+          <div className="mt-4 text-center">
+            <Link 
+              href="/forgot-password" 
+              className="text-sm text-[#367666] hover:underline font-medium"
+            >
+              Забыли пароль?
+            </Link>
+          </div>
+
+          <p className="text-center text-gray-500 mt-4">
             Уже есть аккаунт?{' '}
             <Link href="/login" className="text-[#367666] font-semibold hover:underline">
               Войти
