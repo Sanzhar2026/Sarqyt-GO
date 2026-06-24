@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     // 3. Send SMS with reset link or code
     // 4. Store the token in database
 
-    console.log('🔑 Восстановление пароля для:', phone);
+    console.log('Восстановление пароля для:', phone);
 
     // For testing - simulate sending SMS
     // In production, you would integrate with SMS service
