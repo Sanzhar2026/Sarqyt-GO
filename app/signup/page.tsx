@@ -200,9 +200,9 @@ export default function SignupPage() {
           {/* Forgot password link */}
           <div className="mt-4 text-center">
             <Link 
-              href="/forgot-password" 
-              className="text-sm text-[#367666] hover:underline font-medium"
-            >
+  href="/forgot-password" 
+  className="text-sm text-[#367666] hover:underline font-medium"
+>
               Забыли пароль?
             </Link>
           </div>
