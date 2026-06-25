@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import AvatarCropper from '../components/AvatarCropper';
-import { User, Phone, Mail, Shield, Calendar, LogOut, Home, Truck, Globe, MessageCircle, PhoneCall } from 'lucide-react';
+import { User, Phone, Mail, Calendar, LogOut, Home, Truck, MessageCircle, PhoneCall } from 'lucide-react';
 
 interface UserData {
   id: number;
@@ -31,6 +31,12 @@ export default function ProfilePage() {
   const [showCropper, setShowCropper] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lang, setLang] = useState<'ru' | 'kz'>('ru');
+
+  // ✅ НОМЕР ДЛЯ ВСЕХ КНОПОК
+  const PHONE_NUMBER = '+77089249375';
+  const PHONE_LINK = 'tel:+77089249375';
+  const WHATSAPP_LINK = 'https://wa.me/77089249375';
+  const TELEGRAM_LINK = 'https://t.me/77089249375';
 
   const translations = {
     ru: {
@@ -272,7 +278,6 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Шапка */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{t.profile}</h1>
@@ -296,7 +301,6 @@ export default function ProfilePage() {
       <div className="px-4 -mt-4">
         <div className="bg-white rounded-2xl shadow-sm p-6">
           
-          {/* Аватарка */}
           <div className="flex flex-col items-center mb-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-md">
@@ -346,7 +350,6 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          {/* Данные пользователя - БЕЗ РОЛИ */}
           <div className="space-y-3 border-t border-gray-100 pt-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
@@ -393,7 +396,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Кнопки */}
           <div className="mt-6 space-y-2.5">
             {user.role !== 'courier' && (
               <Link href="/courier/register">
@@ -421,19 +423,20 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* CALL CENTER */}
+        {/* CALL CENTER - С НОМЕРОМ +77089249375 */}
         <div className="mt-4 bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <PhoneCall size={18} className="text-[#367666]" />
             <h3 className="text-base font-bold text-gray-800">{t.callCenter}</h3>
           </div>
           
-          <p className="text-sm text-gray-500 mb-3">{t.callUs}</p>
+          <p className="text-sm text-gray-500 mb-1">{t.callUs}</p>
+          <p className="text-sm font-medium text-gray-700 mb-3">📞 {PHONE_NUMBER}</p>
           <p className="text-xs text-gray-400 mb-4">{t.workingHours}</p>
           
           <div className="flex flex-wrap gap-3">
             <a 
-              href="tel:+77071234567"
+              href={PHONE_LINK}
               className="flex items-center gap-2 px-4 py-2.5 bg-[#367666] text-white rounded-xl hover:bg-[#2a5a4d] transition text-sm font-medium flex-1 justify-center"
             >
               <Phone size={16} />
@@ -441,7 +444,7 @@ export default function ProfilePage() {
             </a>
             
             <a 
-              href="https://wa.me/77071234567"
+              href={WHATSAPP_LINK}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2.5 bg-green-500 text-white rounded-xl hover:bg-green-600 transition text-sm font-medium flex-1 justify-center"
@@ -451,7 +454,7 @@ export default function ProfilePage() {
             </a>
             
             <a 
-              href="https://t.me/sarqyn_food"
+              href={TELEGRAM_LINK}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition text-sm font-medium flex-1 justify-center"
