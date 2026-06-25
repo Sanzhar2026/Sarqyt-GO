@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function ForgotPasswordPage() {
+  // ======== ЗАГРУЗКА СОХРАНЕННОГО СОСТОЯНИЯ ========
   const [step, setStep] = useState<'phone' | 'code' | 'reset'>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -16,10 +17,30 @@ export default function ForgotPasswordPage() {
   const [resendTimer, setResendTimer] = useState(0);
   const [cooldownTimer, setCooldownTimer] = useState(0);
 
+  // ======== ВОССТАНОВЛЕНИЕ СОСТОЯНИЯ ПРИ ЗАГРУЗКЕ ========
+  useEffect(() => {
+    const savedStep = sessionStorage.getItem('reset_step');
+    const savedPhone = sessionStorage.getItem('reset_phone');
+    const savedCode = sessionStorage.getItem('reset_code');
+    const savedToken = sessionStorage.getItem('reset_token');
+    
+    if (savedStep) setStep(savedStep as 'phone' | 'code' | 'reset');
+    if (savedPhone) setPhone(savedPhone);
+    if (savedCode) setCode(savedCode);
+    if (savedToken) setResetToken(savedToken);
+  }, []);
+
+  // ======== СОХРАНЕНИЕ СОСТОЯНИЯ ПРИ ИЗМЕНЕНИИ ========
+  useEffect(() => {
+    sessionStorage.setItem('reset_step', step);
+    sessionStorage.setItem('reset_phone', phone);
+    sessionStorage.setItem('reset_code', code);
+    sessionStorage.setItem('reset_token', resetToken);
+  }, [step, phone, code, resetToken]);
+
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // ✅ ПРОВЕРКА НА КУЛДАУН (1 МИНУТА)
     if (cooldownTimer > 0) {
       setError(`Подождите ${cooldownTimer} секунд перед повторной отправкой`);
       return;
@@ -47,7 +68,6 @@ export default function ForgotPasswordPage() {
         setLoading(false);
         setError('');
         
-        // ✅ ЗАПУСКАЕМ КУЛДАУН 60 СЕКУНД
         setCooldownTimer(60);
         const cooldownInterval = setInterval(() => {
           setCooldownTimer((prev) => {
@@ -152,6 +172,13 @@ export default function ForgotPasswordPage() {
       if (response.ok && data.success) {
         setSuccess(true);
         setLoading(false);
+        
+        // ✅ ОЧИСТКА ПОСЛЕ УСПЕХА
+        sessionStorage.removeItem('reset_step');
+        sessionStorage.removeItem('reset_phone');
+        sessionStorage.removeItem('reset_code');
+        sessionStorage.removeItem('reset_token');
+        
         setTimeout(() => {
           window.location.href = '/login';
         }, 3000);
@@ -184,7 +211,6 @@ export default function ForgotPasswordPage() {
       if (response.ok && data.success) {
         setError('');
         
-        // ✅ КУЛДАУН ДЛЯ ПОВТОРНОЙ ОТПРАВКИ
         setCooldownTimer(60);
         const cooldownInterval = setInterval(() => {
           setCooldownTimer((prev) => {
@@ -212,6 +238,15 @@ export default function ForgotPasswordPage() {
     } catch (error) {
       setError('Ошибка подключения к серверу');
     }
+  };
+
+  // ======== ОЧИСТКА ПРИ ВЫХОДЕ ========
+  const handleBack = () => {
+    setStep('phone');
+    sessionStorage.removeItem('reset_step');
+    sessionStorage.removeItem('reset_phone');
+    sessionStorage.removeItem('reset_code');
+    sessionStorage.removeItem('reset_token');
   };
 
   if (step === 'phone') {
@@ -340,7 +375,7 @@ export default function ForgotPasswordPage() {
 
             <div className="mt-6 pt-4 border-t border-gray-200">
               <button
-                onClick={() => setStep('phone')}
+                onClick={handleBack}
                 className="text-center text-gray-400 text-sm hover:text-gray-600 transition w-full"
               >
                 Назад
