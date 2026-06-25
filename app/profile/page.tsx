@@ -1,4 +1,4 @@
-// app/profile/page.tsx - УЛУЧШЕННЫЙ ДИЗАЙН
+// app/profile/page.tsx
 
 'use client';
 
@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import AvatarCropper from '../components/AvatarCropper';
-import { User, Phone, Mail, Shield, Calendar, LogOut, Home, Truck } from 'lucide-react';
+import { User, Phone, Mail, Shield, Calendar, LogOut, Home, Truck, Globe, MessageCircle, PhoneCall } from 'lucide-react';
 
 interface UserData {
   id: number;
@@ -30,6 +30,74 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [lang, setLang] = useState<'ru' | 'kz'>('ru');
+
+  const translations = {
+    ru: {
+      profile: 'Профиль',
+      back: 'Назад',
+      avatar: 'Аватар',
+      upload: 'Загрузить',
+      name: 'Имя',
+      phone: 'Телефон',
+      email: 'Email',
+      role: 'Роль',
+      registered: 'Дата регистрации',
+      active: 'Активен',
+      inactive: 'Неактивен',
+      becomeCourier: 'Стать курьером',
+      logout: 'Выйти',
+      home: 'На главную',
+      callCenter: 'Колл-центр',
+      callUs: 'Позвоните нам',
+      workingHours: 'Ежедневно с 9:00 до 21:00',
+      call: 'Позвонить',
+      whatsapp: 'WhatsApp',
+      telegram: 'Telegram',
+      error: 'Ошибка',
+      tryAgain: 'Попробовать снова',
+      userNotFound: 'Пользователь не найден',
+      login: 'Войти',
+      confirmLogout: 'Вы уверены, что хотите выйти?',
+      avatarUpdated: 'Аватар обновлен!',
+      avatarError: 'Ошибка при загрузке аватара',
+      selectImage: 'Пожалуйста, выберите изображение',
+      loading: 'Загрузка...'
+    },
+    kz: {
+      profile: 'Профиль',
+      back: 'Артқа',
+      avatar: 'Аватар',
+      upload: 'Жүктеу',
+      name: 'Аты',
+      phone: 'Телефон',
+      email: 'Email',
+      role: 'Рөл',
+      registered: 'Тіркелген күні',
+      active: 'Белсенді',
+      inactive: 'Белсенді емес',
+      becomeCourier: 'Курьер болу',
+      logout: 'Шығу',
+      home: 'Басты бетке',
+      callCenter: 'Колл-орталық',
+      callUs: 'Бізге қоңырау шалыңыз',
+      workingHours: 'Күнделікті 9:00-ден 21:00-ге дейін',
+      call: 'Қоңырау шалу',
+      whatsapp: 'WhatsApp',
+      telegram: 'Telegram',
+      error: 'Қате',
+      tryAgain: 'Қайталап көріңіз',
+      userNotFound: 'Пайдаланушы табылмады',
+      login: 'Кіру',
+      confirmLogout: 'Шығуға сенімдісіз бе?',
+      avatarUpdated: 'Аватар жаңартылды!',
+      avatarError: 'Аватарды жүктеу кезінде қате',
+      selectImage: 'Суретті таңдаңыз',
+      loading: 'Жүктелуде...'
+    }
+  };
+
+  const t = translations[lang];
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
@@ -82,7 +150,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Пожалуйста, выберите изображение');
+      alert(t.selectImage);
       return;
     }
 
@@ -114,13 +182,13 @@ export default function ProfilePage() {
 
       if (response.ok) {
         setAvatarUrl(`/users/avatar-file/${user?.id}?t=${Date.now()}`);
-        alert('Аватар обновлен!');
+        alert(t.avatarUpdated);
       } else {
-        alert('Ошибка при загрузке аватара');
+        alert(t.avatarError);
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Ошибка при загрузке');
+      alert(t.avatarError);
     } finally {
       setUploading(false);
       setSelectedFile(null);
@@ -128,7 +196,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    if (confirm('Вы уверены, что хотите выйти?')) {
+    if (confirm(t.confirmLogout)) {
       sessionStorage.removeItem('userToken');
       localStorage.removeItem('userToken');
       sessionStorage.removeItem('isLoggedIn');
@@ -139,7 +207,7 @@ export default function ProfilePage() {
   const formatDate = (dateString: string) => {
     if (!dateString) return '—';
     const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'kk-KZ', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -159,13 +227,13 @@ export default function ProfilePage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-sm">
           <div className="text-5xl mb-4">😢</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Ошибка</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">{t.error}</h2>
           <p className="text-gray-500">{error}</p>
           <button 
             onClick={() => window.location.reload()}
             className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl hover:bg-[#2a5a4d] transition"
           >
-            Попробовать снова
+            {t.tryAgain}
           </button>
         </div>
       </div>
@@ -177,10 +245,10 @@ export default function ProfilePage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-sm">
           <div className="text-5xl mb-4">👤</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Пользователь не найден</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">{t.userNotFound}</h2>
           <Link href="/login">
             <button className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl hover:bg-[#2a5a4d] transition">
-              Войти
+              {t.login}
             </button>
           </Link>
         </div>
@@ -207,13 +275,21 @@ export default function ProfilePage() {
       {/* Шапка */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Профиль</h1>
-          <button 
-            onClick={() => router.back()}
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition"
-          >
-            ✕
-          </button>
+          <h1 className="text-2xl font-bold">{t.profile}</h1>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setLang(lang === 'ru' ? 'kz' : 'ru')}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition text-sm font-medium"
+            >
+              {lang === 'ru' ? 'Қаз' : 'Рус'}
+            </button>
+            <button 
+              onClick={() => router.back()}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       </div>
 
@@ -259,25 +335,25 @@ export default function ProfilePage() {
               </label>
             </div>
             {uploading && (
-              <p className="text-xs text-gray-400 mt-2">Загрузка...</p>
+              <p className="text-xs text-gray-400 mt-2">{t.loading}</p>
             )}
             <h2 className="text-lg font-bold text-gray-800 mt-3">
               {fullName || 'Пользователь'}
             </h2>
             <p className="text-sm text-gray-500 flex items-center gap-1.5">
               <span className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
-              {user.is_active ? 'Активен' : 'Неактивен'}
+              {user.is_active ? t.active : t.inactive}
             </p>
           </div>
 
-          {/* Данные пользователя */}
+          {/* Данные пользователя - БЕЗ РОЛИ */}
           <div className="space-y-3 border-t border-gray-100 pt-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
                 <User size={14} className="text-gray-400" />
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Имя</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t.name}</p>
                 <p className="text-sm font-medium text-gray-800">{fullName || '—'}</p>
               </div>
             </div>
@@ -287,7 +363,7 @@ export default function ProfilePage() {
                 <Phone size={14} className="text-gray-400" />
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Телефон</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t.phone}</p>
                 <p className="text-sm font-medium text-gray-800">{user.phone || '—'}</p>
               </div>
             </div>
@@ -298,30 +374,11 @@ export default function ProfilePage() {
                   <Mail size={14} className="text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Email</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t.email}</p>
                   <p className="text-sm font-medium text-gray-800">{user.email}</p>
                 </div>
               </div>
             )}
-
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center">
-                <Shield size={14} className="text-gray-400" />
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">Роль</p>
-                <p className="text-sm font-medium text-gray-800 capitalize">
-                  {user.role === 'courier' ? (
-                    <span className="flex items-center gap-1">
-                      <Truck size={14} className="text-gray-400" />
-                      Курьер
-                    </span>
-                  ) : (
-                    user.role || 'Клиент'
-                  )}
-                </p>
-              </div>
-            </div>
 
             {user.created_at && (
               <div className="flex items-center gap-3">
@@ -329,20 +386,20 @@ export default function ProfilePage() {
                   <Calendar size={14} className="text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Дата регистрации</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t.registered}</p>
                   <p className="text-sm font-medium text-gray-800">{formatDate(user.created_at)}</p>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Кнопки - ТОНКИЕ И ИЗЯЩНЫЕ */}
+          {/* Кнопки */}
           <div className="mt-6 space-y-2.5">
             {user.role !== 'courier' && (
               <Link href="/courier/register">
                 <button className="w-full bg-[#367666]/10 text-[#367666] text-sm font-medium py-2.5 rounded-xl hover:bg-[#367666]/20 transition flex items-center justify-center gap-2">
                   <Truck size={16} className="opacity-60" />
-                  Стать курьером
+                  {t.becomeCourier}
                 </button>
               </Link>
             )}
@@ -352,15 +409,58 @@ export default function ProfilePage() {
               className="w-full bg-red-50 text-red-600 text-sm font-medium py-2.5 rounded-xl hover:bg-red-100 transition flex items-center justify-center gap-2"
             >
               <LogOut size={16} className="opacity-60" />
-              Выйти
+              {t.logout}
             </button>
 
             <Link href="/">
               <button className="w-full bg-gray-50 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-100 transition flex items-center justify-center gap-2">
                 <Home size={16} className="opacity-60" />
-                На главную
+                {t.home}
               </button>
             </Link>
+          </div>
+        </div>
+
+        {/* CALL CENTER */}
+        <div className="mt-4 bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <PhoneCall size={18} className="text-[#367666]" />
+            <h3 className="text-base font-bold text-gray-800">{t.callCenter}</h3>
+          </div>
+          
+          <p className="text-sm text-gray-500 mb-3">{t.callUs}</p>
+          <p className="text-xs text-gray-400 mb-4">{t.workingHours}</p>
+          
+          <div className="flex flex-wrap gap-3">
+            <a 
+              href="tel:+77071234567"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#367666] text-white rounded-xl hover:bg-[#2a5a4d] transition text-sm font-medium flex-1 justify-center"
+            >
+              <Phone size={16} />
+              {t.call}
+            </a>
+            
+            <a 
+              href="https://wa.me/77071234567"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-green-500 text-white rounded-xl hover:bg-green-600 transition text-sm font-medium flex-1 justify-center"
+            >
+              <MessageCircle size={16} />
+              {t.whatsapp}
+            </a>
+            
+            <a 
+              href="https://t.me/sarqyn_food"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition text-sm font-medium flex-1 justify-center"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+              </svg>
+              {t.telegram}
+            </a>
           </div>
         </div>
       </div>
