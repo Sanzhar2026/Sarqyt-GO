@@ -14,13 +14,19 @@ export default function ForgotPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
-  const [requestSent, setRequestSent] = useState(false);
+  const [cooldownTimer, setCooldownTimer] = useState(0);
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ✅ ПРОВЕРКА НА КУЛДАУН (1 МИНУТА)
+    if (cooldownTimer > 0) {
+      setError(`Подождите ${cooldownTimer} секунд перед повторной отправкой`);
+      return;
+    }
+    
     setLoading(true);
     setError('');
-    setRequestSent(false);
 
     if (!phone) {
       setError('Введите номер телефона');
@@ -38,9 +44,20 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setRequestSent(true);
         setLoading(false);
         setError('');
+        
+        // ✅ ЗАПУСКАЕМ КУЛДАУН 60 СЕКУНД
+        setCooldownTimer(60);
+        const cooldownInterval = setInterval(() => {
+          setCooldownTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(cooldownInterval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
         
         setStep('code');
         setResendTimer(60);
@@ -150,6 +167,10 @@ export default function ForgotPasswordPage() {
 
   const handleResendCode = async () => {
     if (resendTimer > 0) return;
+    if (cooldownTimer > 0) {
+      setError(`Подождите ${cooldownTimer} секунд`);
+      return;
+    }
     
     try {
       const response = await fetch('/api/auth/request-password-reset', {
@@ -162,6 +183,19 @@ export default function ForgotPasswordPage() {
       
       if (response.ok && data.success) {
         setError('');
+        
+        // ✅ КУЛДАУН ДЛЯ ПОВТОРНОЙ ОТПРАВКИ
+        setCooldownTimer(60);
+        const cooldownInterval = setInterval(() => {
+          setCooldownTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(cooldownInterval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
         setResendTimer(60);
         const timer = setInterval(() => {
           setResendTimer((prev) => {
@@ -217,10 +251,10 @@ export default function ForgotPasswordPage() {
               
               <button 
                 type="submit" 
-                disabled={loading} 
-                className="w-full bg-[#367666] text-white py-3 rounded-xl font-medium text-base hover:bg-[#2a5a4d] transition disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={loading || cooldownTimer > 0} 
+                className="w-full bg-[#367666] text-white py-3 rounded-xl font-medium text-base hover:bg-[#2a5a4d] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Отправка...' : 'Отправить запрос'}
+                {loading ? 'Отправка...' : cooldownTimer > 0 ? `Подождите ${cooldownTimer}с` : 'Отправить запрос'}
               </button>
             </form>
 
@@ -293,12 +327,14 @@ export default function ForgotPasswordPage() {
             <div className="mt-4 text-center">
               <button 
                 onClick={handleResendCode}
-                disabled={resendTimer > 0}
+                disabled={resendTimer > 0 || cooldownTimer > 0}
                 className="text-sm text-[#367666] hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {resendTimer > 0 
-                  ? `Отправить повторно через ${resendTimer}с` 
-                  : 'Отправить код повторно'}
+                {cooldownTimer > 0 
+                  ? `Подождите ${cooldownTimer}с` 
+                  : resendTimer > 0 
+                    ? `Отправить повторно через ${resendTimer}с` 
+                    : 'Отправить код повторно'}
               </button>
             </div>
 
