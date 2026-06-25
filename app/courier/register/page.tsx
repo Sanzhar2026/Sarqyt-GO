@@ -1,4 +1,4 @@
-// app/courier/register/page.tsx - СТИЛЬ YANDEX PRO + ЗЕЛЕНЫЙ
+// app/courier/register/page.tsx
 
 'use client';
 
@@ -15,15 +15,15 @@ import {
   ArrowLeft,
   CheckCircle,
   ChevronRight,
-  MapPin,
   Clock,
   Star
 } from 'lucide-react';
-import { useLanguage } from '../../layout';
+import { useLanguage } from '../../components/LanguageSwitcher';
 
 export default function CourierRegisterPage() {
   const router = useRouter();
-  const { lang } = useLanguage();
+  const { lang, setLang, t } = useLanguage(); // ✅ ИСПОЛЬЗУЙ КОНТЕКСТ!
+  
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -39,76 +39,8 @@ export default function CourierRegisterPage() {
   const [error, setError] = useState('');
   const [registered, setRegistered] = useState(false);
 
-  const t = {
-    kz: {
-      title: 'Курьер болыңыз да, табыс табыңыз',
-      subtitle: 'Икемді кесте • Жоғары табыс • Бонустар',
-      phone: 'Телефон нөміріңіз',
-      continue: 'Жалғастыру',
-      firstName: 'Аты *',
-      lastName: 'Тегі *',
-      courierType: 'Курьер түрі *',
-      pedestrian: 'Жаяу',
-      pedestrianRadius: 'Радиус 3 км',
-      driver: 'Көлікпен',
-      driverRadius: 'Радиус 15 км',
-      carModel: 'Көлік моделі',
-      carNumber: 'Мемлекеттік нөмір',
-      password: 'Құпия сөз *',
-      confirmPassword: 'Құпия сөзді растау *',
-      register: 'Курьер болып істеу',
-      registering: 'Тіркелу...',
-      haveAccount: 'Аккаунтыңыз бар ма?',
-      login: 'Кіру',
-      back: 'Басты бетке',
-      errorPasswordMatch: 'Құпия сөздер сәйкес келмейді',
-      errorPasswordLength: 'Құпия сөз кемінде 6 таңба болуы керек',
-      errorCarModel: 'Көлік моделін көрсетіңіз',
-      errorConnection: 'Сервермен байланыс қатесі',
-      errorRegistration: 'Тіркеу қатесі',
-      successTitle: 'Өтініш жіберілді!',
-      successText: 'Курьер ретінде тіркелу өтінішіңіз қарауға жіберілді.',
-      dashboard: 'Курьер панеліне',
-      benefits: 'Курьер болудың артықшылықтары',
-      flexibleSchedule: 'Икемді кесте',
-      highEarnings: 'Жоғары табыс',
-      bonuses: 'Бонустар мен сыйлықтар'
-    },
-    ru: {
-      title: 'Станьте курьером и зарабатывайте',
-      subtitle: 'Гибкий график • Высокий доход • Бонусы',
-      phone: 'Ваш номер телефона',
-      continue: 'Продолжить',
-      firstName: 'Имя *',
-      lastName: 'Фамилия *',
-      courierType: 'Тип курьера *',
-      pedestrian: 'Пеший',
-      pedestrianRadius: 'Радиус 3 км',
-      driver: 'На машине',
-      driverRadius: 'Радиус 15 км',
-      carModel: 'Модель автомобиля',
-      carNumber: 'Госномер',
-      password: 'Пароль *',
-      confirmPassword: 'Подтверждение пароля *',
-      register: 'Работать курьером',
-      registering: 'Регистрация...',
-      haveAccount: 'Уже есть аккаунт?',
-      login: 'Войти',
-      back: 'На главную',
-      errorPasswordMatch: 'Пароли не совпадают',
-      errorPasswordLength: 'Пароль должен быть не менее 6 символов',
-      errorCarModel: 'Укажите модель автомобиля',
-      errorConnection: 'Ошибка соединения с сервером',
-      errorRegistration: 'Ошибка регистрации',
-      successTitle: 'Заявка отправлена!',
-      successText: 'Ваша заявка на регистрацию курьера отправлена на рассмотрение.',
-      dashboard: 'В панель курьера',
-      benefits: 'Преимущества работы курьером',
-      flexibleSchedule: 'Гибкий график',
-      highEarnings: 'Высокий доход',
-      bonuses: 'Бонусы и поощрения'
-    }
-  };
+  // ✅ ВСЕ ПЕРЕВОДЫ ТЕПЕРЬ В КОНТЕКСТЕ!
+  // УБЕРИ ЛОКАЛЬНЫЙ ОБЪЕКТ t!
 
   const handlePhoneSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,17 +57,17 @@ export default function CourierRegisterPage() {
     setError('');
     
     if (formData.password !== formData.confirm_password) {
-      setError(t[lang].errorPasswordMatch);
+      setError(t('passwordsDontMatch'));
       return;
     }
     
     if (formData.password.length < 6) {
-      setError(t[lang].errorPasswordLength);
+      setError(t('passwordMinLength'));
       return;
     }
     
     if (formData.courier_type === 'driver' && !formData.car_model) {
-      setError(t[lang].errorCarModel);
+      setError(t('carModelRequired'));
       return;
     }
     
@@ -161,10 +93,10 @@ export default function CourierRegisterPage() {
       if (res.ok && data.success) {
         setRegistered(true);
       } else {
-        setError(data.detail || t[lang].errorRegistration);
+        setError(data.detail || t('registerError'));
       }
     } catch (err) {
-      setError(t[lang].errorConnection);
+      setError(t('connectionError'));
     } finally {
       setLoading(false);
     }
@@ -177,11 +109,11 @@ export default function CourierRegisterPage() {
           <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={40} className="text-emerald-600" strokeWidth={1.5} />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">{t[lang].successTitle}</h1>
-          <p className="text-gray-500 mb-8">{t[lang].successText}</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">{t('applicationSent')}</h1>
+          <p className="text-gray-500 mb-8">{t('waitApproval')}</p>
           <Link href="/courier/dashboard">
-            <button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl font-semibold text-lg transition shadow-lg shadow-emerald-600/30">
-              {t[lang].dashboard}
+            <button className="w-full bg-[#367666] hover:bg-[#2a5a4d] text-white py-4 rounded-2xl font-semibold text-lg transition shadow-lg shadow-[#367666]/30">
+              {t('dashboard')}
             </button>
           </Link>
         </div>
@@ -195,29 +127,46 @@ export default function CourierRegisterPage() {
       <div className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-md mx-auto flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-              <Truck size={20} className="text-emerald-600" strokeWidth={1.5} />
+            <div className="w-10 h-10 rounded-full bg-[#367666]/10 flex items-center justify-center">
+              <Truck size={20} className="text-[#367666]" strokeWidth={1.5} />
             </div>
             <div>
               <div className="font-bold text-gray-900 text-lg">Sarqyn</div>
-              <div className="text-xs text-gray-400 -mt-0.5">Курьер</div>
+              <div className="text-xs text-gray-400 -mt-0.5">{t('courier')}</div>
             </div>
           </div>
-          <div className="text-emerald-600 text-sm font-medium">🇰🇿</div>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setLang('ru')}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                lang === 'ru' ? 'bg-[#367666] text-white' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Рус
+            </button>
+            <button
+              onClick={() => setLang('kz')}
+              className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                lang === 'kz' ? 'bg-[#367666] text-white' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Қаз
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-md mx-auto pb-12">
         {/* Hero Section */}
-        <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white px-6 pt-10 pb-14 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/30 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-400/20 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="bg-[#367666] text-white px-6 pt-10 pb-14 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#367666]/30 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#367666]/20 rounded-full translate-y-1/2 -translate-x-1/2" />
           
           <div className="relative z-10">
             <h1 className="text-4xl font-bold leading-tight mb-3">
-              {t[lang].title}
+              {t('courierTitle')}
             </h1>
-            <p className="text-emerald-100 text-lg opacity-90">{t[lang].subtitle}</p>
+            <p className="text-emerald-100 text-lg opacity-90">{t('courierSubtitle')}</p>
           </div>
         </div>
 
@@ -225,22 +174,22 @@ export default function CourierRegisterPage() {
         <div className="px-6 -mt-8 relative z-10">
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-white rounded-2xl p-4 shadow-lg text-center">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-2">
-                <Clock size={18} className="text-emerald-600" strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full bg-[#367666]/10 flex items-center justify-center mx-auto mb-2">
+                <Clock size={18} className="text-[#367666]" strokeWidth={1.5} />
               </div>
-              <div className="text-xs font-medium text-gray-700">{t[lang].flexibleSchedule}</div>
+              <div className="text-xs font-medium text-gray-700">{t('flexibleSchedule')}</div>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-lg text-center">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-2">
-                <Star size={18} className="text-emerald-600" strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full bg-[#367666]/10 flex items-center justify-center mx-auto mb-2">
+                <Star size={18} className="text-[#367666]" strokeWidth={1.5} />
               </div>
-              <div className="text-xs font-medium text-gray-700">{t[lang].highEarnings}</div>
+              <div className="text-xs font-medium text-gray-700">{t('highEarnings')}</div>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-lg text-center">
-              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-2">
-                <Truck size={18} className="text-emerald-600" strokeWidth={1.5} />
+              <div className="w-10 h-10 rounded-full bg-[#367666]/10 flex items-center justify-center mx-auto mb-2">
+                <Truck size={18} className="text-[#367666]" strokeWidth={1.5} />
               </div>
-              <div className="text-xs font-medium text-gray-700">{t[lang].bonuses}</div>
+              <div className="text-xs font-medium text-gray-700">{t('bonuses')}</div>
             </div>
           </div>
         </div>
@@ -251,7 +200,7 @@ export default function CourierRegisterPage() {
             <form onSubmit={handlePhoneSubmit} className="space-y-4">
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t[lang].phone}
+                  {t('phone')}
                 </label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">+7</div>
@@ -259,7 +208,7 @@ export default function CourierRegisterPage() {
                     type="tel"
                     required
                     placeholder="(000) 000-00-00"
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-lg focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                    className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-lg focus:outline-none focus:border-[#367666] focus:ring-2 focus:ring-[#367666]/20 transition"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
@@ -271,9 +220,9 @@ export default function CourierRegisterPage() {
 
               <button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl text-lg font-semibold shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2"
+                className="w-full bg-[#367666] hover:bg-[#2a5a4d] text-white py-4 rounded-2xl text-lg font-semibold shadow-lg shadow-[#367666]/30 transition flex items-center justify-center gap-2"
               >
-                {t[lang].continue}
+                {t('continue')}
                 <ChevronRight size={20} strokeWidth={2} />
               </button>
             </form>
@@ -286,52 +235,49 @@ export default function CourierRegisterPage() {
               )}
 
               <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-4">
-                {/* Имя */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t[lang].firstName}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('firstName')}</label>
                   <div className="relative">
                     <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
                     <input
                       type="text"
                       required
-                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-[#367666] focus:ring-2 focus:ring-[#367666]/20 transition"
                       value={formData.first_name}
                       onChange={(e) => setFormData({...formData, first_name: e.target.value})}
                     />
                   </div>
                 </div>
 
-                {/* Фамилия */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t[lang].lastName}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('lastName')}</label>
                   <div className="relative">
                     <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
                     <input
                       type="text"
                       required
-                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-[#367666] focus:ring-2 focus:ring-[#367666]/20 transition"
                       value={formData.last_name}
                       onChange={(e) => setFormData({...formData, last_name: e.target.value})}
                     />
                   </div>
                 </div>
 
-                {/* Тип курьера */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">{t[lang].courierType}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">{t('courierType')}</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => setFormData({...formData, courier_type: 'pedestrian', car_model: '', car_number: ''})}
                       className={`p-4 rounded-2xl border-2 transition-all ${
                         formData.courier_type === 'pedestrian' 
-                          ? 'border-emerald-500 bg-emerald-50' 
-                          : 'border-gray-200 hover:border-emerald-300'
+                          ? 'border-[#367666] bg-[#367666]/5' 
+                          : 'border-gray-200 hover:border-[#367666]'
                       }`}
                     >
-                      <Footprints size={28} className={`mx-auto mb-1 ${formData.courier_type === 'pedestrian' ? 'text-emerald-600' : 'text-gray-400'}`} strokeWidth={1.5} />
-                      <div className="text-sm font-medium text-gray-700">{t[lang].pedestrian}</div>
-                      <div className="text-xs text-gray-400 mt-1">{t[lang].pedestrianRadius}</div>
+                      <Footprints size={28} className={`mx-auto mb-1 ${formData.courier_type === 'pedestrian' ? 'text-[#367666]' : 'text-gray-400'}`} strokeWidth={1.5} />
+                      <div className="text-sm font-medium text-gray-700">{t('pedestrian')}</div>
+                      <div className="text-xs text-gray-400 mt-1">{t('pedestrianRadius')}</div>
                     </button>
                     
                     <button
@@ -339,27 +285,26 @@ export default function CourierRegisterPage() {
                       onClick={() => setFormData({...formData, courier_type: 'driver'})}
                       className={`p-4 rounded-2xl border-2 transition-all ${
                         formData.courier_type === 'driver' 
-                          ? 'border-emerald-500 bg-emerald-50' 
-                          : 'border-gray-200 hover:border-emerald-300'
+                          ? 'border-[#367666] bg-[#367666]/5' 
+                          : 'border-gray-200 hover:border-[#367666]'
                       }`}
                     >
-                      <Car size={28} className={`mx-auto mb-1 ${formData.courier_type === 'driver' ? 'text-emerald-600' : 'text-gray-400'}`} strokeWidth={1.5} />
-                      <div className="text-sm font-medium text-gray-700">{t[lang].driver}</div>
-                      <div className="text-xs text-gray-400 mt-1">{t[lang].driverRadius}</div>
+                      <Car size={28} className={`mx-auto mb-1 ${formData.courier_type === 'driver' ? 'text-[#367666]' : 'text-gray-400'}`} strokeWidth={1.5} />
+                      <div className="text-sm font-medium text-gray-700">{t('driver')}</div>
+                      <div className="text-xs text-gray-400 mt-1">{t('driverRadius')}</div>
                     </button>
                   </div>
                 </div>
 
-                {/* Поля для водителя */}
                 {formData.courier_type === 'driver' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t[lang].carModel}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('carModel')}</label>
                       <div className="relative">
                         <Car size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
                         <input
                           type="text"
-                          className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                          className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-[#367666] focus:ring-2 focus:ring-[#367666]/20 transition"
                           value={formData.car_model}
                           onChange={(e) => setFormData({...formData, car_model: e.target.value})}
                         />
@@ -367,12 +312,12 @@ export default function CourierRegisterPage() {
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t[lang].carNumber}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('carNumber')}</label>
                       <div className="relative">
                         <Car size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
                         <input
                           type="text"
-                          className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                          className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-[#367666] focus:ring-2 focus:ring-[#367666]/20 transition"
                           value={formData.car_number}
                           onChange={(e) => setFormData({...formData, car_number: e.target.value})}
                         />
@@ -381,45 +326,42 @@ export default function CourierRegisterPage() {
                   </>
                 )}
 
-                {/* Телефон */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t[lang].phone}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('phone')}</label>
                   <div className="relative">
                     <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
                     <input
                       type="tel"
                       required
-                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-[#367666] focus:ring-2 focus:ring-[#367666]/20 transition"
                       value={formData.phone}
                       onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     />
                   </div>
                 </div>
 
-                {/* Пароль */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t[lang].password}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('password')}</label>
                   <div className="relative">
                     <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
                     <input
                       type="password"
                       required
-                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-[#367666] focus:ring-2 focus:ring-[#367666]/20 transition"
                       value={formData.password}
                       onChange={(e) => setFormData({...formData, password: e.target.value})}
                     />
                   </div>
                 </div>
 
-                {/* Подтверждение пароля */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t[lang].confirmPassword}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('confirmPassword')}</label>
                   <div className="relative">
                     <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" strokeWidth={1.5} />
                     <input
                       type="password"
                       required
-                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition"
+                      className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-[#367666] focus:ring-2 focus:ring-[#367666]/20 transition"
                       value={formData.confirm_password}
                       onChange={(e) => setFormData({...formData, confirm_password: e.target.value})}
                     />
@@ -430,26 +372,25 @@ export default function CourierRegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl text-lg font-semibold shadow-lg shadow-emerald-600/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full bg-[#367666] hover:bg-[#2a5a4d] text-white py-4 rounded-2xl text-lg font-semibold shadow-lg shadow-[#367666]/30 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    {t[lang].registering}
+                    {t('registering')}
                   </>
                 ) : (
-                  t[lang].register
+                  t('register')
                 )}
               </button>
             </form>
           )}
 
-          {/* Footer Links */}
           <div className="text-center mt-6">
             <p className="text-sm text-gray-400">
-              {t[lang].haveAccount}{' '}
-              <Link href="/courier/login" className="text-emerald-600 font-medium hover:text-emerald-700 transition">
-                {t[lang].login}
+              {t('alreadyHaveAccount')}{' '}
+              <Link href="/courier/login" className="text-[#367666] font-medium hover:text-[#2a5a4d] transition">
+                {t('login')}
               </Link>
             </p>
           </div>
@@ -457,12 +398,8 @@ export default function CourierRegisterPage() {
           <div className="text-center mt-4">
             <Link href="/" className="text-xs text-gray-300 hover:text-gray-500 transition inline-flex items-center gap-1">
               <ArrowLeft size={12} className="opacity-50" />
-              {t[lang].back}
+              {t('back')}
             </Link>
-          </div>
-
-          <div className="text-center text-xs text-gray-400 mt-8">
-            SMS немесе WhatsApp арқылы келген кодпен тіркеліңіз
           </div>
         </div>
       </div>

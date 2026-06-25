@@ -389,7 +389,21 @@ pleaseLogin: 'Пожалуйста, войдите в аккаунт',
     confirmDeleteProduct: 'Бұл тауарды жойғыңыз келетініне сенімдісіз бе?',
 // В translations.ru и translations.kz добавь:
 
+// В translations.ru и translations.kz добавь:
 
+courierTitle: 'Станьте курьером и зарабатывайте',
+courierSubtitle: 'Гибкий график • Высокий доход • Бонусы',
+courier: 'Курьер',
+
+pedestrianRadius: 'Радиус 3 км',
+driverRadius: 'Радиус 15 км',
+carModelRequired: 'Укажите модель автомобиля',
+
+dashboard: 'В панель курьера',
+flexibleSchedule: 'Гибкий график',
+highEarnings: 'Высокий доход',
+bonuses: 'Бонусы и поощрения',
+continue: 'Продолжить',
 chooseSurprise: 'Выберите свой сюрприз-пакет',
 noBags: 'Все пакеты временно забронированы',
 soldOut: 'Распродано',
