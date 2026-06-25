@@ -8,9 +8,7 @@ import './globals.css';
 import BottomNav from './components/BottomNav';
 import { GeolocationProvider } from './context/GeolocationContext';
 import GeolocationRequest from './components/GeolocationRequest';
-// app/layout.tsx
 
-'use client';
 
 
 import { LanguageProvider, useLanguage } from './components/LanguageSwitcher'
