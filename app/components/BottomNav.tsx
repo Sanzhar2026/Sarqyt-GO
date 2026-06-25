@@ -1,9 +1,10 @@
 // components/BottomNav.tsx
+
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useLanguage } from '../../app/layout';
+import { useLanguage } from '../../app/components/LanguageSwitcher'
 
 interface NavItem {
   labelKz: string;
@@ -76,7 +77,7 @@ const navItems: NavItem[] = [
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();  // ✅ ИСПОЛЬЗУЙ КОНТЕКСТ!
 
   const getLabel = (item: NavItem) => {
     if (item.isCenter) return '';
@@ -118,10 +119,6 @@ export default function BottomNav() {
             <Link 
               href={item.href} 
               key={index}
-              onClick={(e) => {
-                e.preventDefault();
-                router.push(item.href);
-              }}
               className="flex flex-col items-center py-2 px-3 rounded-xl transition-all duration-200 hover:bg-gray-50 group cursor-pointer"
             >
               <span className={`mb-1 transition-all duration-200 ${

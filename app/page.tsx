@@ -1,4 +1,4 @@
-// app/page.tsx - УПРОЩЕННАЯ ВЕРСИЯ (без Instagram логики)
+// app/page.tsx
 
 'use client';
 
@@ -11,7 +11,7 @@ import { Store, Gift } from 'lucide-react';
 import OfferCard from './components/OfferCard';
 import { useWebSocket } from './hooks/useWebSocket';
 import { setGlobalHideBottomNav } from './layout';
-import { useLanguage } from './layout';
+import { useLanguage } from './components/LanguageSwitcher';
 
 const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: false });
 
@@ -40,7 +40,7 @@ interface LocationData {
 
 export default function HomePage() {
   const router = useRouter();
-  const { lang, setLang } = useLanguage(); 
+  const { lang, setLang, t } = useLanguage();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,9 +55,6 @@ export default function HomePage() {
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
-  // ============================================================
-  // ПОЛУЧЕНИЕ ГЕОЛОКАЦИИ (ТОЛЬКО GPS)
-  // ============================================================
   useEffect(() => {
     setLocationLoading(true);
     
@@ -112,17 +109,11 @@ export default function HomePage() {
     );
   }, []);
 
-  // ============================================================
-  // ПОЛУЧЕНИЕ ТОКЕНА
-  // ============================================================
   const getAuthToken = useCallback(() => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
   }, []);
 
-  // ============================================================
-  // ЗАГРУЗКА СЮРПРИЗОВ
-  // ============================================================
   const fetchBags = useCallback(async (showLoading = false, isInitial = false) => {
     if (!isMountedRef.current) return;
     
@@ -198,9 +189,6 @@ export default function HomePage() {
     }
   }, [getAuthToken, location]);
 
-  // ============================================================
-  // ЗАГРУЗКА ПОСЛЕ ЛОКАЦИИ
-  // ============================================================
   useEffect(() => {
     if (locationLoading || showSplash) return;
     if (!initialLoadDoneRef.current) {
@@ -209,9 +197,6 @@ export default function HomePage() {
     }
   }, [locationLoading, showSplash, fetchBags]);
 
-  // ============================================================
-  // SPLASH SCREEN
-  // ============================================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -236,9 +221,6 @@ export default function HomePage() {
     }
   }, []);
 
-  // ============================================================
-  // ПОЛЬЗОВАТЕЛЬ
-  // ============================================================
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -282,18 +264,12 @@ export default function HomePage() {
     fetchUser();
   }, [getAuthToken]);
 
-  // ============================================================
-  // WebSocket
-  // ============================================================
   const wsUrl = userToken 
     ? `wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(userToken)}` 
     : null;
   
   const { isConnected, lastMessage } = useWebSocket(wsUrl);
 
-  // ============================================================
-  // ОБРАБОТКА СООБЩЕНИЙ WEBSOCKET
-  // ============================================================
   useEffect(() => {
     if (!lastMessage) return;
     
@@ -321,18 +297,12 @@ export default function HomePage() {
     }
   }, [lastMessage, fetchBags]);
 
-  // ============================================================
-  // CLEANUP
-  // ============================================================
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
     };
   }, []);
 
-  // ============================================================
-  // REFRESH OFFERS
-  // ============================================================
   useEffect(() => {
     const handleRefreshOffers = () => {
       fetchBags(false, false);
@@ -341,53 +311,6 @@ export default function HomePage() {
     return () => window.removeEventListener('refreshOffers', handleRefreshOffers);
   }, [fetchBags]);
 
-  // ============================================================
-  // ПЕРЕВОДЫ
-  // ============================================================
-  const t = {
-    kz: {
-      greeting: 'Сәлем',
-      guest: 'Қонақ',
-      subtitle: 'Бүгін не құтқарасыз?',
-      logout: 'Шығу',
-      login: 'Кіру',
-      register: 'Тіркелу',
-      search: 'Мейрамхана немесе тағам іздеу...',
-      nearbyOffers: 'Жақын маңдағы ұсыныстар',
-      noOffers: 'Қазір жақын маңда ұсыныс жоқ',
-      myOrders: 'Менің тапсырыстарым',
-      refresh: 'Жаңарту',
-      lastUpdate: 'Соңғы жаңарту',
-      connected: 'Қосылған',
-      disconnected: 'Қосылым жоқ',
-      nearbyShops: 'Жақын маңдағы дүкендер мен кафелер',
-      list: 'Тізім',
-      map: 'Карта'
-    },
-    ru: {
-      greeting: 'Привет',
-      guest: 'Гость',
-      subtitle: 'Что спасете сегодня?',
-      logout: 'Выйти',
-      login: 'Войти',
-      register: 'Регистрация',
-      search: 'Поиск ресторана или блюда...',
-      nearbyOffers: 'Предложения рядом',
-      noOffers: 'Рядом нет предложений',
-      myOrders: 'Мои заказы',
-      refresh: 'Обновить',
-      lastUpdate: 'Последнее обновление',
-      connected: 'Подключено',
-      disconnected: 'Нет соединения',
-      nearbyShops: 'Ближайшие магазины и кафе',
-      list: 'Список',
-      map: 'Карта'
-    }
-  };
-
-  // ============================================================
-  // ЛОГОТИП
-  // ============================================================
   const LogoCircle = () => {
     const [imgError, setImgError] = useState(false);
     
@@ -418,9 +341,6 @@ export default function HomePage() {
     );
   };
 
-  // ============================================================
-  // ЗАГРУЗКА
-  // ============================================================
   if (showSplash) {
     return (
       <div className="fixed inset-0 bg-[#367666] flex flex-col items-center justify-center z-50">
@@ -439,12 +359,8 @@ export default function HomePage() {
     );
   }
 
-  // ============================================================
-  // ОСНОВНОЙ РЕНДЕР
-  // ============================================================
   return (
     <div className="min-h-dvh bg-gray-50">
-      {/* Header */}
       <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">
@@ -464,16 +380,14 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Search Bar */}
       <div className="px-6 -mt-4">
         <input 
           type="text" 
-          placeholder={t[lang].search} 
+          placeholder={t('search')}
           className="w-full px-6 py-4 rounded-2xl bg-white shadow-md text-base focus:outline-none focus:ring-2 focus:ring-[#367666] placeholder:text-gray-400"
         />
       </div>
 
-      {/* Toggle Buttons */}
       <div className="px-6 mt-4">
         <div className="bg-gray-100 p-1 rounded-2xl flex gap-1">
           <button
@@ -487,7 +401,7 @@ export default function HomePage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            <span>{t[lang].list}</span>
+            <span>{t('list')}</span>
           </button>
           <button
             onClick={() => setViewMode('map')}
@@ -500,19 +414,18 @@ export default function HomePage() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
-            <span>{t[lang].map}</span>
+            <span>{t('map')}</span>
           </button>
         </div>
       </div>
 
-      {/* Контейнер */}
       <div className="px-3 mt-6 pb-32">
         {viewMode === 'list' ? (
           <>
             <div className="mb-4">
               <h2 className="font-bold text-lg flex items-center gap-2">
                 <Store size={20} className="text-gray-400/60" />
-                {t[lang].nearbyShops}
+                {t('nearbyShops')}
               </h2>
               <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
                 <Gift size={14} className="text-gray-400" />
@@ -524,31 +437,31 @@ export default function HomePage() {
               <Link href="/orders">
                 <button className="w-full bg-[#367666]/10 text-[#367666] py-2.5 rounded-xl text-sm font-medium hover:bg-[#367666]/20 transition flex items-center justify-center gap-2 mb-4">
                   <span>📋</span>
-                  <span>{t[lang].myOrders}</span>
+                  <span>{t('myOrders')}</span>
                 </button>
               </Link>
             )}
             
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold">{t[lang].nearbyOffers}</h3>
+              <h3 className="font-bold">{t('nearbyOffers')}</h3>
               <button 
                 onClick={() => fetchBags(true, false)}
                 disabled={isRefreshing}
                 className="bg-[#367666] text-white px-3 py-1 rounded-full text-xs hover:bg-[#2a5a4d] transition flex items-center gap-1 disabled:opacity-50"
               >
-                {isRefreshing ? '...' : t[lang].refresh}
+                {isRefreshing ? '...' : t('refresh')}
               </button>
             </div>
             
             <div className="text-right text-xs text-gray-400 mb-3">
-              {t[lang].lastUpdate}: {lastUpdate.toLocaleTimeString()}
+              {t('lastUpdate')}: {lastUpdate.toLocaleTimeString()}
               {isConnected && <span className="ml-2 text-green-500">● Live</span>}
             </div>
             
             <div className="flex flex-col gap-3">
               {bags.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-500">{t[lang].noOffers}</p>
+                  <p className="text-gray-500">{t('noOffers')}</p>
                 </div>
               ) : (
                 bags.map((bag, bagIdx) => (

@@ -14,7 +14,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-const translations = {
+const translations: Record<Language, Record<string, string>> = {
   ru: {
     // ===== PROFILE =====
     profile: 'Профиль',
@@ -37,7 +37,7 @@ const translations = {
     call: 'Позвонить',
     whatsapp: 'WhatsApp',
     telegram: 'Telegram',
-    
+
     // ===== ERRORS & MESSAGES =====
     error: 'Ошибка',
     tryAgain: 'Попробовать снова',
@@ -48,7 +48,37 @@ const translations = {
     avatarError: 'Ошибка при загрузке аватара',
     selectImage: 'Пожалуйста, выберите изображение',
     loading: 'Загрузка...',
-    
+
+    // ===== ORDERS =====
+    myOrders: 'Мои заказы',
+    noOrders: 'Нет заказов',
+    orderAmount: 'Сумма',
+    orderDate: 'Дата',
+    order: 'Заказ',
+    supplier: 'Продавец',
+    noAddress: 'Адрес не указан',
+    orderStatus: 'Статус',
+    noOrdersDesc: 'У вас пока нет заказов.',
+    findSurprise: 'Найдите сюрприз-пакет и сделайте заказ!',
+    findSurpriseBtn: 'Найти сюрпризы',
+    refresh: 'Обновить',
+    lastUpdate: 'Последнее обновление',
+    nearbyOffers: 'Предложения рядом',
+    nearbyShops: 'Ближайшие магазины и кафе',
+    list: 'Список',
+    map: 'Карта',
+    search: 'Поиск',
+
+    // ===== ORDER STATUS =====
+    pending: 'Ожидается',
+    confirmed: 'Подтвержден',
+    preparing: 'Готовится',
+    readyForPickup: 'Готов к выдаче',
+    outForDelivery: 'Доставляется',
+    nearby: 'Курьер рядом',
+    delivered: 'Доставлен',
+    cancelled: 'Отменен',
+
     // ===== SIGNUP =====
     signup: 'Регистрация',
     createAccount: 'Создать аккаунт',
@@ -60,20 +90,20 @@ const translations = {
     register: 'Зарегистрироваться',
     alreadyHaveAccount: 'Уже есть аккаунт?',
     signIn: 'Войти',
-    
+
     // ===== LOGIN =====
     welcomeBack: 'Добро пожаловать',
     signInToAccount: 'Войдите в свой аккаунт',
     forgotPassword: 'Забыли пароль?',
     noAccount: 'Нет аккаунта?',
     signUp: 'Зарегистрироваться',
-    
+
     // ===== FORGOT PASSWORD =====
     resetPassword: 'Восстановление пароля',
     enterPhone: 'Введите номер телефона для восстановления',
     sendCode: 'Отправить код',
     rememberPassword: 'Вспомнили пароль?',
-    
+
     // ===== VERIFICATION =====
     verification: 'Подтверждение',
     enterCode: 'Введите код, отправленный на ваш номер',
@@ -81,18 +111,18 @@ const translations = {
     verify: 'Подтвердить',
     resendCode: 'Отправить код повторно',
     wait: 'Подождите',
-    
+
     // ===== NEW PASSWORD =====
     newPassword: 'Новый пароль',
     enterNewPassword: 'Введите новый пароль',
     savePassword: 'Сохранить пароль',
     passwordChanged: 'Пароль успешно изменен',
-    
+
     // ===== NAV =====
     main: 'Главная',
     orders: 'Заказы',
     cart: 'Корзина',
-    
+
     // ===== COURIER =====
     becomeCourierTitle: 'Стать курьером',
     courierRegistration: 'Регистрация курьера',
@@ -106,10 +136,9 @@ const translations = {
     applicationSent: 'Заявка отправлена на рассмотрение',
     waitApproval: 'Дождитесь одобрения администратора',
     alreadyCourier: 'Вы уже зарегистрированы как курьер',
-    
+
     // ===== TRACKING =====
     trackOrder: 'Отслеживание заказа',
-    orderStatus: 'Статус заказа',
     orderNumber: 'Номер заказа',
     supplierAddress: 'Адрес ресторана',
     deliveryAddress: 'Адрес доставки',
@@ -117,26 +146,7 @@ const translations = {
     minutes: 'мин',
     km: 'км',
     inProgress: 'В процессе',
-    delivered: 'Доставлен',
-    cancelled: 'Отменен',
-    pending: 'Ожидает',
-    confirmed: 'Подтвержден',
-    preparing: 'Готовится',
-    readyForPickup: 'Готов к выдаче',
-    outForDelivery: 'В пути',
-    nearby: 'Рядом',
-    
-    // ===== ORDERS =====
-    myOrders: 'Мои заказы',
-    noOrders: 'У вас нет заказов',
-    orderAmount: 'Сумма',
-    orderDate: 'Дата',
-    emptyCart: 'Корзина пуста',
-    total: 'Итого',
-    checkout: 'Оформить заказ',
-    remove: 'Удалить',
-    quantity: 'Кол-во',
-    
+
     // ===== SURPRISE =====
     surpriseBags: 'Сюрпризы',
     addBag: 'Добавить сюрприз',
@@ -153,7 +163,7 @@ const translations = {
     toggleStatus: 'Изменить статус',
     deleteBag: 'Удалить сюрприз',
     confirmDelete: 'Вы уверены, что хотите удалить этот сюрприз?',
-    
+
     // ===== CATEGORIES =====
     categories: 'Категории',
     addCategory: 'Добавить категорию',
@@ -161,7 +171,7 @@ const translations = {
     categoryIcon: 'Иконка',
     deleteCategory: 'Удалить категорию',
     confirmDeleteCategory: 'Вы уверены, что хотите удалить эту категорию?',
-    
+
     // ===== PRODUCTS =====
     products: 'Товары',
     addProduct: 'Добавить товар',
@@ -173,7 +183,11 @@ const translations = {
     available: 'Доступен',
     unavailable: 'Недоступен',
     deleteProduct: 'Удалить товар',
-    confirmDeleteProduct: 'Вы уверены, что хотите удалить этот товар?'
+    confirmDeleteProduct: 'Вы уверены, что хотите удалить этот товар?',
+
+    // ===== BOTTOM NAV =====
+    offers: 'Сюрприз',
+    favorites: 'Избранное'
   },
   kz: {
     // ===== PROFILE =====
@@ -197,7 +211,7 @@ const translations = {
     call: 'Қоңырау шалу',
     whatsapp: 'WhatsApp',
     telegram: 'Telegram',
-    
+
     // ===== ERRORS & MESSAGES =====
     error: 'Қате',
     tryAgain: 'Қайталап көріңіз',
@@ -208,7 +222,37 @@ const translations = {
     avatarError: 'Аватарды жүктеу кезінде қате',
     selectImage: 'Суретті таңдаңыз',
     loading: 'Жүктелуде...',
-    
+
+    // ===== ORDERS =====
+    myOrders: 'Менің тапсырыстарым',
+    noOrders: 'Тапсырыстар жоқ',
+    orderAmount: 'Сомасы',
+    orderDate: 'Күні',
+    order: 'Тапсырыс',
+    supplier: 'Сатушы',
+    noAddress: 'Мекенжай көрсетілмеген',
+    orderStatus: 'Күйі',
+    noOrdersDesc: 'Сізде әлі тапсырыс жоқ.',
+    findSurprise: 'Сюрприз-пакетті тауып, тапсырыс беріңіз!',
+    findSurpriseBtn: 'Сюрприздерді табу',
+    refresh: 'Жаңарту',
+    lastUpdate: 'Соңғы жаңарту',
+    nearbyOffers: 'Жақын маңдағы ұсыныстар',
+    nearbyShops: 'Жақын маңдағы дүкендер мен кафелер',
+    list: 'Тізім',
+    map: 'Карта',
+    search: 'Іздеу',
+
+    // ===== ORDER STATUS =====
+    pending: 'Күтілуде',
+    confirmed: 'Расталды',
+    preparing: 'Дайындалуда',
+    readyForPickup: 'Дайын',
+    outForDelivery: 'Жеткізілуде',
+    nearby: 'Курьер жақын жерде',
+    delivered: 'Жеткізілді',
+    cancelled: 'Бас тартылды',
+
     // ===== SIGNUP =====
     signup: 'Тіркелу',
     createAccount: 'Аккаунт құру',
@@ -220,20 +264,20 @@ const translations = {
     register: 'Тіркелу',
     alreadyHaveAccount: 'Аккаунтыңыз бар ма?',
     signIn: 'Кіру',
-    
+
     // ===== LOGIN =====
     welcomeBack: 'Қайта келдіңіз!',
     signInToAccount: 'Аккаунтыңызға кіріңіз',
     forgotPassword: 'Құпия сөзді ұмыттыңыз ба?',
     noAccount: 'Аккаунтыңыз жоқ па?',
     signUp: 'Тіркелу',
-    
+
     // ===== FORGOT PASSWORD =====
     resetPassword: 'Құпия сөзді қалпына келтіру',
     enterPhone: 'Қалпына келтіру үшін телефон нөмірін енгізіңіз',
     sendCode: 'Код жіберу',
     rememberPassword: 'Құпия сөзді есіңізге түсірдіңіз бе?',
-    
+
     // ===== VERIFICATION =====
     verification: 'Растау',
     enterCode: 'Нөміріңізге жіберілген кодты енгізіңіз',
@@ -241,18 +285,18 @@ const translations = {
     verify: 'Растау',
     resendCode: 'Кодты қайта жіберу',
     wait: 'Күтіңіз',
-    
+
     // ===== NEW PASSWORD =====
     newPassword: 'Жаңа құпия сөз',
     enterNewPassword: 'Жаңа құпия сөзді енгізіңіз',
     savePassword: 'Құпия сөзді сақтау',
     passwordChanged: 'Құпия сөз сәтті өзгертілді',
-    
+
     // ===== NAV =====
     main: 'Басты бет',
     orders: 'Тапсырыстар',
     cart: 'Себет',
-    
+
     // ===== COURIER =====
     becomeCourierTitle: 'Курьер болу',
     courierRegistration: 'Курьерді тіркеу',
@@ -266,10 +310,9 @@ const translations = {
     applicationSent: 'Өтінім қарауға жіберілді',
     waitApproval: 'Әкімшінің рұқсатын күтіңіз',
     alreadyCourier: 'Сіз қазірдің өзінде курьер ретінде тіркелгенсіз',
-    
+
     // ===== TRACKING =====
     trackOrder: 'Тапсырысты бақылау',
-    orderStatus: 'Тапсырыс күйі',
     orderNumber: 'Тапсырыс нөмірі',
     supplierAddress: 'Мейрамхана мекенжайы',
     deliveryAddress: 'Жеткізу мекенжайы',
@@ -277,26 +320,7 @@ const translations = {
     minutes: 'мин',
     km: 'км',
     inProgress: 'Жүріп жатыр',
-    delivered: 'Жеткізілді',
-    cancelled: 'Бас тартылды',
-    pending: 'Күтілуде',
-    confirmed: 'Расталды',
-    preparing: 'Дайындалуда',
-    readyForPickup: 'Дайын',
-    outForDelivery: 'Жолда',
-    nearby: 'Жақын жерде',
-    
-    // ===== ORDERS =====
-    myOrders: 'Менің тапсырыстарым',
-    noOrders: 'Тапсырыстарыңыз жоқ',
-    orderAmount: 'Сомасы',
-    orderDate: 'Күні',
-    emptyCart: 'Себет бос',
-    total: 'Барлығы',
-    checkout: 'Тапсырыс беру',
-    remove: 'Жою',
-    quantity: 'Саны',
-    
+
     // ===== SURPRISE =====
     surpriseBags: 'Сюрприздер',
     addBag: 'Сюрприз қосу',
@@ -313,7 +337,7 @@ const translations = {
     toggleStatus: 'Күйін өзгерту',
     deleteBag: 'Сюрпризді жою',
     confirmDelete: 'Бұл сюрпризді жойғыңыз келетініне сенімдісіз бе?',
-    
+
     // ===== CATEGORIES =====
     categories: 'Санаттар',
     addCategory: 'Санат қосу',
@@ -321,7 +345,7 @@ const translations = {
     categoryIcon: 'Белгіше',
     deleteCategory: 'Санатты жою',
     confirmDeleteCategory: 'Бұл санатты жойғыңыз келетініне сенімдісіз бе?',
-    
+
     // ===== PRODUCTS =====
     products: 'Тауарлар',
     addProduct: 'Тауар қосу',
@@ -333,7 +357,11 @@ const translations = {
     available: 'Қолжетімді',
     unavailable: 'Қолжетімсіз',
     deleteProduct: 'Тауарды жою',
-    confirmDeleteProduct: 'Бұл тауарды жойғыңыз келетініне сенімдісіз бе?'
+    confirmDeleteProduct: 'Бұл тауарды жойғыңыз келетініне сенімдісіз бе?',
+
+    // ===== BOTTOM NAV =====
+    offers: 'Сюрприз',
+    favorites: 'Таңдаулы'
   }
 };
 
@@ -353,7 +381,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   const t = (key: string): string => {
-    return translations[lang][key as keyof typeof translations.ru] || key;
+    const langTranslations = translations[lang];
+    return langTranslations[key] || key;
   };
 
   return (

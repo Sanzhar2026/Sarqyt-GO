@@ -1,4 +1,4 @@
-// app/cart/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/cart/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLanguage } from '../layout';
+import { useLanguage } from '../components/LanguageSwitcher'
 
 interface CartItem {
   id: number;
@@ -29,7 +29,7 @@ interface Reservation {
 
 export default function CartPage() {
   const router = useRouter();
-  const { lang, setLang } = useLanguage();
+  const { lang, t } = useLanguage(); // ✅ ИСПОЛЬЗУЙ КОНТЕКСТ!
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingStep, setProcessingStep] = useState<'form' | 'processing' | 'success'>('form');
@@ -43,77 +43,11 @@ export default function CartPage() {
   const DELIVERY_FEE = 400;
   const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
-  const t = {
-    kz: {
-      cart: 'Себет',
-      timeLeft: 'Броньдеу уақыты',
-      payBefore: 'Мерзімі өткенше төлеңіз',
-      orElse: 'Әйтпесе тауар сатылымға қайтарылады',
-      total: 'Барлығы',
-      items: 'тауар',
-      checkout: 'Тапсырыс беру',
-      timeExpired: 'Уақыт өтті',
-      paymentMethod: 'Kaspi QR арқылы төлеу',
-      amount: 'Сома',
-      back: 'Артқа',
-      pay: 'Kaspi QR арқылы төлеу',
-      emptyCart: 'Себет бос',
-      addItems: 'Тауарларды қосыңыз',
-      shop: 'Сатып алу',
-      bookingExpired: 'Броньдеу уақыты аяқталды! Тауар сатылымға қайтарылды.',
-      bookingWarning: 'Броньдеу уақыты аяқталуға жақын',
-      timeRemaining: 'Қалған уақыт',
-      deliveryAddress: 'Жеткізу мекенжайы',
-      enterAddress: 'Мекенжайыңызды енгізіңіз',
-      processing: 'Өңделуде',
-      redirecting: 'Төлем бетіне өту...',
-      deliveryType: 'Жеткізу түрі',
-      courier: 'Курьермен жеткізу',
-      pickup: 'Өзім алып кетемін',
-      pickupAddress: 'Алып кету мекенжайы',
-      deliveryFee: 'Жеткізу құны',
-      orderAmount: 'Тапсырыс сомасы',
-      totalAmount: 'Төленетін сома'
-    },
-    ru: {
-      cart: 'Корзина',
-      timeLeft: 'Время бронирования',
-      payBefore: 'Оплатите до истечения',
-      orElse: 'Иначе товар вернется в продажу',
-      total: 'Итого',
-      items: 'товаров',
-      checkout: 'Заказать',
-      timeExpired: 'Время истекло',
-      paymentMethod: 'Оплата через Kaspi QR',
-      amount: 'Сумма',
-      back: 'Назад',
-      pay: 'Оплатить Kaspi QR',
-      emptyCart: 'Корзина пуста',
-      addItems: 'Добавьте товары',
-      shop: 'Перейти к покупкам',
-      bookingExpired: 'Время бронирования истекло! Товар возвращен в продажу.',
-      bookingWarning: 'Время бронирования истекает',
-      timeRemaining: 'Осталось',
-      deliveryAddress: 'Адрес доставки',
-      enterAddress: 'Введите ваш адрес',
-      processing: 'Обработка',
-      redirecting: 'Переход на страницу оплаты...',
-      deliveryType: 'Способ получения',
-      courier: 'Доставка курьером',
-      pickup: 'Самовывоз',
-      pickupAddress: 'Адрес самовывоза',
-      deliveryFee: 'Стоимость доставки',
-      orderAmount: 'Сумма заказа',
-      totalAmount: 'Итого к оплате'
-    }
-  };
-
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
   };
 
-  // ✅ ИСПРАВЛЕНО: ИСПОЛЬЗУЕТ ОТНОСИТЕЛЬНЫЕ ПУТИ
   const authFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();
     
@@ -123,7 +57,6 @@ export default function CartPage() {
       throw new Error('No token');
     }
     
-    // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ (БЕЗ ПОЛНОГО URL)
     return fetch(url, {
       ...options,
       headers: {
@@ -167,7 +100,6 @@ export default function CartPage() {
     }
   }, [deliveryType]);
 
-  // ✅ ИСПРАВЛЕНО: ОТНОСИТЕЛЬНЫЙ ПУТЬ
   const checkReservation = async () => {
     try {
       const response = await authFetch('/api/cart/reservation');
@@ -212,7 +144,7 @@ export default function CartPage() {
     
     if (expires.getTime() <= now.getTime()) {
       setTimeLeft(0);
-      alert(`⏰ ${t[lang].bookingExpired}`);
+      alert(`⏰ ${t('bookingExpired')}`);
       sessionStorage.removeItem('cart');
       setCartItems([]);
       setReservation(null);
@@ -227,7 +159,7 @@ export default function CartPage() {
       if (diff <= 0) {
         setTimeLeft(0);
         clearInterval(interval);
-        alert(`⏰ ${t[lang].bookingExpired}`);
+        alert(`⏰ ${t('bookingExpired')}`);
         sessionStorage.removeItem('cart');
         setCartItems([]);
         setReservation(null);
@@ -241,7 +173,7 @@ export default function CartPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [reservation, router, showTimerWarning, lang, t]);
+  }, [reservation, router, showTimerWarning]);
 
   const loadCart = () => {
     const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
@@ -321,7 +253,6 @@ export default function CartPage() {
     }
   };
 
-  // ✅ ИСПРАВЛЕНО: ОТНОСИТЕЛЬНЫЕ ПУТИ
   const createOrders = async () => {
     const token = getAuthToken();
     console.log('🔑 Токен для запроса:', token ? `${token.substring(0, 30)}...` : 'НЕТ ТОКЕНА');
@@ -329,7 +260,6 @@ export default function CartPage() {
     const createdOrders = [];
     
     for (const item of cartItems) {
-      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
       const response = await authFetch('/api/orders', {
         method: 'POST',
         body: JSON.stringify({
@@ -393,11 +323,11 @@ export default function CartPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t[lang].emptyCart}</h1>
-          <p className="text-gray-500 mb-6">{t[lang].addItems}</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t('emptyCart')}</h1>
+          <p className="text-gray-500 mb-6">{t('addItems')}</p>
           <Link href="/offers">
             <button className="bg-[#367666] text-white px-6 py-3 rounded-xl hover:bg-[#2a5a4d] transition">
-              {t[lang].shop}
+              {t('shop')}
             </button>
           </Link>
         </div>
@@ -407,14 +337,13 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6" />
             </svg>
-            <h1 className="text-xl font-bold">{t[lang].cart}</h1>
+            <h1 className="text-xl font-bold">{t('cart')}</h1>
           </div>
           <button 
             onClick={() => router.back()}
@@ -425,12 +354,10 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* Контент корзины */}
       <div className="px-4 pt-4 pb-20">
-        {/* Способ получения */}
         <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            {t[lang].deliveryType}
+            {t('deliveryType')}
           </label>
           <div className="flex gap-3">
             <button
@@ -441,7 +368,7 @@ export default function CartPage() {
                   : 'bg-gray-100 text-gray-600'
               }`}
             >
-              {t[lang].pickup}
+              {t('pickup')}
             </button>
             <button
               onClick={() => setDeliveryType('delivery')}
@@ -451,18 +378,18 @@ export default function CartPage() {
                   : 'bg-gray-100 text-gray-600'
               }`}
             >
-              {t[lang].courier}
+              {t('courier')}
             </button>
           </div>
           
           {deliveryType === 'delivery' && (
             <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t[lang].deliveryAddress}
+                {t('deliveryAddress')}
               </label>
               <input
                 type="text"
-                placeholder={t[lang].enterAddress}
+                placeholder={t('enterAddress')}
                 value={customerAddress}
                 onChange={(e) => setCustomerAddress(e.target.value)}
                 className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#367666] text-sm"
@@ -473,69 +400,65 @@ export default function CartPage() {
           {deliveryType === 'pickup' && (
             <div className="mt-4 p-3 bg-blue-50 rounded-xl">
               <p className="text-sm text-blue-700">
-                {t[lang].pickupAddress}: Ресторан по адресу, указанному при оформлении
+                {t('pickupAddress')}: Ресторан по адресу, указанному при оформлении
               </p>
             </div>
           )}
         </div>
         
-        {/* Таймер бронирования */}
         {timeLeft !== null && timeLeft > 0 && (
           <div className={`mb-4 p-4 rounded-2xl ${showTimerWarning ? 'bg-red-50 border border-red-200' : 'bg-yellow-50'}`}>
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-semibold ${showTimerWarning ? 'text-red-600' : 'text-yellow-700'}`}>
-                  {t[lang].timeLeft}
+                  {t('timeLeft')}
                 </p>
                 <p className={`text-2xl font-mono font-bold ${showTimerWarning ? 'text-red-600 animate-pulse' : 'text-yellow-700'}`}>
                   {formatTimeLeft(timeLeft)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-500">{t[lang].payBefore}</p>
-                <p className="text-xs text-gray-400">{t[lang].orElse}</p>
+                <p className="text-xs text-gray-500">{t('payBefore')}</p>
+                <p className="text-xs text-gray-400">{t('orElse')}</p>
               </div>
             </div>
           </div>
         )}
         
-        {/* Детали оплаты */}
         <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">{t[lang].orderAmount}</span>
+              <span className="text-gray-600">{t('orderAmount')}</span>
               <span className="text-gray-800">{getSubtotalPrice().toLocaleString()} ₸</span>
             </div>
             {deliveryType === 'delivery' && (
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">{t[lang].deliveryFee}</span>
+                <span className="text-gray-600">{t('deliveryFee')}</span>
                 <span className="text-gray-800">{DELIVERY_FEE.toLocaleString()} ₸</span>
               </div>
             )}
             <div className="border-t border-gray-100 pt-2 mt-2">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-800">{t[lang].totalAmount}</span>
+                <span className="font-semibold text-gray-800">{t('totalAmount')}</span>
                 <span className="text-2xl font-bold text-[#367666]">
                   {getTotalPrice().toLocaleString()} ₸
                 </span>
               </div>
               <div className="text-right text-sm text-gray-500 mt-1">
-                {getTotalItems()} {t[lang].items}
+                {getTotalItems()} {t('items')}
               </div>
             </div>
           </div>
         </div>
         
-        {/* Кнопка оформления */}
         <button
           onClick={handleCheckout}
           disabled={timeLeft === 0 || (deliveryType === 'delivery' && !customerAddress)}
           className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4"
         >
-          <span>{timeLeft === 0 ? t[lang].timeExpired : t[lang].checkout}</span>
+          <span>{timeLeft === 0 ? t('timeExpired') : t('checkout')}</span>
         </button>
         
-        {/* Товары в корзине */}
         <div className="space-y-3">
           {cartItems.map((item) => (
             <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm flex gap-4">
@@ -579,7 +502,6 @@ export default function CartPage() {
         </div>
       </div>
 
-      {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-slide-up">
@@ -599,13 +521,13 @@ export default function CartPage() {
             
             <div className="p-6">
               <div className="text-center mb-6">
-                <p className="text-gray-500 text-sm mb-1">Сумма к оплате</p>
+                <p className="text-gray-500 text-sm mb-1">{t('amount')}</p>
                 <p className="text-3xl font-bold text-[#367666]">
                   {getTotalPrice().toLocaleString()} ₸
                 </p>
                 {timeLeft && timeLeft > 0 && (
                   <p className="text-xs text-gray-400 mt-2">
-                    Осталось: {formatTimeLeft(timeLeft)}
+                    {t('timeRemaining')}: {formatTimeLeft(timeLeft)}
                   </p>
                 )}
               </div>
@@ -618,10 +540,10 @@ export default function CartPage() {
                 {processingStep === 'processing' ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Перенаправление...</span>
+                    <span>{t('processing')}</span>
                   </>
                 ) : (
-                  <span>Оплатить через Kaspi</span>
+                  <span>{t('pay')}</span>
                 )}
               </button>
               
@@ -636,7 +558,7 @@ export default function CartPage() {
                 onClick={() => setShowPaymentModal(false)}
                 className="w-full mt-4 py-3 rounded-xl border border-gray-200 text-gray-500 font-medium hover:bg-gray-50 transition"
               >
-                Вернуться
+                {t('back')}
               </button>
             </div>
           </div>

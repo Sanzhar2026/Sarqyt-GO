@@ -1,84 +1,96 @@
-// app/orders/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/orders/page.tsx
 
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { getUserOrders, getAuthToken, type Order } from '../../lib/api'
-import { translations, type Language } from '../../lib/i18n'
-import OrderStatusBadge from '../components/OrderStatusBadge'
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useLanguage } from '../components/LanguageSwitcher';
+import { getUserOrders, getAuthToken, type Order } from '../../lib/api';
+import OrderStatusBadge from '../components/OrderStatusBadge';
 
 export default function OrdersPage() {
-  const [lang] = useState<Language>('ru')
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
-  const t = translations[lang]
+  const router = useRouter();
+  const { lang, t } = useLanguage();
+  
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = getAuthToken()
+    const token = getAuthToken();
     
     if (!token) {
-      console.log('❌ Нет токена, редирект на логин')
-      router.push('/login')
-      return
+      console.log('❌ Нет токена, редирект на логин');
+      router.push('/login');
+      return;
     }
     
-    console.log('✅ Токен есть, загружаем заказы')
+    console.log('✅ Токен есть, загружаем заказы');
     
     getUserOrders()
       .then((data) => {
-        console.log('📦 Получено заказов:', data?.length || 0)
-        console.log('📋 Первый заказ:', data?.[0])
-        setOrders(data || [])
-        setError(null)
+        console.log('📦 Получено заказов:', data?.length || 0);
+        setOrders(data || []);
+        setError(null);
       })
       .catch((err) => {
-        console.error('❌ Ошибка загрузки заказов:', err)
-        setError(err.message || 'Ошибка загрузки заказов')
+        console.error('❌ Ошибка загрузки заказов:', err);
+        setError(err.message || 'Ошибка загрузки заказов');
         
         if (err.status === 401 || err.message?.includes('401')) {
-          sessionStorage.removeItem('userToken')
-          sessionStorage.removeItem('user')
-          localStorage.removeItem('access_token')
-          router.push('/login')
+          sessionStorage.removeItem('userToken');
+          sessionStorage.removeItem('user');
+          localStorage.removeItem('access_token');
+          router.push('/login');
         }
       })
       .finally(() => {
-        setLoading(false)
-      })
-  }, [router])
+        setLoading(false);
+      });
+  }, [router]);
 
-  // ✅ Функция для получения названия заказа
   const getOrderName = (order: Order): string => {
     return order.bag_name || 
            order.surprise_bag_name || 
-           `Заказ #${order.order_number}`
-  }
+           `Заказ #${order.order_number}`;
+  };
 
-  // ✅ Функция для получения суммы заказа
   const getOrderAmount = (order: Order): number => {
-    return order.amount_paid || order.amount || 0
-  }
+    return order.amount_paid || order.amount || 0;
+  };
 
-  // ✅ Функция для получения продавца
   const getSupplierName = (order: Order): string => {
-    return order.supplier_name || 'Продавец'
-  }
+    return order.supplier_name || 'Продавец';
+  };
 
-  // ✅ Функция для получения адреса
   const getAddress = (order: Order): string => {
-    return order.customer_address || order.address || 'Адрес не указан'
-  }
+    return order.customer_address || order.address || 'Адрес не указан';
+  };
+
+  const getStatusText = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      pending: t('pending'),
+      confirmed: t('confirmed'),
+      preparing: t('preparing'),
+      ready_for_pickup: t('readyForPickup'),
+      out_for_delivery: t('outForDelivery'),
+      nearby: t('nearby'),
+      waiting_confirmation: 'Ожидает подтверждения',
+      delivered: t('delivered'),
+      cancelled: t('cancelled'),
+      rejected: 'Отклонен',
+      refunded: 'Возврат'
+    };
+    return statusMap[status] || status;
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -86,58 +98,55 @@ export default function OrdersPage() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
         <div className="text-center">
           <div className="text-5xl mb-4">😕</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Ошибка</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">{t('error')}</h2>
           <p className="text-gray-500 mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
             className="bg-[#367666] text-white px-6 py-3 rounded-xl hover:bg-[#2a5a4d] transition"
           >
-            Попробовать снова
+            {t('tryAgain')}
           </button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-8">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-bold">{t.myOrders || 'Мои заказы'}</h1>
+            <h1 className="text-2xl font-bold">{t('myOrders')}</h1>
             <p className="text-white/70 text-sm mt-1">
               {orders.length} {orders.length === 1 ? 'заказ' : orders.length < 5 ? 'заказа' : 'заказов'}
             </p>
           </div>
           <button
             onClick={() => {
-              setLoading(true)
+              setLoading(true);
               getUserOrders()
                 .then(setOrders)
                 .catch((err) => setError(err.message))
-                .finally(() => setLoading(false))
+                .finally(() => setLoading(false));
             }}
             className="bg-white/20 text-white px-4 py-2 rounded-xl text-sm hover:bg-white/30 transition"
           >
-            🔄 Обновить
+            🔄 {t('refresh')}
           </button>
         </div>
       </div>
 
-      {/* Список заказов */}
       <div className="p-6 space-y-4">
         {orders.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-3xl shadow-sm">
             <div className="text-6xl mb-4">📭</div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Нет заказов</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">{t('noOrders')}</h3>
             <p className="text-gray-500 text-sm mb-6">
-              У вас пока нет заказов. <br />
-              Найдите сюрприз-пакет и сделайте заказ!
+              {t('noOrdersDesc')}
             </p>
             <Link href="/">
               <button className="bg-[#367666] text-white px-8 py-3 rounded-xl hover:bg-[#2a5a4d] transition font-medium">
-                Найти сюрпризы
+                {t('findSurpriseBtn')}
               </button>
             </Link>
           </div>
@@ -166,9 +175,9 @@ export default function OrdersPage() {
                     <p className="text-gray-500 text-sm line-clamp-1">
                       {order.delivery_type === 'delivery' ? '🚚 Доставка' : '🏪 Самовывоз'}
                     </p>
-                    {order.address && (
+                    {getAddress(order) && (
                       <p className="text-gray-400 text-xs line-clamp-1 mt-0.5">
-                        📍 {order.address}
+                        📍 {getAddress(order)}
                       </p>
                     )}
                   </div>
@@ -179,13 +188,13 @@ export default function OrdersPage() {
                 
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-50">
                   <div>
-                    <p className="text-xs text-gray-400">Сумма</p>
+                    <p className="text-xs text-gray-400">{t('orderAmount')}</p>
                     <p className="text-[#367666] font-bold text-lg">
                       {getOrderAmount(order)} ₸
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-400">Статус</p>
+                    <p className="text-xs text-gray-400">{t('orderStatus')}</p>
                     <p className="text-sm font-medium text-gray-700">
                       {getStatusText(order.status)}
                     </p>
@@ -197,23 +206,5 @@ export default function OrdersPage() {
         )}
       </div>
     </div>
-  )
-}
-
-// Вспомогательная функция для отображения статуса на русском
-function getStatusText(status: string): string {
-  const statusMap: Record<string, string> = {
-    pending: 'Ожидается',
-    confirmed: 'Подтвержден',
-    preparing: 'Готовится',
-    ready_for_pickup: 'Готов к выдаче',
-    out_for_delivery: 'Доставляется',
-    nearby: 'Курьер рядом',
-    waiting_confirmation: 'Ожидает подтверждения',
-    delivered: 'Доставлен',
-    cancelled: 'Отменен',
-    rejected: 'Отклонен',
-    refunded: 'Возврат'
-  }
-  return statusMap[status] || status
+  );
 }

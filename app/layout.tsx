@@ -8,47 +8,12 @@ import './globals.css';
 import BottomNav from './components/BottomNav';
 import { GeolocationProvider } from './context/GeolocationContext';
 import GeolocationRequest from './components/GeolocationRequest';
+// app/layout.tsx
 
-type Language = 'kz' | 'ru';
+'use client';
 
-// ==================== КОНТЕКСТ ЯЗЫКА ====================
-interface LanguageContextType {
-  lang: Language;
-  setLang: (lang: Language) => void;
-}
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
-
-export const useLanguage = () => {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLanguage must be used within LanguageProvider');
-  }
-  return context;
-};
-
-const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [lang, setLang] = useState<Language>('kz');
-
-  useEffect(() => {
-    const savedLang = localStorage.getItem('language') as Language;
-    if (savedLang && (savedLang === 'kz' || savedLang === 'ru')) {
-      setLang(savedLang);
-    }
-  }, []);
-
-  const handleSetLang = (newLang: Language) => {
-    setLang(newLang);
-    localStorage.setItem('language', newLang);
-  };
-
-  return (
-    <LanguageContext.Provider value={{ lang: lang, setLang: handleSetLang }}>
-      {children}
-    </LanguageContext.Provider>
-  );
-};
-// =======================================================
+import { LanguageProvider, useLanguage } from './components/LanguageSwitcher'
 
 // Глобальное состояние для скрытия BottomNav
 let globalHideBottomNav = false;
@@ -61,19 +26,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [hideBottomNav, setHideBottomNav] = useState(true);
+  const [hideBottomNav, setHideBottomNav] = useState(false);
 
   useEffect(() => {
     const checkHideStatus = () => {
       setHideBottomNav(globalHideBottomNav);
     };
-    const interval = setInterval(checkHideStatus, 50);
+    const interval = setInterval(checkHideStatus, 100);
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ ЗАПРАШИВАЕМ ГЕОЛОКАЦИЮ ДЛЯ ВСЕХ
+  // Запрашиваем геолокацию
   useEffect(() => {
-    // Проверяем есть ли уже сохраненные координаты
     const savedLat = sessionStorage.getItem('user_lat');
     const savedLon = sessionStorage.getItem('user_lon');
     
@@ -82,7 +46,6 @@ export default function RootLayout({
       return;
     }
 
-    // Запрашиваем геолокацию
     if (navigator.geolocation) {
       console.log('📍 Запрашиваем геолокацию...');
       navigator.geolocation.getCurrentPosition(
@@ -104,9 +67,9 @@ export default function RootLayout({
   }, []);
 
   return (
-    <LanguageProvider>
+    <LanguageProvider>  {/* ✅ ТОЛЬКО ОДИН LanguageProvider */}
       <GeolocationProvider>
-        <html lang="kz" suppressHydrationWarning>
+        <html lang="ru" suppressHydrationWarning>
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes, viewport-fit=cover" />
             <title>Sarqyt GO</title>
