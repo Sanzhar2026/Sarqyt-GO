@@ -42,9 +42,6 @@ export default function ForgotPasswordPage() {
         setLoading(false);
         setError('');
         
-        // ✅ КОД НЕ ПОКАЗЫВАЕМ! Ждем одобрения админа
-        // Код придет по SMS или через WebSocket
-        
         setStep('code');
         setResendTimer(60);
         const timer = setInterval(() => {
@@ -255,8 +252,8 @@ export default function ForgotPasswordPage() {
                 {phone}
               </p>
               {!error && (
-                <div className="mt-3 p-3 bg-yellow-50 text-yellow-800 rounded-xl text-sm border border-yellow-200">
-                  ⏳ Ожидайте одобрения администратора. Код придет после подтверждения.
+                <div className="mt-3 p-3 bg-gray-50 text-gray-600 rounded-xl text-sm border border-gray-200">
+                  Ожидайте одобрения администратора. Код придет после подтверждения.
                 </div>
               )}
             </div>
@@ -276,7 +273,7 @@ export default function ForgotPasswordPage() {
                   type="text" 
                   value={code} 
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
-                  placeholder="000000" 
+                  placeholder="Введите код" 
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-center text-2xl tracking-[0.5rem] font-mono" 
                   required 
                   maxLength={6}
