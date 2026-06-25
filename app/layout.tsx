@@ -1,18 +1,15 @@
-// app/layout.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/layout.tsx
 
 'use client';
-import { WebSocketListener } from './components/WebSocketListener';
-import { useState, useEffect, createContext, useContext } from 'react';
+
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import './globals.css';
 import BottomNav from './components/BottomNav';
 import { GeolocationProvider } from './context/GeolocationContext';
 import GeolocationRequest from './components/GeolocationRequest';
-
-
-
-import { LanguageProvider, useLanguage } from './components/LanguageSwitcher'
-
+import { LanguageProvider } from './components/LanguageSwitcher';
+import { WebSocketListener } from './components/WebSocketListener';
 // Глобальное состояние для скрытия BottomNav
 let globalHideBottomNav = false;
 export const setGlobalHideBottomNav = (value: boolean) => {
@@ -24,7 +21,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [isClient, setIsClient] = useState(false);
   const [hideBottomNav, setHideBottomNav] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const checkHideStatus = () => {
@@ -65,21 +67,25 @@ export default function RootLayout({
   }, []);
 
   return (
-    <LanguageProvider>  {/* ✅ ТОЛЬКО ОДИН LanguageProvider */}
+    <LanguageProvider>
       <GeolocationProvider>
-        <html lang="ru" suppressHydrationWarning>
+        <html lang="ru" suppressHydrationWarning>  {/* ✅ ДОБАВЛЕНО suppressHydrationWarning */}
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes, viewport-fit=cover" />
             <title>Sarqyt GO</title>
           </head>
-          <body className="bg-gray-50">
+          <body className="bg-gray-50" suppressHydrationWarning>  {/* ✅ ДОБАВЛЕНО suppressHydrationWarning */}
             <div className="max-w-md mx-auto bg-white shadow-lg min-h-dvh flex flex-col">
               <div className="flex-1">
                 {children}
               </div>
-              <WebSocketListener />
-              <GeolocationRequest />
-              {!hideBottomNav && <BottomNav />}
+              {isClient && (
+                <>
+                  <WebSocketListener />
+                  <GeolocationRequest />
+                  {!hideBottomNav && <BottomNav />}
+                </>
+              )}
             </div>
           </body>
         </html>
