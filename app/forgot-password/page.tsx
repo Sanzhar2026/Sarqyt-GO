@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function ForgotPasswordPage() {
-  // ======== ЗАГРУЗКА СОХРАНЕННОГО СОСТОЯНИЯ ========
   const [step, setStep] = useState<'phone' | 'code' | 'reset'>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -23,20 +22,113 @@ export default function ForgotPasswordPage() {
     const savedPhone = sessionStorage.getItem('reset_phone');
     const savedCode = sessionStorage.getItem('reset_code');
     const savedToken = sessionStorage.getItem('reset_token');
+    const savedResendTimer = sessionStorage.getItem('reset_resend_timer');
+    const savedCooldownTimer = sessionStorage.getItem('reset_cooldown_timer');
+    const savedTimerStart = sessionStorage.getItem('reset_timer_start');
     
     if (savedStep) setStep(savedStep as 'phone' | 'code' | 'reset');
     if (savedPhone) setPhone(savedPhone);
     if (savedCode) setCode(savedCode);
     if (savedToken) setResetToken(savedToken);
+    
+    // ✅ ВОССТАНОВЛЕНИЕ ТАЙМЕРОВ
+    if (savedResendTimer) {
+      const saved = parseInt(savedResendTimer);
+      const start = parseInt(savedTimerStart || '0');
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const remaining = Math.max(0, saved - elapsed);
+      setResendTimer(remaining);
+      
+      // Если осталось время - запускаем таймер
+      if (remaining > 0) {
+        const interval = setInterval(() => {
+          setResendTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              sessionStorage.removeItem('reset_resend_timer');
+              sessionStorage.removeItem('reset_timer_start');
+              return 0;
+            }
+            const newVal = prev - 1;
+            sessionStorage.setItem('reset_resend_timer', String(newVal));
+            return newVal;
+          });
+        }, 1000);
+      }
+    }
+    
+    if (savedCooldownTimer) {
+      const saved = parseInt(savedCooldownTimer);
+      const start = parseInt(sessionStorage.getItem('reset_cooldown_start') || '0');
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const remaining = Math.max(0, saved - elapsed);
+      setCooldownTimer(remaining);
+      
+      if (remaining > 0) {
+        const interval = setInterval(() => {
+          setCooldownTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              sessionStorage.removeItem('reset_cooldown_timer');
+              sessionStorage.removeItem('reset_cooldown_start');
+              return 0;
+            }
+            const newVal = prev - 1;
+            sessionStorage.setItem('reset_cooldown_timer', String(newVal));
+            return newVal;
+          });
+        }, 1000);
+      }
+    }
   }, []);
 
-  // ======== СОХРАНЕНИЕ СОСТОЯНИЯ ПРИ ИЗМЕНЕНИИ ========
+  // ======== СОХРАНЕНИЕ СОСТОЯНИЯ ========
   useEffect(() => {
     sessionStorage.setItem('reset_step', step);
     sessionStorage.setItem('reset_phone', phone);
     sessionStorage.setItem('reset_code', code);
     sessionStorage.setItem('reset_token', resetToken);
   }, [step, phone, code, resetToken]);
+
+  const startCooldown = () => {
+    setCooldownTimer(60);
+    sessionStorage.setItem('reset_cooldown_timer', '60');
+    sessionStorage.setItem('reset_cooldown_start', String(Date.now()));
+    
+    const interval = setInterval(() => {
+      setCooldownTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          sessionStorage.removeItem('reset_cooldown_timer');
+          sessionStorage.removeItem('reset_cooldown_start');
+          return 0;
+        }
+        const newVal = prev - 1;
+        sessionStorage.setItem('reset_cooldown_timer', String(newVal));
+        return newVal;
+      });
+    }, 1000);
+  };
+
+  const startResendTimer = () => {
+    setResendTimer(60);
+    sessionStorage.setItem('reset_resend_timer', '60');
+    sessionStorage.setItem('reset_timer_start', String(Date.now()));
+    
+    const interval = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          sessionStorage.removeItem('reset_resend_timer');
+          sessionStorage.removeItem('reset_timer_start');
+          return 0;
+        }
+        const newVal = prev - 1;
+        sessionStorage.setItem('reset_resend_timer', String(newVal));
+        return newVal;
+      });
+    }, 1000);
+  };
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,28 +160,9 @@ export default function ForgotPasswordPage() {
         setLoading(false);
         setError('');
         
-        setCooldownTimer(60);
-        const cooldownInterval = setInterval(() => {
-          setCooldownTimer((prev) => {
-            if (prev <= 1) {
-              clearInterval(cooldownInterval);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        
+        startCooldown();
         setStep('code');
-        setResendTimer(60);
-        const timer = setInterval(() => {
-          setResendTimer((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        startResendTimer();
         
       } else {
         setError(data.message || 'Ошибка отправки запроса');
@@ -173,11 +246,15 @@ export default function ForgotPasswordPage() {
         setSuccess(true);
         setLoading(false);
         
-        // ✅ ОЧИСТКА ПОСЛЕ УСПЕХА
+        // ОЧИСТКА
         sessionStorage.removeItem('reset_step');
         sessionStorage.removeItem('reset_phone');
         sessionStorage.removeItem('reset_code');
         sessionStorage.removeItem('reset_token');
+        sessionStorage.removeItem('reset_resend_timer');
+        sessionStorage.removeItem('reset_cooldown_timer');
+        sessionStorage.removeItem('reset_timer_start');
+        sessionStorage.removeItem('reset_cooldown_start');
         
         setTimeout(() => {
           window.location.href = '/login';
@@ -210,28 +287,8 @@ export default function ForgotPasswordPage() {
       
       if (response.ok && data.success) {
         setError('');
-        
-        setCooldownTimer(60);
-        const cooldownInterval = setInterval(() => {
-          setCooldownTimer((prev) => {
-            if (prev <= 1) {
-              clearInterval(cooldownInterval);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        
-        setResendTimer(60);
-        const timer = setInterval(() => {
-          setResendTimer((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        startCooldown();
+        startResendTimer();
       } else {
         setError(data.message || 'Ошибка отправки кода');
       }
@@ -240,13 +297,16 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // ======== ОЧИСТКА ПРИ ВЫХОДЕ ========
   const handleBack = () => {
     setStep('phone');
     sessionStorage.removeItem('reset_step');
     sessionStorage.removeItem('reset_phone');
     sessionStorage.removeItem('reset_code');
     sessionStorage.removeItem('reset_token');
+    sessionStorage.removeItem('reset_resend_timer');
+    sessionStorage.removeItem('reset_cooldown_timer');
+    sessionStorage.removeItem('reset_timer_start');
+    sessionStorage.removeItem('reset_cooldown_start');
   };
 
   if (step === 'phone') {
