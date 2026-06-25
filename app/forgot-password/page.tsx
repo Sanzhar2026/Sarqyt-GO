@@ -12,15 +12,15 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [resendTimer, setResendTimer] = useState(0);
+  const [requestSent, setRequestSent] = useState(false);
 
-  // ======== ШАГ 1: ВВОД ТЕЛЕФОНА ========
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setRequestSent(false);
 
     if (!phone) {
       setError('Введите номер телефона');
@@ -38,10 +38,14 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setGeneratedCode(data.debug_code);
-        setStep('code');
+        setRequestSent(true);
         setLoading(false);
+        setError('');
         
+        // ✅ КОД НЕ ПОКАЗЫВАЕМ! Ждем одобрения админа
+        // Код придет по SMS или через WebSocket
+        
+        setStep('code');
         setResendTimer(60);
         const timer = setInterval(() => {
           setResendTimer((prev) => {
@@ -54,7 +58,7 @@ export default function ForgotPasswordPage() {
         }, 1000);
         
       } else {
-        setError(data.message || 'Ошибка отправки кода');
+        setError(data.message || 'Ошибка отправки запроса');
         setLoading(false);
       }
     } catch (error) {
@@ -63,7 +67,6 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // ======== ШАГ 2: ПРОВЕРКА КОДА ========
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -101,7 +104,6 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // ======== ШАГ 3: УСТАНОВКА НОВОГО ПАРОЛЯ ========
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -149,7 +151,6 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // ======== ПОВТОРНАЯ ОТПРАВКА КОДА ========
   const handleResendCode = async () => {
     if (resendTimer > 0) return;
     
@@ -163,9 +164,7 @@ export default function ForgotPasswordPage() {
       const data = await response.json();
       
       if (response.ok && data.success) {
-        setGeneratedCode(data.debug_code);
         setError('');
-        
         setResendTimer(60);
         const timer = setInterval(() => {
           setResendTimer((prev) => {
@@ -184,9 +183,6 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // ============================================================
-  // ШАГ 1: ВВОД ТЕЛЕФОНА
-  // ============================================================
   if (step === 'phone') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5] p-6">
@@ -227,7 +223,7 @@ export default function ForgotPasswordPage() {
                 disabled={loading} 
                 className="w-full bg-[#367666] text-white py-3 rounded-xl font-medium text-base hover:bg-[#2a5a4d] transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {loading ? 'Отправка...' : 'Отправить код'}
+                {loading ? 'Отправка...' : 'Отправить запрос'}
               </button>
             </form>
 
@@ -243,9 +239,6 @@ export default function ForgotPasswordPage() {
     );
   }
 
-  // ============================================================
-  // ШАГ 2: ВВОД КОДА
-  // ============================================================
   if (step === 'code') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5] p-6">
@@ -256,11 +249,16 @@ export default function ForgotPasswordPage() {
                 Подтверждение
               </h1>
               <p className="text-gray-500 text-sm mt-2">
-                Введите код, отправленный на номер
+                Введите код, отправленный на ваш номер
               </p>
               <p className="text-gray-700 font-medium text-sm mt-1">
                 {phone}
               </p>
+              {!error && (
+                <div className="mt-3 p-3 bg-yellow-50 text-yellow-800 rounded-xl text-sm border border-yellow-200">
+                  ⏳ Ожидайте одобрения администратора. Код придет после подтверждения.
+                </div>
+              )}
             </div>
             
             {error && (
@@ -284,13 +282,6 @@ export default function ForgotPasswordPage() {
                   maxLength={6}
                   autoFocus
                 />
-              </div>
-              
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-                <p className="text-sm text-gray-600 mb-1">Ваш код:</p>
-                <p className="text-2xl font-mono font-bold text-[#367666] tracking-[0.5rem]">
-                  {generatedCode}
-                </p>
               </div>
               
               <button 
@@ -328,9 +319,6 @@ export default function ForgotPasswordPage() {
     );
   }
 
-  // ============================================================
-  // ШАГ 3: УСТАНОВКА НОВОГО ПАРОЛЯ
-  // ============================================================
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f5f5f5] p-6">
       <div className="w-full max-w-md">
