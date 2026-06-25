@@ -311,6 +311,35 @@ const translations: Record<Language, Record<string, string>> = {
     waitApproval: 'Әкімшінің рұқсатын күтіңіз',
     alreadyCourier: 'Сіз қазірдің өзінде курьер ретінде тіркелгенсіз',
 
+    // В translations.ru и translations.kz добавь:
+// В translations.ru и translations.kz добавь:
+
+orderNotFound: 'Заказ не найден',
+backToOrders: 'Вернуться к заказам',
+orderDetails: 'Детали заказа',
+product: 'Товар',
+deliveryTypeLabel: 'Способ получения',
+delivery: 'Доставка',
+address: 'Адрес',
+confirmDelivery: 'Подтвердить получение',
+confirming: 'Подтверждение...',
+deliveryConfirmed: 'Заказ успешно подтвержден! Спасибо!',
+confirmError: 'Ошибка при подтверждении заказа',
+networkError: 'Ошибка сети. Попробуйте позже.',
+confirmCancel: 'Вы уверены, что хотите отменить заказ?',
+orderCancelled: 'Заказ успешно отменен!',
+cancelError: 'Ошибка при отмене заказа',
+cancelOrder: 'Отменить заказ',
+unknown: 'Не указан',
+
+noFavorites: 'Нет избранных сюрпризов',
+addFavoritesHint: 'Добавляйте сюрпризы в избранное, нажимая на сердечко',
+goToOffers: 'Перейти к сюрпризам',
+available: 'Доступно',
+pcs: 'шт.',
+
+outOfStock: 'Нет в наличии',
+pleaseLogin: 'Пожалуйста, войдите в аккаунт',
     // ===== TRACKING =====
     trackOrder: 'Тапсырысты бақылау',
     orderNumber: 'Тапсырыс нөмірі',
@@ -354,11 +383,21 @@ const translations: Record<Language, Record<string, string>> = {
     productCategory: 'Санат',
     prepTime: 'Дайындау уақыты',
     productDescription: 'Сипаттама',
-    available: 'Қолжетімді',
+   
     unavailable: 'Қолжетімсіз',
     deleteProduct: 'Тауарды жою',
     confirmDeleteProduct: 'Бұл тауарды жойғыңыз келетініне сенімдісіз бе?',
+// В translations.ru и translations.kz добавь:
 
+
+chooseSurprise: 'Выберите свой сюрприз-пакет',
+noBags: 'Все пакеты временно забронированы',
+soldOut: 'Распродано',
+addToCart: 'В корзину',
+adding: 'Добавление...',
+addedToCart: 'добавлен в корзину! У вас 15 минут на оплату.',
+addError: 'Ошибка при добавлении',
+connectionError: 'Ошибка соединения с сервером',
     // ===== BOTTOM NAV =====
     offers: 'Сюрприз',
     favorites: 'Таңдаулы'

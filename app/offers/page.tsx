@@ -1,4 +1,4 @@
-// app/offers/page.jsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/offers/page.jsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ РАЗНОЦВЕТНЫХ ЭМОДЗИ)
 
 'use client';
 
@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SurpriseBagCard from '../components/SurCard';
 import { Gift, Store } from 'lucide-react';
-import { useLanguage } from './../layout';
+import { useLanguage } from '../components/LanguageSwitcher';
 import { useGeolocation } from '../context/GeolocationContext';
 import GeolocationRequest from '../components/GeolocationRequest';
 
@@ -30,14 +30,13 @@ interface SurpriseBag {
 
 export default function OffersPage() {
   const router = useRouter();
-  const { lang, setLang } = useLanguage();
+  const { lang, setLang, t } = useLanguage();
   const { location, loading: locationLoading, error: locationError, refreshLocation } = useGeolocation();
   
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
 
-  // ✅ Единая функция для получения токена
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
@@ -46,7 +45,6 @@ export default function OffersPage() {
            null;
   };
 
-  // ✅ Проверка авторизации при монтировании
   useEffect(() => {
     setIsClient(true);
     const token = getAuthToken();
@@ -125,13 +123,13 @@ export default function OffersPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md">
           <div className="text-5xl mb-4">📍</div>
-          <h2 className="text-xl font-bold mb-2">Геолокация недоступна</h2>
+          <h2 className="text-xl font-bold mb-2">{t('error')}</h2>
           <p className="text-gray-500 text-sm">{locationError}</p>
           <button 
             onClick={refreshLocation}
             className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl"
           >
-            Попробовать снова
+            {t('tryAgain')}
           </button>
         </div>
       </div>
@@ -143,7 +141,7 @@ export default function OffersPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full mx-auto"></div>
-          <p className="mt-4 text-gray-500">Определение местоположения...</p>
+          <p className="mt-4 text-gray-500">{t('loading')}</p>
         </div>
       </div>
     );
@@ -155,22 +153,22 @@ export default function OffersPage() {
       
       <div className="bg-[#367666] text-white px-4 pt-12 pb-5">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Сюрприз-пакеты</h1>
-          <Gift size={24} className="text-white/80" />
+          <h1 className="text-2xl font-bold">{t('surpriseBags')}</h1>
+          <Gift size={24} className="text-white/40" /> {/* ✅ СДЕЛАЛ СЕРОВАТО-ПРОЗРАЧНЫЙ */}
         </div>
-        <p className="text-emerald-100 text-sm mt-1">Выберите свой сюрприз-пакет</p>
+        <p className="text-emerald-100 text-sm mt-1">{t('chooseSurprise')}</p>
       </div>
 
       <div className="p-3">
         {bags.length === 0 ? (
           <div className="text-center py-12">
-           <div className="text-5xl mb-3 text-gray-300/50">🎁</div>
-            <p className="text-gray-500 text-sm">Все пакеты временно забронированы</p>
+            <Gift size={48} className="mx-auto text-gray-300/30 mb-3" /> {/* ✅ СЕРОВАТО-ПРОЗРАЧНЫЙ */}
+            <p className="text-gray-500 text-sm">{t('noBags')}</p>
             <button 
               onClick={fetchBags}
               className="mt-3 text-[#367666] underline text-sm"
             >
-              Обновить
+              {t('refresh')}
             </button>
           </div>
         ) : (

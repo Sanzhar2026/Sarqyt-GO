@@ -1,9 +1,14 @@
+// app/signup/page.tsx
+
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useLanguage } from '../components/LanguageSwitcher'
 
 export default function SignupPage() {
+  const { lang, setLang, t } = useLanguage();
+  
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -27,25 +32,25 @@ export default function SignupPage() {
     setSuccess(false);
 
     if (!firstName || !lastName) {
-      setError('Введите имя и фамилию');
+      setError(t('enterName'));
       setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Пароли не совпадают');
+      setError(t('passwordsDontMatch'));
       setLoading(false);
       return;
     }
 
     if (password.length < 6) {
-      setError('Пароль должен быть минимум 6 символов');
+      setError(t('passwordMinLength'));
       setLoading(false);
       return;
     }
 
     if (!phone) {
-      setError('Введите номер телефона');
+      setError(t('enterPhone'));
       setLoading(false);
       return;
     }
@@ -82,12 +87,12 @@ export default function SignupPage() {
         }, 1000);
         
       } else {
-        setError(data.detail || 'Ошибка регистрации');
+        setError(data.detail || t('registerError'));
         setLoading(false);
       }
     } catch (error) {
       console.error('❌ Ошибка:', error);
-      setError('Ошибка подключения к серверу');
+      setError(t('connectionError'));
       setLoading(false);
     }
   };
@@ -98,7 +103,7 @@ export default function SignupPage() {
     setError('');
 
     if (!verificationCode || verificationCode.length !== 6) {
-      setError('Введите 6-значный код подтверждения');
+      setError(t('enterSixDigitCode'));
       setVerifyLoading(false);
       return;
     }
@@ -135,12 +140,12 @@ export default function SignupPage() {
         }, 1500);
         
       } else {
-        setError(data.detail || 'Неверный код подтверждения');
+        setError(data.detail || t('invalidCode'));
         setVerifyLoading(false);
       }
     } catch (error) {
       console.error('❌ Ошибка:', error);
-      setError('Ошибка проверки кода');
+      setError(t('verifyError'));
       setVerifyLoading(false);
     }
   };
@@ -173,11 +178,11 @@ export default function SignupPage() {
         }, 1000);
         
       } else {
-        setError(data.detail || 'Ошибка отправки кода');
+        setError(data.detail || t('resendError'));
       }
     } catch (error) {
       console.error('❌ Ошибка:', error);
-      setError('Ошибка подключения к серверу');
+      setError(t('connectionError'));
     }
   };
 
@@ -189,10 +194,10 @@ export default function SignupPage() {
             
             <div className="text-center mb-8">
               <h1 className="text-2xl font-semibold text-[#367666]">
-                Подтверждение
+                {t('verification')}
               </h1>
               <p className="text-gray-500 text-sm mt-2">
-                Введите код, отправленный на номер
+                {t('enterCodeSent')}
               </p>
               <p className="text-gray-700 font-medium text-sm mt-1">
                 {phone}
@@ -207,14 +212,14 @@ export default function SignupPage() {
             
             {success && (
               <div className="mb-4 p-3 bg-green-50 text-green-600 rounded-xl text-sm border border-green-200">
-                Регистрация успешна
+                {t('registrationSuccess')}
               </div>
             )}
 
             <form onSubmit={handleVerifyCode} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Код подтверждения
+                  {t('verificationCode')}
                 </label>
                 <input 
                   type="text" 
@@ -230,7 +235,7 @@ export default function SignupPage() {
               </div>
               
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-                <p className="text-sm text-gray-600 mb-1">Ваш код:</p>
+                <p className="text-sm text-gray-600 mb-1">{t('yourCode')}:</p>
                 <p className="text-2xl font-mono font-bold text-[#367666] tracking-[0.5rem]">
                   {generatedCode}
                 </p>
@@ -241,7 +246,7 @@ export default function SignupPage() {
                 disabled={verifyLoading || success || verificationCode.length !== 6} 
                 className="w-full bg-[#367666] text-white py-3 rounded-xl font-medium text-base hover:bg-[#2a5a4d] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {verifyLoading ? 'Проверка...' : 'Подтвердить'}
+                {verifyLoading ? t('checking') : t('confirm')}
               </button>
             </form>
 
@@ -252,8 +257,8 @@ export default function SignupPage() {
                 className="text-sm text-[#367666] hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {resendTimer > 0 
-                  ? `Отправить повторно через ${resendTimer}с` 
-                  : 'Отправить код повторно'}
+                  ? `${t('resendIn')} ${resendTimer}${t('seconds')}`
+                  : t('resendCode')}
               </button>
             </div>
 
@@ -262,7 +267,7 @@ export default function SignupPage() {
                 onClick={() => setStep('register')}
                 className="text-center text-gray-400 text-sm hover:text-gray-600 transition w-full"
               >
-                Назад
+                {t('back')}
               </button>
             </div>
 
@@ -279,10 +284,10 @@ export default function SignupPage() {
           
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-[#367666]">
-              Регистрация
+              {t('signup')}
             </h1>
             <p className="text-gray-500 text-sm mt-2">
-              Заполните данные для создания аккаунта
+              {t('fillData')}
             </p>
           </div>
           
@@ -295,13 +300,13 @@ export default function SignupPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Имя
+                {t('firstName')}
               </label>
               <input 
                 type="text" 
                 value={firstName} 
                 onChange={(e) => setFirstName(e.target.value)} 
-                placeholder="Имя" 
+                placeholder={t('firstName')} 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base" 
                 required 
               />
@@ -309,13 +314,13 @@ export default function SignupPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Фамилия
+                {t('lastName')}
               </label>
               <input 
                 type="text" 
                 value={lastName} 
                 onChange={(e) => setLastName(e.target.value)} 
-                placeholder="Фамилия" 
+                placeholder={t('lastName')} 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base" 
                 required 
               />
@@ -323,7 +328,7 @@ export default function SignupPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Номер телефона
+                {t('phone')}
               </label>
               <input 
                 type="tel" 
@@ -337,13 +342,13 @@ export default function SignupPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Пароль
+                {t('password')}
               </label>
               <input 
                 type="password" 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)} 
-                placeholder="Пароль" 
+                placeholder={t('password')} 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base" 
                 required 
                 minLength={6}
@@ -352,13 +357,13 @@ export default function SignupPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Подтвердите пароль
+                {t('confirmPassword')}
               </label>
               <input 
                 type="password" 
                 value={confirmPassword} 
                 onChange={(e) => setConfirmPassword(e.target.value)} 
-                placeholder="Подтвердите пароль" 
+                placeholder={t('confirmPassword')} 
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#367666] focus:border-transparent text-base" 
                 required 
                 minLength={6}
@@ -370,14 +375,14 @@ export default function SignupPage() {
               disabled={loading} 
               className="w-full bg-[#367666] text-white py-3 rounded-xl font-medium text-base mt-2 hover:bg-[#2a5a4d] transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+              {loading ? t('registering') : t('register')}
             </button>
           </form>
 
           <div className="mt-5 text-center">
-            <span className="text-sm text-gray-500">Уже есть аккаунт? </span>
+            <span className="text-sm text-gray-500">{t('alreadyHaveAccount')} </span>
             <Link href="/login" className="text-sm text-[#367666] font-medium hover:underline">
-              Войти
+              {t('signIn')}
             </Link>
           </div>
 

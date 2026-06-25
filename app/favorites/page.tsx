@@ -1,9 +1,12 @@
-'use client'
+// app/favorites/page.tsx
+
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useLanguage } from '../components/LanguageSwitcher'
 
 interface SurpriseBag {
   id: number;
@@ -20,18 +23,25 @@ interface SurpriseBag {
 
 export default function FavoritesPage() {
   const router = useRouter();
+  const { lang, setLang, t } = useLanguage(); // ✅ ДОБАВИЛ t!
   const [favorites, setFavorites] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState<number | null>(null);
 
-  // Загрузка избранного из localStorage
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('userToken') || 
+           sessionStorage.getItem('authToken') || 
+           sessionStorage.getItem('courierToken') ||
+           null;
+  };
+
   useEffect(() => {
     const loadFavorites = () => {
       const saved = localStorage.getItem('favorites');
       if (saved) {
         try {
           const favoritesList = JSON.parse(saved);
-          // Загружаем полные данные для каждого избранного сюрприза
           loadFavoriteBags(favoritesList);
         } catch (e) {
           console.error('Error loading favorites:', e);
@@ -45,7 +55,6 @@ export default function FavoritesPage() {
     loadFavorites();
   }, []);
 
-  // Загрузка данных сюрпризов по ID
   const loadFavoriteBags = async (favoriteIds: number[]) => {
     if (favoriteIds.length === 0) {
       setFavorites([]);
@@ -68,7 +77,6 @@ export default function FavoritesPage() {
     }
   };
 
-  // Удаление из избранного
   const removeFromFavorites = (bagId: number) => {
     const saved = localStorage.getItem('favorites');
     if (saved) {
@@ -79,12 +87,11 @@ export default function FavoritesPage() {
     }
   };
 
-  // Добавление в корзину
   const addToCart = async (bagId: number, bagName: string) => {
-    const token = sessionStorage.getItem('authToken');
+    const token = getAuthToken();
     
     if (!token) {
-      alert('Пожалуйста, войдите в аккаунт');
+      alert(t('pleaseLogin'));
       router.push('/login');
       return;
     }
@@ -104,19 +111,40 @@ export default function FavoritesPage() {
       const data = await response.json();
       
       if (data.success) {
-        showNotification(`✅ ${bagName} добавлен в корзину!`, 'success');
+        showNotification(`✅ ${bagName} ${t('addedToCart')}`, 'success');
+        // Обновляем корзину в sessionStorage
+        const cart = JSON.parse(sessionStorage.getItem('cart') || '[]');
+        const existing = cart.find((item: any) => item.id === bagId);
+        if (!existing) {
+          const bag = favorites.find(b => b.id === bagId);
+          if (bag) {
+            cart.push({
+              id: bag.id,
+              name: bag.name,
+              businessName: bag.supplier_name,
+              price: bag.discounted_price,
+              originalPrice: bag.original_price,
+              discount: bag.discount_percentage,
+              imageUrl: bag.image_url,
+              quantity: 1,
+              reservation_id: data.reservation_id,
+              expires_at: data.expires_at
+            });
+            sessionStorage.setItem('cart', JSON.stringify(cart));
+            window.dispatchEvent(new Event('cartUpdated'));
+          }
+        }
       } else {
-        showNotification(data.detail || 'Ошибка при добавлении', 'error');
+        showNotification(data.detail || t('addError'), 'error');
       }
     } catch (error) {
       console.error('Error adding to cart:', error);
-      showNotification('Ошибка при добавлении в корзину', 'error');
+      showNotification(t('addError'), 'error');
     } finally {
       setAddingToCart(null);
     }
   };
   
-  // Уведомления
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const toast = document.createElement('div');
     toast.className = `fixed bottom-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-up ${
@@ -144,7 +172,7 @@ export default function FavoritesPage() {
             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
-            <h1 className="text-xl font-bold">Избранное</h1>
+            <h1 className="text-xl font-bold">{t('favorites')}</h1>
           </div>
           <button 
             onClick={() => router.back()}
@@ -164,11 +192,11 @@ export default function FavoritesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
-            <p className="text-gray-500 text-lg">Нет избранных сюрпризов</p>
-            <p className="text-gray-400 text-sm mt-2">Добавляйте сюрпризы в избранное, нажимая на сердечко</p>
+            <p className="text-gray-500 text-lg">{t('noFavorites')}</p>
+            <p className="text-gray-400 text-sm mt-2">{t('addFavoritesHint')}</p>
             <Link href="/offers">
               <button className="mt-6 bg-[#367666] text-white px-6 py-2 rounded-xl hover:bg-[#2a5a4d] transition">
-                Перейти к сюрпризам
+                {t('goToOffers')}
               </button>
             </Link>
           </div>
@@ -177,7 +205,6 @@ export default function FavoritesPage() {
             {favorites.map((bag) => (
               <div key={bag.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition">
                 <div className="flex gap-4">
-                  {/* Изображение */}
                   {bag.image_url && (
                     <div className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
                       <Image
@@ -189,7 +216,6 @@ export default function FavoritesPage() {
                     </div>
                   )}
                   
-                  {/* Информация */}
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
                       <div>
@@ -214,21 +240,18 @@ export default function FavoritesPage() {
                     
                     <p className="text-gray-500 text-sm mt-1 line-clamp-2">{bag.description}</p>
                     
-                    {/* Цена */}
                     <div className="mt-2">
                       <span className="text-gray-400 line-through text-sm">{bag.original_price} ₸</span>
                       <span className="text-[#367666] font-bold text-lg ml-2">{bag.discounted_price} ₸</span>
                       <span className="text-xs text-gray-400 ml-1">-{bag.discount_percentage}%</span>
                     </div>
                     
-                    {/* Доступность */}
                     <div className="mt-1">
                       <span className="text-xs text-gray-400">
-                        Доступно: {bag.available_quantity} шт.
+                        {t('available')}: {bag.available_quantity} {t('pcs')}
                       </span>
                     </div>
                     
-                    {/* Кнопка заказа */}
                     <button
                       onClick={() => addToCart(bag.id, bag.name)}
                       disabled={bag.available_quantity <= 0 || addingToCart === bag.id}
@@ -241,12 +264,12 @@ export default function FavoritesPage() {
                       {addingToCart === bag.id ? (
                         <span className="flex items-center justify-center gap-2">
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Заказ...
+                          {t('adding')}
                         </span>
                       ) : bag.available_quantity > 0 ? (
-                        'Заказать'
+                        t('order')
                       ) : (
-                        'Нет в наличии'
+                        t('outOfStock')
                       )}
                     </button>
                   </div>
