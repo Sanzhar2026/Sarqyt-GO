@@ -37,6 +37,8 @@ const translations = {
     call: 'Позвонить',
     whatsapp: 'WhatsApp',
     telegram: 'Telegram',
+    
+    // ===== ERRORS & MESSAGES =====
     error: 'Ошибка',
     tryAgain: 'Попробовать снова',
     userNotFound: 'Пользователь не найден',
@@ -195,6 +197,8 @@ const translations = {
     call: 'Қоңырау шалу',
     whatsapp: 'WhatsApp',
     telegram: 'Telegram',
+    
+    // ===== ERRORS & MESSAGES =====
     error: 'Қате',
     tryAgain: 'Қайталап көріңіз',
     userNotFound: 'Пайдаланушы табылмады',
