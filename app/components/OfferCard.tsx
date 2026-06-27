@@ -89,9 +89,6 @@ export default function OfferCard({
   const [bagRating, setBagRating] = useState(0);
   const [bagTotalReviews, setBagTotalReviews] = useState(0);
 
-  // ❌ УДАЛИТЕ ЭТУ СТРОКУ
-  // const API_URL = 'https://toogood-2ncf.onrender.com';
-  
   const isSearchPage = pathname === '/' || pathname === '/offers';
 
   // ✅ Функция для получения токена

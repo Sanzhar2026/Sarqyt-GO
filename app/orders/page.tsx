@@ -36,14 +36,17 @@ export default function OrdersPage() {
       })
       .catch((err) => {
         console.error('❌ Ошибка загрузки заказов:', err);
-        setError(err.message || 'Ошибка загрузки заказов');
         
-        if (err.status === 401 || err.message?.includes('401')) {
+        // ✅ Проверяем статус
+        if (err.message?.includes('401') || err.message?.includes('403')) {
           sessionStorage.removeItem('userToken');
           sessionStorage.removeItem('user');
           localStorage.removeItem('access_token');
           router.push('/login');
+          return;
         }
+        
+        setError(err.message || 'Ошибка загрузки заказов');
       })
       .finally(() => {
         setLoading(false);
