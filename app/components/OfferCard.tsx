@@ -1,4 +1,4 @@
-// app/components/OfferCard.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/components/OfferCard.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ С ИКОНКАМИ
 
 'use client';
 
@@ -14,6 +14,7 @@ interface SurpriseItem {
   name: string;
   price: number;
   quantity: number;
+  icon?: string;  // ✅ ДОБАВЛЯЕМ icon
 }
 
 interface OfferCardProps {
@@ -50,7 +51,12 @@ const getImageByTitle = (title: string) => {
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
 };
 
-const getProductIcon = (name: string) => {
+// ✅ ЗАПАСНАЯ ФУНКЦИЯ (ЕСЛИ ИКОНКА НЕ ПРИШЛА)
+const getProductIcon = (name: string, iconFromApi?: string) => {
+  // Если есть иконка из API - используем её
+  if (iconFromApi) return iconFromApi;
+  
+  // Иначе определяем по названию
   const lowerName = name.toLowerCase();
   if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
   if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
@@ -61,6 +67,16 @@ const getProductIcon = (name: string) => {
   if (lowerName.includes('крилс') || lowerName.includes('wings')) return '🍗';
   if (lowerName.includes('сыр') || lowerName.includes('cheese')) return '🧀';
   if (lowerName.includes('десерт') || lowerName.includes('dessert')) return '🍰';
+  if (lowerName.includes('хлеб') || lowerName.includes('bread')) return '🍞';
+  if (lowerName.includes('кофе') || lowerName.includes('coffee')) return '☕';
+  if (lowerName.includes('чай') || lowerName.includes('tea')) return '🍵';
+  if (lowerName.includes('стейк') || lowerName.includes('steak')) return '🥩';
+  if (lowerName.includes('паста') || lowerName.includes('pasta')) return '🍝';
+  if (lowerName.includes('суп') || lowerName.includes('soup')) return '🍲';
+  if (lowerName.includes('морожен') || lowerName.includes('ice cream')) return '🍦';
+  if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
+  if (lowerName.includes('картошк') || lowerName.includes('fries')) return '🍟';
+  if (lowerName.includes('напит') || lowerName.includes('drink')) return '🥤';
   return '🍽️';
 };
 
@@ -91,7 +107,6 @@ export default function OfferCard({
 
   const isSearchPage = pathname === '/' || pathname === '/offers';
 
-  // ✅ Функция для получения токена
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
@@ -100,7 +115,6 @@ export default function OfferCard({
            null;
   };
 
-  // ✅ ИСПРАВЛЕНО: Используем относительный путь
   useEffect(() => {
     const fetchRating = async () => {
       try {
@@ -108,7 +122,6 @@ export default function OfferCard({
         const headers: HeadersInit = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
-        // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
         const response = await fetch(`/api/surprise-bags/${id}/rating`, { headers });
         if (response.ok) {
           const data = await response.json();
@@ -122,7 +135,6 @@ export default function OfferCard({
     fetchRating();
   }, [id]);
 
-  // ✅ ИСПРАВЛЕНО: Используем относительный путь
   useEffect(() => {
     const checkAuth = async () => {
       const token = getAuthToken();
@@ -132,7 +144,6 @@ export default function OfferCard({
         return;
       }
       try {
-        // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
         const response = await fetch('/api/auth/me');
         const data = await response.json();
         setIsAuthenticated(data.authenticated);
@@ -154,16 +165,16 @@ export default function OfferCard({
     }
   }, [id]);
 
-  // ✅ ИСПРАВЛЕНО: Используем относительный путь
   const fetchBagItems = async () => {
     if (bagItems.length > 0) return;
     setLoading(true);
     try {
-      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ
       const response = await fetch(`/api/surprise-bags/${id}`);
       if (response.ok) {
         const data = await response.json();
+        // ✅ СОХРАНЯЕМ ТОВАРЫ С ИКОНКАМИ
         setBagItems(data.items || []);
+        console.log('📦 Товары с иконками:', data.items);
       }
     } catch (error) {
       console.error('Error fetching bag items:', error);
@@ -194,7 +205,6 @@ export default function OfferCard({
     setIsFavorite(!isFavorite);
   };
 
-  // ✅ ИСПРАВЛЕНО: Используем относительный путь
   const addToCart = async () => {
     const token = getAuthToken();
     console.log('🔑 Токен в addToCart:', token ? 'Есть ✅' : 'Нет ❌');
@@ -208,7 +218,6 @@ export default function OfferCard({
     setAddingToCart(true);
 
     try {
-      // ✅ ОТНОСИТЕЛЬНЫЙ ПУТЬ (ГЛАВНОЕ ИСПРАВЛЕНИЕ!)
       const response = await fetch('/api/cart/add', {
         method: 'POST',
         headers: { 
@@ -368,6 +377,7 @@ export default function OfferCard({
           {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
         </div>
         
+        {/* ✅ ОТОБРАЖЕНИЕ ТОВАРОВ С ИКОНКАМИ */}
         {showExpanded && (
           <div className="mt-0.5 mb-0.5">
             {loading ? (
@@ -378,15 +388,23 @@ export default function OfferCard({
               <>
                 <p className="text-[8px] font-semibold text-gray-700 mb-0.5">Состав:</p>
                 {bagItems.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-[8px] py-0.5">
+                  <div key={idx} className="flex items-center justify-between text-[8px] py-0.5 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-1">
-                      <span className="text-[9px]">{getProductIcon(item.name)}</span>
-                      <span className="text-gray-600">{item.name} ×{item.quantity}</span>
+                      {/* ✅ ИСПОЛЬЗУЕМ ИКОНКУ ИЗ API ИЛИ ЗАПАСНУЮ */}
+                      <span className="text-[10px]">{getProductIcon(item.name, item.icon)}</span>
+                      <span className="text-gray-600 truncate max-w-[100px]">{item.name}</span>
+                      <span className="text-gray-400 text-[7px]">×{item.quantity}</span>
                     </div>
-                    <span className="font-medium text-[10px]">{(item.price * item.quantity).toLocaleString()} ₸</span>
+                    <span className="font-medium text-[9px] text-[#367666]">
+                      {(item.price * item.quantity).toLocaleString()} ₸
+                    </span>
                   </div>
                 ))}
-                {bagItems.length > 3 && <p className="text-[7px] text-gray-400 text-center pt-0.5">+{bagItems.length - 3} еще</p>}
+                {bagItems.length > 3 && (
+                  <p className="text-[7px] text-gray-400 text-center pt-0.5">
+                    +{bagItems.length - 3} еще
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-[8px] text-gray-400 text-center py-1">Нет информации</p>
