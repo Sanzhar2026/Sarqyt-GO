@@ -36,17 +36,14 @@ export default function OrdersPage() {
       })
       .catch((err) => {
         console.error('❌ Ошибка загрузки заказов:', err);
+        setError(err.message || 'Ошибка загрузки заказов');
         
-        // ✅ Проверяем статус
         if (err.message?.includes('401') || err.message?.includes('403')) {
           sessionStorage.removeItem('userToken');
           sessionStorage.removeItem('user');
           localStorage.removeItem('access_token');
           router.push('/login');
-          return;
         }
-        
-        setError(err.message || 'Ошибка загрузки заказов');
       })
       .finally(() => {
         setLoading(false);
@@ -61,10 +58,6 @@ export default function OrdersPage() {
 
   const getOrderAmount = (order: Order): number => {
     return order.amount_paid || order.amount || 0;
-  };
-
-  const getSupplierName = (order: Order): string => {
-    return order.supplier_name || 'Продавец';
   };
 
   const getAddress = (order: Order): string => {
