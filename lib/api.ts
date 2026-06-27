@@ -3,7 +3,7 @@
 // ============================================================
 // ✅ ПРАВИЛЬНЫЙ URL БЕКЕНДА
 // ============================================================
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://toogood-production.up.railway.app';
+const API_BASE = 'https://toogood-production.up.railway.app';
 
 // ============================================================
 // ✅ ЭКСПОРТИРУЕМАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ТОКЕНА
@@ -13,6 +13,7 @@ export const getAuthToken = () => {
     return sessionStorage.getItem('userToken') || 
            sessionStorage.getItem('authToken') || 
            localStorage.getItem('access_token') ||
+           localStorage.getItem('userToken') ||
            null;
 };
 
@@ -32,34 +33,12 @@ export interface User {
   created_at?: string;
 }
 
-export interface Props {
-  key: number;
-  name: string;
-  businessName: string;
-  distance: string;
-  price: number;
-  originalPrice: number;
-  discount: number;
-  onClick: () => void;
-}
-
 export interface Supplier {
   id: number;
   business_name: string;
   distance_km: number;
   rating: number;
   surprise_bags: SurpriseBag[];
-}
-
-export interface WebSocketMessage {
-  type: 'new_bag' | 'update_bag' | 'delete_bag' | 'bag_quantity_updated';
-  data?: {
-    bag_id: number;
-    available_quantity: number;
-    is_active: boolean;
-    old_quantity?: number;
-  };
-  timestamp?: string;
 }
 
 export interface SurpriseBag {
@@ -78,9 +57,6 @@ export interface SurpriseBag {
   is_active?: boolean;
 }
 
-// ============================================================
-// ✅ ИНТЕРФЕЙС ORDER - СООТВЕТСТВУЕТ API
-// ============================================================
 export interface Order {
   id: number;
   order_number: string;
@@ -100,6 +76,17 @@ export interface Order {
     created_at: string;
     comment?: string;
   }>;
+}
+
+export interface WebSocketMessage {
+  type: 'new_bag' | 'update_bag' | 'delete_bag' | 'bag_quantity_updated';
+  data?: {
+    bag_id: number;
+    available_quantity: number;
+    is_active: boolean;
+    old_quantity?: number;
+  };
+  timestamp?: string;
 }
 
 export type NearbySupplier = Supplier;
@@ -138,6 +125,7 @@ export async function getCurrentUser(): Promise<User | null> {
 // Logout
 export async function logout(): Promise<void> {
   localStorage.removeItem('access_token');
+  localStorage.removeItem('userToken');
   sessionStorage.removeItem('userToken');
   sessionStorage.removeItem('authToken');
   sessionStorage.removeItem('courierToken');
@@ -214,7 +202,7 @@ export async function getOrder(orderId: number): Promise<any> {
 }
 
 // ============================================================
-// ✅ GET USER ORDERS
+// ✅ GET USER ORDERS - ИСПРАВЛЕННАЯ ВЕРСИЯ
 // ============================================================
 export async function getUserOrders(): Promise<Order[]> {
   const token = getAuthToken();
@@ -223,11 +211,16 @@ export async function getUserOrders(): Promise<Order[]> {
   console.log('📍 URL:', `${API_BASE}/api/my-orders`);
   console.log('🔑 Токен:', token ? token.substring(0, 20) + '...' : 'Нет');
   
+  if (!token) {
+    console.error('❌ Нет токена!');
+    throw new Error('No auth token');
+  }
+  
   const response = await fetch(`${API_BASE}/api/my-orders`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
+      'Authorization': `Bearer ${token}`
     }
   });
   
