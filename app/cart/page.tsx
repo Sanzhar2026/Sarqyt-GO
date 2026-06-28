@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { LanguageProvider, useLanguage } from '../components/LanguageSwitcher';
+import { getAuthToken } from '@/lib/api';
 
 interface CartItem {
   id: number;
@@ -53,10 +54,7 @@ function CartContent() {
   const DELIVERY_FEE = 400;
   const KASPI_QR_URL = "https://qr.kaspi.kz/1741208973003042970126358999951585929937";
 
-  const getAuthToken = () => {
-    if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
-  };
+const token = getAuthToken();
 
   const authFetch = async (url: string, options: RequestInit = {}) => {
     const token = getAuthToken();

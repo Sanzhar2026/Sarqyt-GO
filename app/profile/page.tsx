@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useLanguage } from '../components/LanguageSwitcher';
 import AvatarCropper from '../components/AvatarCropper';
 import { User, Phone, Mail, Calendar, LogOut, Home, Truck, MessageCircle, PhoneCall } from 'lucide-react';
-
+import { getAuthToken, clearAuthToken } from '@/lib/auth';
 interface UserData {
   id: number;
   first_name: string;
@@ -125,14 +125,14 @@ export default function ProfilePage() {
     }
   };
 
-  const handleLogout = () => {
-    if (confirm(t('confirmLogout'))) {
-      sessionStorage.removeItem('userToken');
-      localStorage.removeItem('userToken');
-      sessionStorage.removeItem('isLoggedIn');
-      router.push('/login');
-    }
-  };
+const handleLogout = () => {
+  if (confirm(t('confirmLogout'))) {
+    clearAuthToken();
+    sessionStorage.removeItem('isLoggedIn');
+    router.push('/login');
+  }
+
+};
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '—';

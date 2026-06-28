@@ -7,6 +7,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Gift, Info, Heart } from 'lucide-react';
+import { getAuthToken } from '@/lib/auth';
+
 
 const getImageByTitle = (title: string) => {
   const lowerTitle = title.toLowerCase();
@@ -70,20 +72,14 @@ export default function SurpriseBagCard({
   const [authChecked, setAuthChecked] = useState(false);
   const [showExpanded, setShowExpanded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
-  
+
   const [bagRating, setBagRating] = useState(rating);
   const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
-
+  const token = getAuthToken();
   const API_URL = 'https://toogood-production.up.railway.app';
 
   // ✅ Единая функция для получения токена
-  const getAuthToken = () => {
-    if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('userToken') || 
-           sessionStorage.getItem('authToken') || 
-           sessionStorage.getItem('courierToken') ||
-           null;
-  };
+
 
   useEffect(() => {
     const fetchRating = async () => {
@@ -150,6 +146,7 @@ export default function SurpriseBagCard({
 
   // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ addToCart
   const addToCart = async () => {
+    
     const token = getAuthToken();
     console.log('🔑 Токен в SurpriseBagCard:', token ? 'Есть ✅' : 'Нет ❌');
     
