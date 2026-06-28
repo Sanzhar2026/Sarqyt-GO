@@ -12,6 +12,7 @@ interface Supplier {
   rating: number;
   distance_km: number;
   surprise_bags_count: number;
+   logo?: string;
 }
 
 interface SuppliersMapProps {
@@ -149,47 +150,76 @@ export default function SuppliersMap({
     }
     
     // Увеличенные маркеры поставщиков
-    validSuppliersWithCoords.forEach(supplier => {
-      if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
-      
-      const icon = window.L.divIcon({
-        html: `<div class="w-8 h-8 bg-emerald-500 rounded-full border-4 border-white shadow-2xl hover:scale-125 transition-transform"></div>`,
-        iconSize: [32, 32],
-        className: 'custom-div-icon'
-      });
-      
-      const popupContent = `
-        <div class="text-center min-w-[200px] p-2">
-          <div class="font-bold text-lg mb-1">${supplier.business_name || 'Магазин'}</div>
-          <div class="text-sm text-gray-600 mb-2">${supplier.address || 'Адрес не указан'}</div>
-          <div class="flex justify-center gap-4 mb-2 text-sm">
-            <span>${supplier.rating || 4.5} ★</span>
-            <span>${supplier.surprise_bags_count || 0} пакетов</span>
-            <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
+validSuppliersWithCoords.forEach(supplier => {
+  if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
+  
+  const icon = window.L.divIcon({
+    html: `<div class="w-8 h-8 bg-emerald-500 rounded-full border-4 border-white shadow-2xl hover:scale-125 transition-transform"></div>`,
+    iconSize: [32, 32],
+    className: 'custom-div-icon'
+  });
+  
+  // ✅ ПОПАП С АВАТАРКОЙ
+  const popupContent = `
+    <div class="text-center min-w-[220px] p-3">
+      <!-- АВАТАРКА ПОСТАВЩИКА -->
+      <div class="flex justify-center mb-2">
+        ${supplier.logo ? `
+          <img 
+            src="${supplier.logo}" 
+            alt="${supplier.business_name}"
+            class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+            onerror="this.style.display='none'"
+          />
+        ` : `
+          <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-600 border-2 border-emerald-500 shadow-md">
+            ${supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
           </div>
-          <button class="mt-2 bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm w-full view-supplier-btn" data-id="${supplier.id}" data-name="${supplier.business_name}">
-            Смотреть сюрпризы
-          </button>
-        </div>
-      `;
+        `}
+      </div>
       
-      const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
-        .addTo(mapInstanceRef.current)
-        .bindPopup(popupContent);
+      <!-- НАЗВАНИЕ -->
+      <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
       
-      marker.on('popupopen', () => {
-        const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
-        if (btn) {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            router.push(`/supplier/${supplier.id}`);
-          });
-        }
-      });
+      <!-- АДРЕС -->
+      <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
       
-      bounds.push([supplier.lat, supplier.lon]);
+      <!-- РЕЙТИНГ, ПАКЕТЫ, РАССТОЯНИЕ -->
+      <div class="flex justify-center gap-4 mb-2 text-sm">
+        <span class="flex items-center gap-1">⭐ ${supplier.rating || 4.5}</span>
+        <span class="flex items-center gap-1">📦 ${supplier.surprise_bags_count || 0}</span>
+        <span class="flex items-center gap-1">📍 ${supplier.distance_km?.toFixed(1) || '?'} км</span>
+      </div>
+      
+      <!-- КНОПКА -->
+      <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition view-supplier-btn" 
+              data-id="${supplier.id}" 
+              data-name="${supplier.business_name}">
+        🛒 Смотреть сюрпризы
+      </button>
+    </div>
+  `;
+  
+  const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
+    .addTo(mapInstanceRef.current)
+    .bindPopup(popupContent, {
+      className: 'supplier-popup',
+      maxWidth: 260,
+      minWidth: 220
     });
-    
+  
+  marker.on('popupopen', () => {
+    const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        router.push(`/supplier/${supplier.id}`);
+      });
+    }
+  });
+  
+  bounds.push([supplier.lat, supplier.lon]);
+});
     setTimeout(() => {
       document.querySelectorAll('.view-supplier-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
