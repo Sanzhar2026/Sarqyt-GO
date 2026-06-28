@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLanguage } from '../components/LanguageSwitcher'
+import { LanguageProvider, useLanguage } from '../components/LanguageSwitcher';
 
 interface CartItem {
   id: number;
@@ -27,9 +27,19 @@ interface Reservation {
   bag_id: number;
 }
 
+// ✅ ОСНОВНАЯ СТРАНИЦА - ОБЕРТКА
 export default function CartPage() {
+  return (
+    <LanguageProvider>
+      <CartContent />
+    </LanguageProvider>
+  );
+}
+
+// ✅ ОСНОВНОЙ КОМПОНЕНТ
+function CartContent() {
   const router = useRouter();
-  const { lang, t } = useLanguage(); // ✅ ИСПОЛЬЗУЙ КОНТЕКСТ!
+  const { lang, t } = useLanguage();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingStep, setProcessingStep] = useState<'form' | 'processing' | 'success'>('form');
