@@ -25,7 +25,7 @@ interface Supplier {
   phone: string;
   rating: number;
   cover_image?: string;
-  logo?: string; // ✅ ДОБАВЛЯЕМ ПОЛЕ ДЛЯ ЛОГОТИПА
+  logo?: string;
 }
 
 export default function SupplierPage() {
@@ -35,8 +35,14 @@ export default function SupplierPage() {
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState<number | null>(null);
+  const [isClient, setIsClient] = useState(false); // ✅ ФИКС ГИДРАТАЦИИ
 
   const supplierId = params?.id;
+
+  // ✅ ФИКС ГИДРАТАЦИИ
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -135,6 +141,11 @@ export default function SupplierPage() {
     );
   }
 
+  // ✅ ИСПОЛЬЗУЕМ isClient ДЛЯ URL С КЕШЕМ
+  const logoUrl = isClient && supplier.logo 
+    ? `${supplier.logo}?t=${Date.now()}` 
+    : supplier.logo;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header с аватаркой */}
@@ -143,12 +154,11 @@ export default function SupplierPage() {
           ← Назад
         </button>
         
-        {/* ✅ АВАТАРКА ПОСТАВЩИКА */}
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/50 flex-shrink-0">
             {supplier.logo ? (
               <img
-                src={supplier.logo}
+                src={logoUrl || supplier.logo}
                 alt={supplier.business_name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
