@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (зеленая линия)
+// app/components/CourierMap.tsx - ТОЛЬКО УВЕЛИЧЕННЫЕ РАЗМЕРЫ
 
 'use client';
 
@@ -179,7 +179,7 @@ export default function CourierMap({
     
     mapInstanceRef.current = L.map(mapRef.current, {
       zoomControl: false
-    }).setView([centerLat, centerLon], 13);
+    }).setView([centerLat, centerLon], 14); // ✅ увеличен зум
     
     L.tileLayer(LIGHT_MAP_TILE, {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -195,6 +195,59 @@ export default function CourierMap({
     console.log('🗺️ Карта инициализирована');
   }, [mapLoaded, mapCenter]);
 
+  // ✅ ТОЛЬКО УВЕЛИЧЕННЫЕ РАЗМЕРЫ ИКОНОК
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    
+    // Ресторан - увеличенный
+    if (restaurantLocation?.lat && restaurantLocation?.lon) {
+      const icon = L.divIcon({
+        html: `<div class="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-2xl border-2 border-white shadow-lg">🍽️</div>`,
+        iconSize: [48, 48],
+        className: 'custom-div-icon'
+      });
+      L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup('Ресторан');
+    }
+    
+    // Клиент - увеличенный
+    if (customerLocation?.lat && customerLocation?.lon) {
+      const icon = L.divIcon({
+        html: `<div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-2xl border-2 border-white shadow-lg">🏠</div>`,
+        iconSize: [48, 48],
+        className: 'custom-div-icon'
+      });
+      L.marker([customerLocation.lat, customerLocation.lon], { icon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup('Клиент');
+    }
+    
+    // Курьер - увеличенный с анимацией (если есть)
+    if (courierLocation?.lat && courierLocation?.lon) {
+      const icon = L.divIcon({
+        html: `<div class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl border-2 border-white shadow-lg animate-pulse">🚴</div>`,
+        iconSize: [48, 48],
+        className: 'custom-div-icon'
+      });
+      L.marker([courierLocation.lat, courierLocation.lon], { icon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup('Курьер');
+    }
+    
+    // Пользователь - увеличенный
+    if (userLocation?.lat && userLocation?.lon) {
+      const icon = L.divIcon({
+        html: `<div class="w-8 h-8 bg-blue-500 rounded-full border-2 border-white shadow-lg"></div>`,
+        iconSize: [32, 32],
+        className: 'custom-div-icon'
+      });
+      L.marker([userLocation.lat, userLocation.lon], { icon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup('Вы здесь');
+    }
+  }, [restaurantLocation, customerLocation, userLocation, courierLocation, mapLoaded]);
+
   useEffect(() => {
     if (!mapInstanceRef.current || !showRoute) return;
     if (!restaurantLocation?.lat || !restaurantLocation?.lon || 
@@ -204,15 +257,11 @@ export default function CourierMap({
     const buildRoute = async () => {
       try {
         console.log('🔄 Строим маршрут через ORS...');
-        console.log('📍 Ресторан:', restaurantLocation);
-        console.log('📍 Клиент:', customerLocation);
         
         const data = await getRouteFromORS(
           restaurantLocation.lat, restaurantLocation.lon,
           customerLocation.lat, customerLocation.lon
         );
-
-        console.log('📦 ORS данные:', data);
 
         if (routeLayerRef.current) {
           routeLayerRef.current.remove();
@@ -232,7 +281,6 @@ export default function CourierMap({
           }
         }
         
-        // Если ORS не вернул маршрут - используем прямую линию
         if (points.length === 0) {
           console.log('⚠️ ORS не вернул маршрут, используем прямую линию');
           points = getStraightLineRoute(
@@ -241,26 +289,24 @@ export default function CourierMap({
           );
         }
 
-        // ✅ СОЗДАЕМ ЛИНИЮ С ПРИНУДИТЕЛЬНЫМ ЗЕЛЕНЫМ ЦВЕТОМ
         routeLayerRef.current = L.polyline(points, {
-          color: '#367666',        // ЯВНО ЗЕЛЕНЫЙ
-          weight: 4,
-          opacity: 1,              // 100% непрозрачность
+          color: '#367666',
+          weight: routeWidth || 4,
+          opacity: 1,
           lineCap: 'round',
           lineJoin: 'round',
-          className: 'courier-route-line'  // добавляем класс для CSS
+          className: 'courier-route-line'
         }).addTo(mapInstanceRef.current);
 
-        // ✅ ПРИНУДИТЕЛЬНО УСТАНАВЛИВАЕМ СТИЛЬ ЧЕРЕЗ DOM
         const routeElement = routeLayerRef.current._path;
         if (routeElement) {
           routeElement.style.stroke = '#367666';
-          routeElement.style.strokeWidth = '4px';
+          routeElement.style.strokeWidth = `${routeWidth || 4}px`;
           routeElement.style.opacity = '1';
         }
 
         setRouteBuilt(true);
-        console.log('✅ Маршрут построен! Цвет:', '#367666');
+        console.log('✅ Маршрут построен!');
         
         mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), { 
           padding: [50, 50] 
@@ -272,48 +318,7 @@ export default function CourierMap({
     };
 
     setTimeout(buildRoute, 500);
-  }, [showRoute, restaurantLocation, customerLocation, mapLoaded, routeBuilt]);
-
-  // Маркеры
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
-    
-    // Ресторан
-    if (restaurantLocation?.lat && restaurantLocation?.lon) {
-      const icon = L.divIcon({
-        html: `<div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg">🍽️</div>`,
-        iconSize: [32, 32],
-        className: 'custom-div-icon'
-      });
-      L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon })
-        .addTo(mapInstanceRef.current)
-        .bindPopup('Ресторан');
-    }
-    
-    // Клиент
-    if (customerLocation?.lat && customerLocation?.lon) {
-      const icon = L.divIcon({
-        html: `<div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm border-2 border-white shadow-lg">🏠</div>`,
-        iconSize: [32, 32],
-        className: 'custom-div-icon'
-      });
-      L.marker([customerLocation.lat, customerLocation.lon], { icon })
-        .addTo(mapInstanceRef.current)
-        .bindPopup('Клиент');
-    }
-    
-    // Пользователь
-    if (userLocation?.lat && userLocation?.lon) {
-      const icon = L.divIcon({
-        html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg"></div>`,
-        iconSize: [16, 16],
-        className: 'custom-div-icon'
-      });
-      L.marker([userLocation.lat, userLocation.lon], { icon })
-        .addTo(mapInstanceRef.current)
-        .bindPopup('Вы здесь');
-    }
-  }, [restaurantLocation, customerLocation, userLocation, mapLoaded]);
+  }, [showRoute, restaurantLocation, customerLocation, mapLoaded, routeBuilt, routeWidth]);
 
   if (!mapLoaded || !mapCenter) {
     return (
@@ -328,7 +333,6 @@ export default function CourierMap({
 
   return (
     <div className="relative w-full h-full" style={{ height }}>
-      {/* ✅ ДОБАВЛЯЕМ CSS ДЛЯ ПРИНУДИТЕЛЬНОГО ЗЕЛЕНОГО ЦВЕТА */}
       <style jsx>{`
         :global(.courier-route-line) {
           stroke: #367666 !important;
@@ -337,6 +341,17 @@ export default function CourierMap({
         }
         :global(.leaflet-interactive) {
           stroke: #367666 !important;
+        }
+        :global(.custom-div-icon) {
+          background: transparent !important;
+          border: none !important;
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+        :global(.animate-pulse) {
+          animation: pulse 1.5s ease-in-out infinite;
         }
       `}</style>
       
