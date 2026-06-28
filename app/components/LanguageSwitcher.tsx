@@ -136,6 +136,25 @@ const translations: Record<Language, Record<string, string>> = {
     applicationSent: 'Заявка отправлена на рассмотрение',
     waitApproval: 'Дождитесь одобрения администратора',
     alreadyCourier: 'Вы уже зарегистрированы как курьер',
+    courierTitle: 'Станьте курьером и зарабатывайте',
+    courierSubtitle: 'Гибкий график • Высокий доход • Бонусы',
+    courier: 'Курьер',
+    pedestrianRadius: 'Радиус 3 км',
+    driverRadius: 'Радиус 15 км',
+    carModelRequired: 'Укажите модель автомобиля',
+    dashboard: 'В панель курьера',
+    flexibleSchedule: 'Гибкий график',
+    highEarnings: 'Высокий доход',
+    bonuses: 'Бонусы и поощрения',
+    continue: 'Продолжить',
+    chooseSurprise: 'Выберите свой сюрприз-пакет',
+    noBags: 'Все пакеты временно забронированы',
+    soldOut: 'Распродано',
+    addToCart: 'В корзину',
+    adding: 'Добавление...',
+    addedToCart: 'добавлен в корзину! У вас 15 минут на оплату.',
+    addError: 'Ошибка при добавлении',
+    connectionError: 'Ошибка соединения с сервером',
 
     // ===== TRACKING =====
     trackOrder: 'Отслеживание заказа',
@@ -146,6 +165,32 @@ const translations: Record<Language, Record<string, string>> = {
     minutes: 'мин',
     km: 'км',
     inProgress: 'В процессе',
+    orderNotFound: 'Заказ не найден',
+    backToOrders: 'Вернуться к заказам',
+    orderDetails: 'Детали заказа',
+    product: 'Товар',
+    deliveryTypeLabel: 'Способ получения',
+    delivery: 'Доставка',
+    address: 'Адрес',
+    confirmDelivery: 'Подтвердить получение',
+    confirming: 'Подтверждение...',
+    deliveryConfirmed: 'Заказ успешно подтвержден! Спасибо!',
+    confirmError: 'Ошибка при подтверждении заказа',
+    networkError: 'Ошибка сети. Попробуйте позже.',
+    confirmCancel: 'Вы уверены, что хотите отменить заказ?',
+    orderCancelled: 'Заказ успешно отменен!',
+    cancelError: 'Ошибка при отмене заказа',
+    cancelOrder: 'Отменить заказ',
+    unknown: 'Не указан',
+
+    // ===== FAVORITES =====
+    noFavorites: 'Нет избранных сюрпризов',
+    addFavoritesHint: 'Добавляйте сюрпризы в избранное, нажимая на сердечко',
+    goToOffers: 'Перейти к сюрпризам',
+    available: 'Доступно',
+    pcs: 'шт.',
+    outOfStock: 'Нет в наличии',
+    pleaseLogin: 'Пожалуйста, войдите в аккаунт',
 
     // ===== SURPRISE =====
     surpriseBags: 'Сюрпризы',
@@ -179,16 +224,41 @@ const translations: Record<Language, Record<string, string>> = {
     productPrice: 'Цена',
     productCategory: 'Категория',
     prepTime: 'Время приготовления',
-    productDescription: 'Описание',
-    available: 'Доступен',
+    
     unavailable: 'Недоступен',
     deleteProduct: 'Удалить товар',
     confirmDeleteProduct: 'Вы уверены, что хотите удалить этот товар?',
 
     // ===== BOTTOM NAV =====
     offers: 'Сюрприз',
-    favorites: 'Избранное'
+    favorites: 'Избранное',
+    
+    // ===== CART =====
+    emptyCart: 'Корзина пуста',
+    addItems: 'Добавьте товары, чтобы оформить заказ',
+    shop: 'В магазин',
+    deliveryType: 'Способ доставки',
+    pickup: 'Самовывоз',
+  
+    enterAddress: 'Введите адрес доставки',
+    pickupAddress: 'Адрес самовывоза: Ресторан по адресу, указанному при оформлении',
+    timeLeft: 'Осталось времени',
+    payBefore: 'Оплатите до окончания времени',
+    orElse: 'Иначе бронь снимется',
+   
+    deliveryFee: 'Доставка',
+    totalAmount: 'Итого к оплате',
+    items: 'товаров',
+    timeExpired: 'Время истекло',
+    checkout: 'Оформить заказ',
+    amount: 'Сумма',
+    timeRemaining: 'Осталось времени',
+    processing: 'Обработка...',
+    pay: 'Оплатить',
+   
+    bookingExpired: 'Время бронирования истекло!',
   },
+  
   kz: {
     // ===== PROFILE =====
     profile: 'Профиль',
@@ -310,36 +380,26 @@ const translations: Record<Language, Record<string, string>> = {
     applicationSent: 'Өтінім қарауға жіберілді',
     waitApproval: 'Әкімшінің рұқсатын күтіңіз',
     alreadyCourier: 'Сіз қазірдің өзінде курьер ретінде тіркелгенсіз',
+    courierTitle: 'Курьер болып, табыс табыңыз',
+    courierSubtitle: 'Икемді кесте • Жоғары табыс • Бонустар',
+    courier: 'Курьер',
+    pedestrianRadius: 'Радиус 3 км',
+    driverRadius: 'Радиус 15 км',
+    carModelRequired: 'Көлік моделін көрсетіңіз',
+    dashboard: 'Курьер панеліне',
+    flexibleSchedule: 'Икемді кесте',
+    highEarnings: 'Жоғары табыс',
+    bonuses: 'Бонустар мен сыйлықтар',
+    continue: 'Жалғастыру',
+    chooseSurprise: 'Сюрприз-пакетіңізді таңдаңыз',
+    noBags: 'Барлық пакеттер уақытша броньдалған',
+    soldOut: 'Сатылып кетті',
+    addToCart: 'Себетке',
+    adding: 'Қосу...',
+    addedToCart: 'себетке қосылды! Төлеуге 15 минут.',
+    addError: 'Қосу кезінде қате',
+    connectionError: 'Сервермен байланыс қатесі',
 
-    // В translations.ru и translations.kz добавь:
-// В translations.ru и translations.kz добавь:
-
-orderNotFound: 'Заказ не найден',
-backToOrders: 'Вернуться к заказам',
-orderDetails: 'Детали заказа',
-product: 'Товар',
-deliveryTypeLabel: 'Способ получения',
-delivery: 'Доставка',
-address: 'Адрес',
-confirmDelivery: 'Подтвердить получение',
-confirming: 'Подтверждение...',
-deliveryConfirmed: 'Заказ успешно подтвержден! Спасибо!',
-confirmError: 'Ошибка при подтверждении заказа',
-networkError: 'Ошибка сети. Попробуйте позже.',
-confirmCancel: 'Вы уверены, что хотите отменить заказ?',
-orderCancelled: 'Заказ успешно отменен!',
-cancelError: 'Ошибка при отмене заказа',
-cancelOrder: 'Отменить заказ',
-unknown: 'Не указан',
-
-noFavorites: 'Нет избранных сюрпризов',
-addFavoritesHint: 'Добавляйте сюрпризы в избранное, нажимая на сердечко',
-goToOffers: 'Перейти к сюрпризам',
-available: 'Доступно',
-pcs: 'шт.',
-
-outOfStock: 'Нет в наличии',
-pleaseLogin: 'Пожалуйста, войдите в аккаунт',
     // ===== TRACKING =====
     trackOrder: 'Тапсырысты бақылау',
     orderNumber: 'Тапсырыс нөмірі',
@@ -349,6 +409,32 @@ pleaseLogin: 'Пожалуйста, войдите в аккаунт',
     minutes: 'мин',
     km: 'км',
     inProgress: 'Жүріп жатыр',
+    orderNotFound: 'Тапсырыс табылмады',
+    backToOrders: 'Тапсырыстарға оралу',
+    orderDetails: 'Тапсырыс мәліметтері',
+    product: 'Тауар',
+    deliveryTypeLabel: 'Алу тәсілі',
+    delivery: 'Жеткізу',
+    address: 'Мекенжай',
+    confirmDelivery: 'Алуды растау',
+    confirming: 'Растау...',
+    deliveryConfirmed: 'Тапсырыс сәтті расталды! Рахмет!',
+    confirmError: 'Тапсырысты растау кезінде қате',
+    networkError: 'Желі қатесі. Кейін қайталап көріңіз.',
+    confirmCancel: 'Тапсырысты болдырмауға сенімдісіз бе?',
+    orderCancelled: 'Тапсырыс сәтті болдырмалды!',
+    cancelError: 'Тапсырысты болдырмау кезінде қате',
+    cancelOrder: 'Тапсырысты болдырмау',
+    unknown: 'Көрсетілмеген',
+
+    // ===== FAVORITES =====
+    noFavorites: 'Таңдаулы сюрприздер жоқ',
+    addFavoritesHint: 'Жүрекшеге басып, сюрприздерді таңдаулыға қосыңыз',
+    goToOffers: 'Сюрприздерге өту',
+    available: 'Қолжетімді',
+    pcs: 'дана',
+    outOfStock: 'Жоқ',
+    pleaseLogin: 'Аккаунтқа кіріңіз',
 
     // ===== SURPRISE =====
     surpriseBags: 'Сюрприздер',
@@ -383,38 +469,39 @@ pleaseLogin: 'Пожалуйста, войдите в аккаунт',
     productCategory: 'Санат',
     prepTime: 'Дайындау уақыты',
     productDescription: 'Сипаттама',
-   
+  
     unavailable: 'Қолжетімсіз',
     deleteProduct: 'Тауарды жою',
     confirmDeleteProduct: 'Бұл тауарды жойғыңыз келетініне сенімдісіз бе?',
-// В translations.ru и translations.kz добавь:
 
-// В translations.ru и translations.kz добавь:
-
-courierTitle: 'Станьте курьером и зарабатывайте',
-courierSubtitle: 'Гибкий график • Высокий доход • Бонусы',
-courier: 'Курьер',
-
-pedestrianRadius: 'Радиус 3 км',
-driverRadius: 'Радиус 15 км',
-carModelRequired: 'Укажите модель автомобиля',
-
-dashboard: 'В панель курьера',
-flexibleSchedule: 'Гибкий график',
-highEarnings: 'Высокий доход',
-bonuses: 'Бонусы и поощрения',
-continue: 'Продолжить',
-chooseSurprise: 'Выберите свой сюрприз-пакет',
-noBags: 'Все пакеты временно забронированы',
-soldOut: 'Распродано',
-addToCart: 'В корзину',
-adding: 'Добавление...',
-addedToCart: 'добавлен в корзину! У вас 15 минут на оплату.',
-addError: 'Ошибка при добавлении',
-connectionError: 'Ошибка соединения с сервером',
     // ===== BOTTOM NAV =====
     offers: 'Сюрприз',
-    favorites: 'Таңдаулы'
+    favorites: 'Таңдаулы',
+    
+    // ===== CART =====
+    emptyCart: 'Себет бос',
+    addItems: 'Тапсырыс беру үшін тауарларды қосыңыз',
+    shop: 'Дүкенге',
+    deliveryType: 'Жеткізу тәсілі',
+    pickup: 'Өзің алу',
+  
+    enterAddress: 'Жеткізу мекенжайын енгізіңіз',
+    pickupAddress: 'Өзің алу мекенжайы: Мейрамхана мекенжайы бойынша',
+    timeLeft: 'Уақыт қалды',
+    payBefore: 'Уақыт біткенше төлеңіз',
+    orElse: 'Әйтпесе бронь жойылады',
+    
+    deliveryFee: 'Жеткізу',
+    totalAmount: 'Барлығы',
+    items: 'тауарлар',
+    timeExpired: 'Уақыт бітті',
+    checkout: 'Тапсырыс беру',
+    amount: 'Сома',
+    timeRemaining: 'Уақыт қалды',
+    processing: 'Өңдеу...',
+    pay: 'Төлеу',
+   
+    bookingExpired: 'Бронь уақыты аяқталды!',
   }
 };
 
