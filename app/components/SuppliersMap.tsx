@@ -133,8 +133,7 @@ export default function SuppliersMap({
     
     const bounds: any[] = [];
     
-    // ✅ УВЕЛИЧЕННЫЙ МАРКЕР ПОЛЬЗОВАТЕЛЯ (+60%)
-    // Было: w-4 h-4 (16px) -> Стало: w-[26px] h-[26px] (26px)
+    // Увеличенный маркер пользователя
     if (showUserLocation && userLat && userLon) {
       const userIcon = window.L.divIcon({
         html: `<div class="w-[26px] h-[26px] bg-blue-500 rounded-full border-4 border-white shadow-2xl animate-bounce"></div>`,
@@ -149,8 +148,7 @@ export default function SuppliersMap({
       bounds.push([userLat, userLon]);
     }
     
-    // ✅ УВЕЛИЧЕННЫЕ МАРКЕРЫ ПОСТАВЩИКОВ (+60%)
-    // Было: w-5 h-5 (20px) -> Стало: w-8 h-8 (32px)
+    // Увеличенные маркеры поставщиков
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
@@ -250,6 +248,7 @@ export default function SuppliersMap({
 
   return (
     <div className="relative w-full h-full">
+      {/* ✅ КАРТА */}
       <div ref={mapRef} className="w-full h-full rounded-xl" />
       
       <style jsx>{`
@@ -270,15 +269,57 @@ export default function SuppliersMap({
         :global(.transition-transform) {
           transition: transform 0.2s ease;
         }
+        /* ✅ КНОПКА НА ПОВЕРХНОСТИ КАРТЫ */
+        .map-button {
+          position: absolute;
+          bottom: 20px;
+          right: 20px;
+          z-index: 1000 !important;
+          background: white;
+          border: none;
+          border-radius: 9999px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+          padding: 12px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+        .map-button:hover {
+          background: #f3f4f6;
+          transform: scale(1.05);
+        }
+        .map-button:active {
+          transform: scale(0.95);
+        }
+        .map-button svg {
+          width: 24px;
+          height: 24px;
+          color: #3b82f6;
+        }
+        /* ✅ СЧЕТЧИК МАГАЗИНОВ */
+        .store-counter {
+          position: absolute;
+          bottom: 20px;
+          left: 20px;
+          z-index: 1000 !important;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          padding: 4px 12px;
+          font-size: 12px;
+          color: #6b7280;
+        }
       `}</style>
       
-      {/* ✅ КНОПКА ЦЕНТРИРОВАНИЯ НА ПОЛЬЗОВАТЕЛЕ */}
+      {/* ✅ КНОПКА ЦЕНТРИРОВАНИЯ НА ПОВЕРХНОСТИ КАРТЫ */}
       <button
         onClick={centerOnUser}
-        className="absolute bottom-4 right-4 z-10 bg-white/90 backdrop-blur rounded-full shadow-lg p-3 hover:bg-gray-100/90 transition-all border border-gray-200/50 hover:scale-105 active:scale-95"
+        className="map-button"
         title="Показать моё местоположение"
       >
-        <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
             d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -286,7 +327,8 @@ export default function SuppliersMap({
         </svg>
       </button>
       
-      <div className="absolute bottom-2 left-2 bg-white rounded-lg shadow-lg px-2 py-1 text-xs z-10">
+      {/* ✅ СЧЕТЧИК МАГАЗИНОВ */}
+      <div className="store-counter">
         {suppliers.length} магазинов рядом
       </div>
     </div>
