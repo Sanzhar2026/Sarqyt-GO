@@ -57,33 +57,43 @@ export default function SuppliersMap({
     };
     loadLeaflet();
   }, []);
-
-  const fetchNearbySuppliers = async (lat: number, lon: number) => {
-    try {
-      if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
-        setSuppliers([]);
-        setLoading(false);
-        return;
-      }
-      
-      const url = `/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=10`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        setSuppliers([]);
-        setLoading(false);
-        return;
-      }
-      
-      const data = await response.json();
-      setSuppliers(data.suppliers || []);
-    } catch (error) {
-      console.error('Ошибка запроса:', error);
+const fetchNearbySuppliers = async (lat: number, lon: number) => {
+  try {
+    if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
       setSuppliers([]);
-    } finally {
       setLoading(false);
+      return;
     }
-  };
+    
+    // ✅ УВЕЛИЧИЛИ РАДИУС ДО 30 КМ
+    const url = `/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=30`;
+    console.log('📡 Запрос:', url);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      setSuppliers([]);
+      setLoading(false);
+      return;
+    }
+    
+    const data = await response.json();
+    console.log('📦 Получено магазинов:', data.suppliers?.length || 0);
+    
+    // ✅ ПОКАЗЫВАЕМ ВСЕХ, ДАЖЕ ДАЛЬНИХ
+    const validSuppliers = (data.suppliers || []).filter((s: any) => {
+      return s.lat && s.lon && !isNaN(s.lat) && !isNaN(s.lon);
+    });
+    
+    setSuppliers(validSuppliers);
+    
+  } catch (error) {
+    console.error('❌ Ошибка:', error);
+    setSuppliers([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Получение геолокации
   useEffect(() => {
