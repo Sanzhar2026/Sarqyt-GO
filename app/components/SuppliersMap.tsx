@@ -33,6 +33,7 @@ export default function SuppliersMap({
   const [mapLoaded, setMapLoaded] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const userMarkerRef = useRef<any>(null);
 
   // Загрузка Leaflet
   useEffect(() => {
@@ -101,6 +102,16 @@ export default function SuppliersMap({
     }
   }, [userLat, userLon]);
 
+  // Функция центрирования на пользователе
+  const centerOnUser = () => {
+    if (mapInstanceRef.current && userLat && userLon) {
+      mapInstanceRef.current.setView([userLat, userLon], 15);
+      if (userMarkerRef.current) {
+        userMarkerRef.current.openPopup();
+      }
+    }
+  };
+
   // Инициализация карты
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
@@ -122,32 +133,33 @@ export default function SuppliersMap({
     
     const bounds: any[] = [];
     
-    // Маркер пользователя (прыгающая точка, без иконки)
+    // ✅ УВЕЛИЧЕННЫЙ МАРКЕР ПОЛЬЗОВАТЕЛЯ (+60%)
+    // Было: w-4 h-4 (16px) -> Стало: w-[26px] h-[26px] (26px)
     if (showUserLocation && userLat && userLon) {
       const userIcon = window.L.divIcon({
-        html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-bounce"></div>`,
-        iconSize: [16, 16],
+        html: `<div class="w-[26px] h-[26px] bg-blue-500 rounded-full border-4 border-white shadow-2xl animate-bounce"></div>`,
+        iconSize: [26, 26],
         className: 'custom-div-icon'
       });
       
-      window.L.marker([userLat, userLon], { icon: userIcon })
+      userMarkerRef.current = window.L.marker([userLat, userLon], { icon: userIcon })
         .addTo(mapInstanceRef.current)
-        .bindPopup('Вы здесь');
+        .bindPopup('📍 Вы здесь');
       
       bounds.push([userLat, userLon]);
     }
     
-    // Маркеры поставщиков (прыгающие точки, без иконок)
+    // ✅ УВЕЛИЧЕННЫЕ МАРКЕРЫ ПОСТАВЩИКОВ (+60%)
+    // Было: w-5 h-5 (20px) -> Стало: w-8 h-8 (32px)
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
       const icon = window.L.divIcon({
-        html: `<div class="w-5 h-5 bg-emerald-500 rounded-full border-2 border-white shadow-lg hover:scale-125 transition-transform animate-bounce"></div>`,
-        iconSize: [20, 20],
+        html: `<div class="w-8 h-8 bg-emerald-500 rounded-full border-4 border-white shadow-2xl hover:scale-125 transition-transform"></div>`,
+        iconSize: [32, 32],
         className: 'custom-div-icon'
       });
       
-      // ✅ ПОПАП БЕЗ ИКОНОК!
       const popupContent = `
         <div class="text-center min-w-[200px] p-2">
           <div class="font-bold text-lg mb-1">${supplier.business_name || 'Магазин'}</div>
@@ -239,7 +251,42 @@ export default function SuppliersMap({
   return (
     <div className="relative w-full h-full">
       <div ref={mapRef} className="w-full h-full rounded-xl" />
-      <div className="absolute bottom-2 right-2 bg-white rounded-lg shadow-lg px-2 py-1 text-xs z-10">
+      
+      <style jsx>{`
+        :global(.custom-div-icon) {
+          background: transparent !important;
+          border: none !important;
+        }
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        :global(.animate-bounce) {
+          animation: bounce 0.8s ease-in-out infinite;
+        }
+        :global(.hover\\:scale-125:hover) {
+          transform: scale(1.25);
+        }
+        :global(.transition-transform) {
+          transition: transform 0.2s ease;
+        }
+      `}</style>
+      
+      {/* ✅ КНОПКА ЦЕНТРИРОВАНИЯ НА ПОЛЬЗОВАТЕЛЕ */}
+      <button
+        onClick={centerOnUser}
+        className="absolute bottom-4 right-4 z-10 bg-white/90 backdrop-blur rounded-full shadow-lg p-3 hover:bg-gray-100/90 transition-all border border-gray-200/50 hover:scale-105 active:scale-95"
+        title="Показать моё местоположение"
+      >
+        <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
+      
+      <div className="absolute bottom-2 left-2 bg-white rounded-lg shadow-lg px-2 py-1 text-xs z-10">
         {suppliers.length} магазинов рядом
       </div>
     </div>
