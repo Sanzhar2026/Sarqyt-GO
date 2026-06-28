@@ -1,10 +1,11 @@
-// app/orders/[id]/page.tsx - БЕЗ ЭМОДЗИ
+// app/orders/[id]/page.tsx - ПОЛНАЯ ВЕРСИЯ С АВАТАРКОЙ
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getOrderById, getAuthToken, type Order } from '../../../lib/api';
 import { useLanguage } from '../../components/LanguageSwitcher';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
@@ -12,7 +13,7 @@ import OrderStatusBadge from '../../components/OrderStatusBadge';
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { lang, t } = useLanguage(); // ✅ ИСПОЛЬЗУЙ КОНТЕКСТ!
+  const { lang, t } = useLanguage();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +159,11 @@ export default function OrderDetailPage() {
     return order.supplier_name || t('unknown');
   };
 
+  // ✅ ПОЛУЧАЕМ ЛОГОТИП ИЗ ЗАКАЗА
+  const getSupplierLogo = (order: Order): string | null => {
+    return order.supplier_logo || order.supplier?.logo || null;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -183,9 +189,12 @@ export default function OrderDetailPage() {
     );
   }
 
+  const supplierLogo = getSupplierLogo(order);
+  const supplierName = getSupplierName(order);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
+      {/* Header с аватаркой */}
       <div className="bg-[#367666] text-white px-6 pt-12 pb-6">
         <div className="flex items-center gap-4">
           <button
@@ -194,17 +203,53 @@ export default function OrderDetailPage() {
           >
             ←
           </button>
-          <div>
-            <h1 className="text-xl font-bold">{t('order')} #{order.order_number}</h1>
-            <p className="text-white/70 text-sm">
-              {new Date(order.created_at).toLocaleDateString('ru-RU', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
+          
+          {/* ✅ АВАТАРКА ПОСТАВЩИКА */}
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/50 flex-shrink-0">
+              {supplierLogo ? (
+                <Image
+                  src={supplierLogo}
+                  alt={supplierName}
+                  width={48}
+                  height={48}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const parent = (e.target as HTMLImageElement).parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('span');
+                      fallback.className = 'text-xl font-bold text-white';
+                      fallback.textContent = supplierName.charAt(0).toUpperCase();
+                      parent.appendChild(fallback);
+                    }
+                  }}
+                />
+              ) : (
+                <span className="text-xl font-bold text-white">
+                  {supplierName.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-bold truncate">
+                {t('order')} #{order.order_number}
+              </h1>
+              <p className="text-white/70 text-sm truncate">
+                {supplierName}
+              </p>
+              <p className="text-white/50 text-xs">
+                {new Date(order.created_at).toLocaleDateString('ru-RU', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -239,7 +284,7 @@ export default function OrderDetailPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">{t('supplier')}</span>
-              <span className="text-gray-800">{getSupplierName(order)}</span>
+              <span className="text-gray-800">{supplierName}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">{t('deliveryTypeLabel')}</span>

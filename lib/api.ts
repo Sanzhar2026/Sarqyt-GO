@@ -57,25 +57,28 @@ export interface SurpriseBag {
   is_active?: boolean;
 }
 
+// lib/api.ts
+
 export interface Order {
   id: number;
   order_number: string;
   status: string;
-  created_at: string;
   amount: number;
-  courier_id: number | null;
-  address: string | null;
-  delivery_type: string;
+  amount_paid: number;
   bag_name?: string;
   surprise_bag_name?: string;
   supplier_name?: string;
+  supplier_logo?: string;  // ✅ ДОБАВЛЯЕМ
+  supplier?: {             // ✅ ИЛИ ТАК (если приходит объект)
+    id: number;
+    business_name: string;
+    logo?: string;
+  };
+  delivery_type?: string;
+  address?: string;
   customer_address?: string;
-  amount_paid?: number;
-  status_history?: Array<{
-    status: string;
-    created_at: string;
-    comment?: string;
-  }>;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface WebSocketMessage {
