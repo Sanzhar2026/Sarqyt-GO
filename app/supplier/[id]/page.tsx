@@ -25,6 +25,7 @@ interface Supplier {
   phone: string;
   rating: number;
   cover_image?: string;
+  logo?: string; // ✅ ДОБАВЛЯЕМ ПОЛЕ ДЛЯ ЛОГОТИПА
 }
 
 export default function SupplierPage() {
@@ -66,9 +67,8 @@ export default function SupplierPage() {
     fetchData();
   }, [supplierId]);
 
-  // Функция добавления заказа
   const addToCart = async (bagId: number, bagName: string) => {
-    const token = sessionStorage.getItem('authToken');
+    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('userToken');
     
     if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
@@ -93,7 +93,6 @@ export default function SupplierPage() {
       if (data.success) {
         showNotification(`✅ ${bagName} добавлен в корзину!`, 'success');
         
-        // Обновляем количество товара
         setBags(prev => prev.map(bag => 
           bag.id === bagId 
             ? { ...bag, available_quantity: bag.available_quantity - 1 }
@@ -110,7 +109,6 @@ export default function SupplierPage() {
     }
   };
   
-  // Уведомления
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const toast = document.createElement('div');
     toast.className = `fixed bottom-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-up ${
@@ -139,19 +137,49 @@ export default function SupplierPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header - зеленый как на главной */}
+      {/* Header с аватаркой */}
       <div className="bg-[#367666] text-white p-6">
         <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
         </button>
-        <h1 className="text-2xl font-bold">{supplier.business_name}</h1>
-        <p className="text-sm opacity-90 mt-1">{supplier.address}</p>
-        {supplier.rating && (
-          <div className="flex items-center gap-1 mt-2">
-            <span className="text-yellow-300">★</span>
-            <span>{supplier.rating}</span>
+        
+        {/* ✅ АВАТАРКА ПОСТАВЩИКА */}
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/50 flex-shrink-0">
+            {supplier.logo ? (
+              <img
+                src={supplier.logo}
+                alt={supplier.business_name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLImageElement).parentElement;
+                  if (parent) {
+                    const fallback = document.createElement('span');
+                    fallback.className = 'text-2xl font-bold text-white';
+                    fallback.textContent = supplier.business_name?.charAt(0)?.toUpperCase() || '?';
+                    parent.appendChild(fallback);
+                  }
+                }}
+              />
+            ) : (
+              <span className="text-2xl font-bold text-white">
+                {supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
+              </span>
+            )}
           </div>
-        )}
+          
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">{supplier.business_name}</h1>
+            <p className="text-sm opacity-90 mt-1">{supplier.address}</p>
+            {supplier.rating && supplier.rating > 0 && (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-yellow-300">★</span>
+                <span>{supplier.rating}</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Список сюрпризов */}
@@ -168,7 +196,6 @@ export default function SupplierPage() {
             {bags.map((bag) => (
               <div key={bag.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition">
                 <div className="flex gap-4">
-                  {/* Изображение */}
                   {bag.image_url && (
                     <div className="w-24 h-24 flex-shrink-0">
                       <img 
@@ -179,26 +206,22 @@ export default function SupplierPage() {
                     </div>
                   )}
                   
-                  {/* Информация */}
                   <div className="flex-1">
                     <h3 className="font-bold text-lg">{bag.name}</h3>
                     <p className="text-gray-500 text-sm line-clamp-2">{bag.description}</p>
                     
-                    {/* Цена */}
                     <div className="mt-2">
                       <span className="text-gray-400 line-through text-sm">{bag.original_price} ₸</span>
                       <span className="text-[#367666] font-bold text-xl ml-2">{bag.discounted_price} ₸</span>
                       <span className="text-xs text-gray-400 ml-1">-{bag.discount_percentage}%</span>
                     </div>
                     
-                    {/* Доступность */}
                     <div className="mt-1">
                       <span className="text-xs text-gray-400">
                         Доступно: {bag.available_quantity} шт.
                       </span>
                     </div>
                     
-                    {/* Кнопка заказа */}
                     <button
                       onClick={() => addToCart(bag.id, bag.name)}
                       disabled={bag.available_quantity <= 0 || addingToCart === bag.id}
