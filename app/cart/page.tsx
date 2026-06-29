@@ -489,15 +489,7 @@ const token = getAuthToken();
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    >-</button>
-                    <span className="font-semibold text-sm min-w-[25px] text-center">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    >+</button>
+                    
                     <button
                       onClick={() => removeItem(item.id)}
                       className="ml-1 text-red-500 hover:text-red-700 text-sm"
