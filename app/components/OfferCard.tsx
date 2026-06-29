@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import { Gift, Heart } from 'lucide-react';
+import { getAuthToken } from '@/lib/auth';
 
 interface SurpriseItem {
   product_id: number;
@@ -26,7 +27,7 @@ interface OfferCardProps {
   imageUrl: string;
   description?: string;
   onOrderSuccess?: () => void;
-  businessType?: string; // ✅ ДОБАВЛЯЕМ
+  businessType?: string;
 }
 
 const getImageByTitle = (title: string) => {
@@ -50,18 +51,25 @@ const getImageByTitle = (title: string) => {
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
 };
 
-// app/components/OfferCard.tsx
+// ✅ ТИПЫ ЗАВЕДЕНИЙ (НА АНГЛИЙСКОМ)
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  restaurant: 'Restaurant',
+  bakery: 'Bakery',
+  cafe: 'Cafe',
+  fastfood: 'Fast Food',
+  supermarket: 'Supermarket',
+  store: 'Store',
+};
 
+// ✅ ВСЕ ИКОНКИ
 const getProductIcon = (name: string, iconFromApi?: string) => {
   if (iconFromApi) return iconFromApi;
-  
   const lowerName = name.toLowerCase();
   
   const iconMap: Record<string, string> = {
-    // ===== ЕДА =====
-    'пицц': '🍕', 'pizza': '🍕', 'маргарит': '🍕', 'пепперони': '🍕',
+    'пицц': '🍕', 'pizza': '🍕',
     'бургер': '🍔', 'burger': '🍔',
-    'картошк': '🍟', 'fries': '🍟', 'фри': '🍟',
+    'картошк': '🍟', 'fries': '🍟',
     'хот-дог': '🌭', 'hot dog': '🌭',
     'сэндвич': '🥪', 'sandwich': '🥪',
     'буррито': '🌯', 'burrito': '🌯',
@@ -71,18 +79,16 @@ const getProductIcon = (name: string, iconFromApi?: string) => {
     'суп': '🍲', 'soup': '🍲', 'борщ': '🍲',
     'салат': '🥗', 'salad': '🥗',
     'мясо': '🍖', 'meat': '🍖',
-    'куриц': '🍗', 'chicken': '🍗', 'крилс': '🍗', 'wings': '🍗', 'наггетс': '🍗',
-    'стейк': '🥩', 'steak': '🥩', 'говядин': '🥩',
+    'куриц': '🍗', 'chicken': '🍗', 'крилс': '🍗', 'wings': '🍗',
+    'стейк': '🥩', 'steak': '🥩',
     'креветк': '🍤', 'shrimp': '🍤',
-    'суши': '🍣', 'sushi': '🍣', 'ролл': '🍣', 'roll': '🍣', 'нигири': '🍣', 'сашими': '🍣',
+    'суши': '🍣', 'sushi': '🍣', 'ролл': '🍣', 'roll': '🍣',
     'бенто': '🍱', 'bento': '🍱',
     'карри': '🍛', 'curry': '🍛',
     'лапш': '🍜', 'noodle': '🍜',
-    'паста': '🍝', 'pasta': '🍝', 'спагетти': '🍝', 'макарон': '🍝',
+    'паста': '🍝', 'pasta': '🍝',
     'пельмен': '🥟', 'dumpling': '🥟',
     'фондю': '🫕', 'fondue': '🫕',
-    
-    // ===== МОЛОЧНЫЕ =====
     'сыр': '🧀', 'cheese': '🧀',
     'молоко': '🥛', 'milk': '🥛',
     'морожен': '🍦', 'ice cream': '🍦',
@@ -90,9 +96,6 @@ const getProductIcon = (name: string, iconFromApi?: string) => {
     'масло': '🧈', 'butter': '🧈',
     'блин': '🥞', 'pancake': '🥞',
     'вафл': '🧇', 'waffle': '🧇',
-    'сливк': '🍶', 'cream': '🍶',
-    
-    // ===== ВЫПЕЧКА =====
     'торт': '🍰', 'cake': '🍰',
     'кекс': '🧁', 'cupcake': '🧁',
     'пирог': '🥧', 'pie': '🥧',
@@ -107,23 +110,14 @@ const getProductIcon = (name: string, iconFromApi?: string) => {
     'хлеб': '🍞', 'bread': '🍞',
     'бублик': '🥯', 'bagel': '🥯',
     'лепешк': '🫓', 'flatbread': '🫓',
-    
-    // ===== НАПИТКИ =====
-    'кофе': '☕', 'coffee': '☕', 'капучино': '☕', 'латте': '☕', 'эспрессо': '☕',
+    'кофе': '☕', 'coffee': '☕',
     'чай': '🍵', 'tea': '🍵',
     'сок': '🧃', 'juice': '🧃',
-    'напит': '🥤', 'drink': '🥤', 'кола': '🥤', 'coca': '🥤', 'лимонад': '🥤',
-    'bubble tea': '🧋',
-    'мате': '🧉', 'mate': '🧉',
+    'напит': '🥤', 'drink': '🥤', 'кола': '🥤', 'coca': '🥤',
     'пиво': '🍺', 'beer': '🍺',
     'вино': '🍷', 'wine': '🍷',
     'виски': '🥃', 'whiskey': '🥃',
-    'коктейль': '🍸', 'cocktail': '🍸',
-    'шампанск': '🍾', 'champagne': '🍾',
     'вода': '💧', 'water': '💧',
-    'лёд': '🧊', 'ice': '🧊',
-    
-    // ===== ФРУКТЫ И ОВОЩИ =====
     'яблок': '🍎', 'apple': '🍎',
     'груш': '🍐', 'pear': '🍐',
     'апельсин': '🍊', 'orange': '🍊',
@@ -132,7 +126,6 @@ const getProductIcon = (name: string, iconFromApi?: string) => {
     'арбуз': '🍉', 'watermelon': '🍉',
     'виноград': '🍇', 'grape': '🍇',
     'клубник': '🍓', 'strawberry': '🍓',
-    'черник': '🫐', 'blueberry': '🫐',
     'персик': '🍑', 'peach': '🍑',
     'вишн': '🍒', 'cherry': '🍒',
     'ананас': '🍍', 'pineapple': '🍍',
@@ -140,7 +133,6 @@ const getProductIcon = (name: string, iconFromApi?: string) => {
     'дын': '🍈', 'melon': '🍈',
     'киви': '🥝', 'kiwi': '🥝',
     'помидор': '🍅', 'tomato': '🍅',
-    
     'огурец': '🥒', 'cucumber': '🥒',
     'перец': '🌶️', 'pepper': '🌶️',
     'морков': '🥕', 'carrot': '🥕',
@@ -149,91 +141,35 @@ const getProductIcon = (name: string, iconFromApi?: string) => {
     'картофель': '🥔', 'potato': '🥔',
     'гриб': '🍄', 'mushroom': '🍄',
     'кукуруз': '🌽', 'corn': '🌽',
-    
-    // ===== РЫБА =====
-    'рыб': '🐟', 'fish': '🐟', 'лосос': '🐟', 'salmon': '🐟', 'семг': '🐟',
-
+    'рыб': '🐟', 'fish': '🐟',
     'лобстер': '🦞', 'lobster': '🦞',
     'краб': '🦀', 'crab': '🦀',
     'осьминог': '🐙', 'octopus': '🐙',
     'кальмар': '🦑', 'squid': '🦑',
-    'ракушк': '🐚', 'shell': '🐚',
-    
-    // ===== СОУСЫ =====
-    'соль': '🧂', 'salt': '🧂',
-    'трав': '🌿', 'herb': '🌿',
-    'мёд': '🍯', 'honey': '🍯',
-    'соус': '🥫', 'sauce': '🥫',
-    
-    // ===== ХОЗТОВАРЫ =====
     'веник': '🧹', 'broom': '🧹',
     'корзин': '🧺', 'basket': '🧺',
     'губк': '🧽', 'sponge': '🧽',
-    'мыть': '🧴', 'clean': '🧴',
-    'нитк': '🧵', 'thread': '🧵',
     'ведр': '🪣', 'bucket': '🪣',
-    'вантуз': '🪠', 'plunger': '🪠',
     'перчатк': '🧤', 'glove': '🧤',
     'носок': '🧦', 'sock': '🧦',
     'футболк': '👕', 't-shirt': '👕',
     'штаны': '👖', 'pants': '👖',
     'плать': '👗', 'dress': '👗',
-    'галстук': '👔', 'tie': '👔',
     'кроссовк': '👟', 'sneaker': '👟',
-    'туфл': '👠', 'heel': '👠',
     'чемодан': '🧳', 'suitcase': '🧳',
     'рюкзак': '🎒', 'backpack': '🎒',
     'сумк': '👜', 'bag': '👜',
     'кепк': '🧢', 'cap': '🧢',
-    'каск': '⛑️', 'helmet': '⛑️',
-    'зубн': '🪥', 'toothbrush': '🪥',
-    'шампун': '🧴', 'shampoo': '🧴',
-    'туалет': '🧻', 'toilet': '🧻',
-    'зеркал': '🪞', 'mirror': '🪞',
-    'бритв': '🪒', 'razor': '🪒',
-    'булавк': '🧷', 'pin': '🧷',
     'игрушк': '🧸', 'toy': '🧸',
-    'игр': '🎮', 'game': '🎮',
     'книг': '📚', 'book': '📚',
-    'ручк': '🖊️', 'pen': '🖊️',
-    'блокнот': '📝', 'notebook': '📝',
-    'скрепк': '📎', 'clip': '📎',
-    'линейк': '📏', 'ruler': '📏',
-    
-    // ===== УНИВЕРСАЛЬНЫЕ =====
-    'посылка': '📦', 'package': '📦',
-  
-    'подарок': '🎁', 'gift': '🎁',
-    'магазин': '🏪', 'shop': '🏪',
-    'дом': '🏠', 'home': '🏠',
-    'локация': '📍', 'location': '📍',
-    'время': '⏰', 'time': '⏰',
-    'цена': '💰', 'price': '💰',
-    'рейтинг': '⭐', 'rating': '⭐',
-    'горячее': '🔥', 'hot': '🔥',
-    'новинка': '✨', 'new': '✨',
-    'топ': '💯', 'top': '💯',
-    'первое место': '🥇', 'first': '🥇',
-    'победа': '🏆', 'win': '🏆',
     'ресторан': '🍽️', 'restaurant': '🍽️',
   };
   
-  // Поиск по ключам
   for (const [key, emoji] of Object.entries(iconMap)) {
     if (lowerName.includes(key)) return emoji;
   }
   
   return '🍽️';
-};
-
-// ✅ ТИПЫ ЗАВЕДЕНИЙ (НА АНГЛИЙСКОМ)
-const BUSINESS_TYPE_LABELS: Record<string, string> = {
-  restaurant: 'Restaurant',
-  bakery: 'Bakery',
-  cafe: 'Cafe',
-  fastfood: 'Fast Food',
-  supermarket: 'Supermarket',
-  store: 'Store',
 };
 
 export default function OfferCard({
@@ -259,21 +195,19 @@ export default function OfferCard({
   const [isFavorite, setIsFavorite] = useState(false);
   const [showExpanded, setShowExpanded] = useState(false);
   
+  // ✅ СОСТОЯНИЯ ДЛЯ РЕЙТИНГА
   const [bagRating, setBagRating] = useState(0);
   const [bagTotalReviews, setBagTotalReviews] = useState(0);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [isRatingLoading, setIsRatingLoading] = useState(false);
+  const [hoveredStar, setHoveredStar] = useState<number | null>(null);
 
-  const getAuthToken = () => {
-    if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('userToken') || 
-           sessionStorage.getItem('authToken') || 
-           sessionStorage.getItem('courierToken') ||
-           null;
-  };
+  const token = getAuthToken();
 
+  // ✅ ЗАГРУЗКА РЕЙТИНГА
   useEffect(() => {
     const fetchRating = async () => {
       try {
-        const token = getAuthToken();
         const headers: HeadersInit = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
@@ -282,17 +216,89 @@ export default function OfferCard({
           const data = await response.json();
           setBagRating(data.rating || 0);
           setBagTotalReviews(data.total_reviews || 0);
+          setUserRating(data.user_rating || null);
         }
       } catch (error) {
         console.error('Error fetching rating:', error);
       }
     };
     fetchRating();
-  }, [id]);
+  }, [id, token]);
+
+  // ✅ ОТПРАВКА ОЦЕНКИ
+  const submitRating = async (rating: number) => {
+    if (!token) {
+      alert('Пожалуйста, войдите в аккаунт');
+      router.push('/login');
+      return;
+    }
+
+    setIsRatingLoading(true);
+    try {
+      const response = await fetch(`/api/surprise-bags/${id}/rate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ rating })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setUserRating(rating);
+        // Обновляем средний рейтинг
+        const newTotal = bagTotalReviews + 1;
+        const newRating = ((bagRating * bagTotalReviews) + rating) / newTotal;
+        setBagRating(Math.round(newRating * 10) / 10);
+        setBagTotalReviews(newTotal);
+        showNotification('✅ Оценка сохранена!', 'success');
+      } else {
+        showNotification(data.detail || 'Ошибка при оценке', 'error');
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      showNotification('Ошибка при оценке', 'error');
+    } finally {
+      setIsRatingLoading(false);
+    }
+  };
+
+  // ✅ РЕНДЕР ЗВЕЗД (ОДНИ И ТЕ ЖЕ — И ДЛЯ ОТОБРАЖЕНИЯ, И ДЛЯ КЛИКА)
+  const renderStars = () => {
+    const stars = [];
+    // Используем userRating если есть, иначе bagRating
+    const displayRating = userRating || bagRating || 0;
+    const hover = hoveredStar !== null ? hoveredStar : displayRating;
+    const isInteractive = isAuthenticated && userRating === null && !isRatingLoading;
+    
+    for (let i = 1; i <= 5; i++) {
+      const isFilled = i <= Math.round(hover);
+      const isActive = userRating !== null && i <= userRating;
+      
+      stars.push(
+        <button
+          key={i}
+          onMouseEnter={() => isInteractive && setHoveredStar(i)}
+          onMouseLeave={() => isInteractive && setHoveredStar(null)}
+          onClick={() => isInteractive && submitRating(i)}
+          disabled={!isInteractive}
+          className={`text-[10px] transition-all duration-150 ${
+            isFilled ? 'text-yellow-400' : 'text-gray-300'
+          } ${isActive ? 'text-yellow-500' : ''} ${
+            isInteractive ? 'cursor-pointer hover:scale-125' : 'cursor-default'
+          }`}
+        >
+          ★
+        </button>
+      );
+    }
+    return stars;
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = getAuthToken();
       if (token) {
         setIsAuthenticated(true);
         setAuthChecked(true);
@@ -310,7 +316,7 @@ export default function OfferCard({
       }
     };
     checkAuth();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     const favorites = localStorage.getItem('favorites');
@@ -320,7 +326,6 @@ export default function OfferCard({
     }
   }, [id]);
 
-  // ✅ ЗАГРУЗКА СОСТАВА
   const fetchBagItems = async () => {
     if (bagItems.length > 0) return;
     setLoading(true);
@@ -329,7 +334,6 @@ export default function OfferCard({
       if (response.ok) {
         const data = await response.json();
         setBagItems(data.items || []);
-        console.log('📦 Состав загружен:', data.items);
       }
     } catch (error) {
       console.error('Error fetching bag items:', error);
@@ -338,7 +342,6 @@ export default function OfferCard({
     }
   };
 
-  // ✅ РАБОТАЕТ ВЕЗДЕ (БЕЗ isSearchPage)
   const handleIconClick = async () => {
     if (!showExpanded && bagItems.length === 0) {
       await fetchBagItems();
@@ -360,9 +363,6 @@ export default function OfferCard({
   };
 
   const addToCart = async () => {
-    const token = getAuthToken();
-    console.log('🔑 Токен в addToCart:', token ? 'Есть ✅' : 'Нет ❌');
-    
     if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
       router.push('/login');
@@ -382,7 +382,6 @@ export default function OfferCard({
       });
 
       const data = await response.json();
-      console.log('📡 Ответ /api/cart/add:', response.status, data);
 
       if (response.status === 401) {
         alert('Сессия истекла. Пожалуйста, войдите заново.');
@@ -443,16 +442,6 @@ export default function OfferCard({
     if (count % 10 === 1 && count % 100 !== 11) return 'оценка';
     if (count % 10 >= 2 && count % 10 <= 4 && (count % 100 < 10 || count % 100 >= 20)) return 'оценки';
     return 'оценок';
-  };
-
-  const renderStars = () => {
-    const stars = [];
-    const fullStars = Math.floor(bagRating);
-    const hasHalfStar = bagRating % 1 >= 0.5;
-    for (let i = 0; i < fullStars; i++) stars.push(<span key={`full-${i}`} className="text-yellow-400 text-[10px]">★</span>);
-    if (hasHalfStar) stars.push(<span key="half" className="text-yellow-400 text-[10px]">½</span>);
-    for (let i = stars.length; i < 5; i++) stars.push(<span key={`empty-${i}`} className="text-gray-300 text-[10px]">★</span>);
-    return stars;
   };
 
   if (!authChecked) {
@@ -528,13 +517,21 @@ export default function OfferCard({
           {propName}
         </h3>
         
-        <div className="flex items-center gap-0.5 mt-0.5 mb-1">
-          {renderStars()}
-          {bagTotalReviews > 0 && (
-            <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>
-          )}
-          {distance && (
-            <span className="text-[8px] text-gray-400 ml-1">• {distance}</span>
+        {/* ✅ ОДИН РЯД ЗВЕЗД — И ДЛЯ ПОКАЗА, И ДЛЯ КЛИКА */}
+        <div className="flex items-center gap-0.5 mt-0.5 mb-1 flex-wrap">
+          <div className="flex items-center gap-0.5">
+            {renderStars()}
+            {bagTotalReviews > 0 && (
+              <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>
+            )}
+            {distance && (
+              <span className="text-[8px] text-gray-400 ml-1">• {distance}</span>
+            )}
+          </div>
+          {userRating !== null && (
+            <span className="text-[8px] text-[#367666] font-medium ml-0.5">
+              ✓
+            </span>
           )}
         </div>
         
