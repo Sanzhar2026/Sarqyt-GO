@@ -31,7 +31,7 @@ interface SurpriseBag {
   is_active?: boolean;
   supplier_lat?: number;
   supplier_lon?: number;
-  businessType?: string;
+  business_type?: string;
 }
 
 interface LocationData {
@@ -510,6 +510,7 @@ export default function HomePage() {
                       imageUrl={bag.image_url}
                       description={bag.description}
                       onOrderSuccess={() => fetchBags()}
+                      businessType={bag.business_type} 
                     />
                   );
                 })
