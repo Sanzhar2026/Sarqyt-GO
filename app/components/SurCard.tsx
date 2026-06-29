@@ -1,5 +1,3 @@
-// app/components/SurpriseBagCard.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,6 +7,13 @@ import { useRouter } from 'next/navigation';
 import { Gift, Info, Heart } from 'lucide-react';
 import { getAuthToken } from '@/lib/auth';
 
+interface SurpriseItem {
+  product_id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  icon?: string;
+}
 
 const getImageByTitle = (title: string) => {
   const lowerTitle = title.toLowerCase();
@@ -29,6 +34,20 @@ const getImageByTitle = (title: string) => {
     return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&h=400&fit=crop';
   }
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
+};
+
+const getProductIcon = (name: string, iconFromApi?: string) => {
+  if (iconFromApi) return iconFromApi;
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
+  if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
+  if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл')) return '🍣';
+  if (lowerName.includes('салат') || lowerName.includes('salad')) return '🥗';
+  if (lowerName.includes('кола') || lowerName.includes('coca')) return '🥤';
+  if (lowerName.includes('картошк') || lowerName.includes('fries')) return '🍟';
+  if (lowerName.includes('крилс') || lowerName.includes('wings')) return '🍗';
+  if (lowerName.includes('десерт') || lowerName.includes('dessert')) return '🍰';
+  return '🍽️';
 };
 
 interface SurpriseBagCardProps {
@@ -72,14 +91,36 @@ export default function SurpriseBagCard({
   const [authChecked, setAuthChecked] = useState(false);
   const [showExpanded, setShowExpanded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [bagItems, setBagItems] = useState<SurpriseItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
 
   const [bagRating, setBagRating] = useState(rating);
   const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
-  const token = getAuthToken();
   const API_URL = 'https://toogood-production.up.railway.app';
 
-  // ✅ Единая функция для получения токена
+  // ✅ ЗАГРУЗКА СОСТАВА СЮРПРИЗА
+  const fetchBagItems = async () => {
+    if (bagItems.length > 0) return;
+    setLoadingItems(true);
+    try {
+      const response = await fetch(`${API_URL}/api/surprise-bags/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setBagItems(data.items || []);
+      }
+    } catch (error) {
+      console.error('Error fetching bag items:', error);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
 
+  const handleIconClick = () => {
+    if (!showExpanded && bagItems.length === 0) {
+      fetchBagItems();
+    }
+    setShowExpanded(!showExpanded);
+  };
 
   useEffect(() => {
     const fetchRating = async () => {
@@ -99,7 +140,7 @@ export default function SurpriseBagCard({
       }
     };
     fetchRating();
-  }, [id, API_URL]);
+  }, [id]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -121,7 +162,7 @@ export default function SurpriseBagCard({
       }
     };
     checkAuth();
-  }, [API_URL]);
+  }, []);
 
   useEffect(() => {
     const favorites = localStorage.getItem('favorites');
@@ -144,12 +185,8 @@ export default function SurpriseBagCard({
     setIsFavorite(!isFavorite);
   };
 
-  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ addToCart
   const addToCart = async () => {
-    
     const token = getAuthToken();
-    console.log('🔑 Токен в SurpriseBagCard:', token ? 'Есть ✅' : 'Нет ❌');
-    
     if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
       router.push('/login');
@@ -190,7 +227,7 @@ export default function SurpriseBagCard({
           id, name, businessName: supplierName,
           price, originalPrice, discount, imageUrl: getImageByTitle(name),
           quantity: 1, description,
-          totalItems: 1,
+          totalItems: bagItems.length || 1,
           reservation_id: data.reservation_id,
           expires_at: data.expires_at
         };
@@ -292,11 +329,14 @@ export default function SurpriseBagCard({
           />
         </button>
         
+        {/* ✅ КНОПКА ДЛЯ ПОКАЗА СОСТАВА */}
         <button 
-          onClick={() => setShowExpanded(!showExpanded)}
-          className="absolute bottom-2 right-2 z-10"
+          onClick={handleIconClick}
+          className="absolute bottom-2 right-2 z-10 bg-black/40 backdrop-blur rounded-full p-1.5 hover:bg-black/60 transition"
         >
-          <Info size={20} className="text-gray-400/70 hover:text-gray-600 transition" />
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
         </button>
       </div>
       
@@ -319,6 +359,38 @@ export default function SurpriseBagCard({
           {renderStars()}
           {bagTotalReviews > 0 && <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>}
         </div>
+        
+        {/* ✅ ПОКАЗ СОСТАВА */}
+        {showExpanded && (
+          <div className="mt-2 mb-2 p-2 bg-gray-50 rounded-lg">
+            {loadingItems ? (
+              <div className="flex justify-center py-2">
+                <div className="w-4 h-4 border-2 border-[#367666] border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : bagItems.length > 0 ? (
+              <>
+                <p className="text-[10px] font-semibold text-gray-600 mb-1">Состав:</p>
+                {bagItems.slice(0, 4).map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-[10px] py-0.5 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px]">{getProductIcon(item.name, item.icon)}</span>
+                      <span className="text-gray-600 truncate max-w-[120px]">{item.name}</span>
+                      <span className="text-gray-400 text-[8px]">×{item.quantity}</span>
+                    </div>
+                    <span className="font-medium text-[10px] text-[#367666]">
+                      {(item.price * item.quantity).toLocaleString()} ₸
+                    </span>
+                  </div>
+                ))}
+                {bagItems.length > 4 && (
+                  <p className="text-[8px] text-gray-400 text-center pt-1">+{bagItems.length - 4} еще</p>
+                )}
+              </>
+            ) : (
+              <p className="text-[10px] text-gray-400 text-center py-1">Нет информации</p>
+            )}
+          </div>
+        )}
         
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
           <div>
