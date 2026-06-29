@@ -31,6 +31,7 @@ interface SurpriseBag {
   is_active?: boolean;
   supplier_lat?: number;
   supplier_lon?: number;
+  businessType?: string;
 }
 
 interface LocationData {
