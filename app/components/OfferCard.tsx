@@ -212,8 +212,7 @@ export default function OfferCard({
   const [bagRating, setBagRating] = useState(0);
   const [bagTotalReviews, setBagTotalReviews] = useState(0);
 
-  const isSearchPage = pathname === '/' || pathname === '/offers';
-
+  
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
@@ -291,12 +290,12 @@ export default function OfferCard({
   };
 
   const handleIconClick = async () => {
-    if (isSearchPage) {
+    
       if (!showExpanded && bagItems.length === 0) {
         await fetchBagItems();
       }
       setShowExpanded(!showExpanded);
-    }
+    
   };
 
   const toggleFavorite = (e: React.MouseEvent) => {
