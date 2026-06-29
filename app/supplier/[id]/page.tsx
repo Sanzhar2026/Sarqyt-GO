@@ -17,7 +17,7 @@ interface SurpriseBag {
   available_quantity: number;
   pickup_start_time?: string;
   pickup_end_time?: string;
-  businessType?: string;
+  business_type?: string;  // ✅ ИСПРАВЛЕНО!
 }
 
 interface Supplier {
@@ -31,7 +31,7 @@ interface Supplier {
   logo?: string;
   lat?: number;
   lon?: number;
-  businessType?: string;
+  business_type?: string;  // ✅ ИСПРАВЛЕНО!
 }
 
 type ViewMode = 'offers' | 'surprises';
@@ -47,6 +47,22 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
+
+// ✅ ПРОСТАЯ ИКОНКА СПИСОК
+const ListIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+      d="M4 6h16M4 12h16M4 18h16" />
+  </svg>
+);
+
+// ✅ ПРОСТАЯ ИКОНКА ПОДАРКА
+const GiftIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
+      d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+  </svg>
+);
 
 export default function SupplierPage() {
   const params = useParams();
@@ -186,13 +202,13 @@ export default function SupplierPage() {
               {supplier.rating && supplier.rating > 0 && (
                 <span className="text-yellow-300 text-sm">★ {supplier.rating}</span>
               )}
-              <span className="text-white/60 text-xs">📍 {distance}</span>
+              <span className="text-white/60 text-xs">{distance}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ✅ СЕРО-ПРОЗРАЧНЫЕ ИКОНКИ */}
+      {/* ✅ ПРОСТЫЕ ИКОНКИ ДЛЯ КЛАДОК */}
       <div className="px-4 pt-4">
         <div className="bg-gray-100/30 backdrop-blur-sm p-1 rounded-2xl flex gap-1 max-w-xs mx-auto border border-gray-200/20">
           <button
@@ -203,7 +219,7 @@ export default function SupplierPage() {
                 : 'text-gray-400/70 hover:text-gray-600 hover:bg-white/20'
             }`}
           >
-            <span>📋</span>
+            <ListIcon className="w-5 h-5" />
             <span>Предложения</span>
           </button>
           <button
@@ -214,7 +230,7 @@ export default function SupplierPage() {
                 : 'text-gray-400/70 hover:text-gray-600 hover:bg-white/20'
             }`}
           >
-            <span>🎁</span>
+            <GiftIcon className="w-5 h-5" />
             <span>Сюрпризы</span>
           </button>
         </div>
@@ -231,7 +247,7 @@ export default function SupplierPage() {
         
         {bags.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center">
-            <div className="text-5xl mb-3">🎁</div>
+            <GiftIcon className="w-12 h-12 mx-auto text-gray-300/30 mb-3" />
             <p className="text-gray-500">Нет доступных предложений</p>
           </div>
         ) : (
@@ -243,6 +259,7 @@ export default function SupplierPage() {
                   id={bag.id}
                   name={bag.name}
                   businessName={supplier.business_name}
+                  businessType={supplier.business_type}  // ✅ ПЕРЕДАЕМ!
                   distance={distance}
                   price={bag.discounted_price}
                   originalPrice={bag.original_price}
@@ -256,6 +273,7 @@ export default function SupplierPage() {
                   id={bag.id}
                   name={bag.name}
                   supplierName={supplier.business_name}
+                  businessType={supplier.business_type}  // ✅ ПЕРЕДАЕМ!
                   price={bag.discounted_price}
                   originalPrice={bag.original_price}
                   discount={bag.discount_percentage}
@@ -265,6 +283,7 @@ export default function SupplierPage() {
                   address={supplier.address}
                   pickupStartTime={bag.pickup_start_time}
                   pickupEndTime={bag.pickup_end_time}
+                  distance={distance}  // ✅ ПЕРЕДАЕМ!
                 />
               )
             ))}
