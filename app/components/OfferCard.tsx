@@ -52,34 +52,141 @@ const getImageByTitle = (title: string) => {
 };
 
 // ✅ ЗАПАСНАЯ ФУНКЦИЯ (ЕСЛИ ИКОНКА НЕ ПРИШЛА)
+// app/components/OfferCard.tsx
+
 const getProductIcon = (name: string, iconFromApi?: string) => {
   // Если есть иконка из API - используем её
   if (iconFromApi) return iconFromApi;
   
-  // Иначе определяем по названию
   const lowerName = name.toLowerCase();
+  
+  // ===== ЕДА =====
   if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
   if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
-  if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл')) return '🍣';
+  if (lowerName.includes('картошк') || lowerName.includes('fries') || lowerName.includes('фри')) return '🍟';
+  if (lowerName.includes('хот-дог') || lowerName.includes('hot dog')) return '🌭';
+  if (lowerName.includes('сэндвич') || lowerName.includes('sandwich')) return '🥪';
+  if (lowerName.includes('буррито') || lowerName.includes('burrito')) return '🌯';
+  if (lowerName.includes('шаурм') || lowerName.includes('shawarma')) return '🥙';
+  if (lowerName.includes('фалафель') || lowerName.includes('falafel')) return '🧆';
+  if (lowerName.includes('плов') || lowerName.includes('plov')) return '🥘';
+  if (lowerName.includes('суп') || lowerName.includes('soup') || lowerName.includes('борщ')) return '🍲';
   if (lowerName.includes('салат') || lowerName.includes('salad')) return '🥗';
-  if (lowerName.includes('кола') || lowerName.includes('coca') || lowerName.includes('cola')) return '🥤';
-  if (lowerName.includes('картошк') || lowerName.includes('fries')) return '🍟';
-  if (lowerName.includes('крилс') || lowerName.includes('wings')) return '🍗';
+  if (lowerName.includes('мясо') || lowerName.includes('meat')) return '🍖';
+  if (lowerName.includes('куриц') || lowerName.includes('chicken') || lowerName.includes('крилс') || lowerName.includes('wings')) return '🍗';
+  if (lowerName.includes('стейк') || lowerName.includes('steak') || lowerName.includes('говядин')) return '🥩';
+  if (lowerName.includes('креветк') || lowerName.includes('shrimp')) return '🍤';
+  if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл') || lowerName.includes('roll')) return '🍣';
+  if (lowerName.includes('бенто') || lowerName.includes('bento')) return '🍱';
+  if (lowerName.includes('карри') || lowerName.includes('curry')) return '🍛';
+  if (lowerName.includes('лапш') || lowerName.includes('noodle')) return '🍜';
+  if (lowerName.includes('паста') || lowerName.includes('pasta') || lowerName.includes('спагетти') || lowerName.includes('макарон')) return '🍝';
+  if (lowerName.includes('пельмен') || lowerName.includes('dumpling')) return '🥟';
+  if (lowerName.includes('фондю') || lowerName.includes('fondue')) return '🫕';
+  
+  // ===== МОЛОЧНЫЕ =====
   if (lowerName.includes('сыр') || lowerName.includes('cheese')) return '🧀';
-  if (lowerName.includes('десерт') || lowerName.includes('dessert')) return '🍰';
-  if (lowerName.includes('хлеб') || lowerName.includes('bread')) return '🍞';
-  if (lowerName.includes('кофе') || lowerName.includes('coffee')) return '☕';
-  if (lowerName.includes('чай') || lowerName.includes('tea')) return '🍵';
-  if (lowerName.includes('стейк') || lowerName.includes('steak')) return '🥩';
-  if (lowerName.includes('паста') || lowerName.includes('pasta')) return '🍝';
-  if (lowerName.includes('суп') || lowerName.includes('soup')) return '🍲';
+  if (lowerName.includes('молоко') || lowerName.includes('milk')) return '🥛';
   if (lowerName.includes('морожен') || lowerName.includes('ice cream')) return '🍦';
-  if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
-  if (lowerName.includes('картошк') || lowerName.includes('fries')) return '🍟';
-  if (lowerName.includes('напит') || lowerName.includes('drink')) return '🥤';
+  if (lowerName.includes('яйц') || lowerName.includes('egg')) return '🥚';
+  if (lowerName.includes('масло') || lowerName.includes('butter')) return '🧈';
+  if (lowerName.includes('блин') || lowerName.includes('pancake')) return '🥞';
+  if (lowerName.includes('вафл') || lowerName.includes('waffle')) return '🧇';
+  
+  // ===== ВЫПЕЧКА =====
+  if (lowerName.includes('торт') || lowerName.includes('cake')) return '🍰';
+  if (lowerName.includes('кекс') || lowerName.includes('cupcake')) return '🧁';
+  if (lowerName.includes('пирог') || lowerName.includes('pie')) return '🥧';
+  if (lowerName.includes('печень') || lowerName.includes('cookie')) return '🍪';
+  if (lowerName.includes('пончик') || lowerName.includes('donut')) return '🍩';
+  if (lowerName.includes('шоколад') || lowerName.includes('chocolate')) return '🍫';
+  if (lowerName.includes('конфет') || lowerName.includes('candy')) return '🍬';
+  if (lowerName.includes('леденец') || lowerName.includes('lollipop')) return '🍭';
+  if (lowerName.includes('пудинг') || lowerName.includes('pudding')) return '🍮';
+  if (lowerName.includes('круассан') || lowerName.includes('croissant')) return '🥐';
+  if (lowerName.includes('багет') || lowerName.includes('baguette')) return '🥖';
+  if (lowerName.includes('хлеб') || lowerName.includes('bread')) return '🍞';
+  if (lowerName.includes('бублик') || lowerName.includes('bagel')) return '🥯';
+  if (lowerName.includes('лепешк') || lowerName.includes('flatbread')) return '🫓';
+  
+  // ===== НАПИТКИ =====
+  if (lowerName.includes('кофе') || lowerName.includes('coffee') || lowerName.includes('капучино') || lowerName.includes('латте') || lowerName.includes('эспрессо')) return '☕';
+  if (lowerName.includes('чай') || lowerName.includes('tea')) return '🍵';
+  if (lowerName.includes('сок') || lowerName.includes('juice')) return '🧃';
+  if (lowerName.includes('напит') || lowerName.includes('drink') || lowerName.includes('кола') || lowerName.includes('coca') || lowerName.includes('лимонад')) return '🥤';
+  if (lowerName.includes('bubble tea')) return '🧋';
+  if (lowerName.includes('мате') || lowerName.includes('mate')) return '🧉';
+  if (lowerName.includes('пиво') || lowerName.includes('beer')) return '🍺';
+  if (lowerName.includes('вино') || lowerName.includes('wine')) return '🍷';
+  if (lowerName.includes('виски') || lowerName.includes('whiskey')) return '🥃';
+  if (lowerName.includes('коктейль') || lowerName.includes('cocktail')) return '🍸';
+  if (lowerName.includes('шампанск') || lowerName.includes('champagne')) return '🍾';
+  if (lowerName.includes('вода') || lowerName.includes('water')) return '💧';
+  
+  // ===== ФРУКТЫ И ОВОЩИ =====
+  if (lowerName.includes('яблок') || lowerName.includes('apple')) return '🍎';
+  if (lowerName.includes('груш') || lowerName.includes('pear')) return '🍐';
+  if (lowerName.includes('апельсин') || lowerName.includes('orange')) return '🍊';
+  if (lowerName.includes('лимон') || lowerName.includes('lemon')) return '🍋';
+  if (lowerName.includes('банан') || lowerName.includes('banana')) return '🍌';
+  if (lowerName.includes('арбуз') || lowerName.includes('watermelon')) return '🍉';
+  if (lowerName.includes('виноград') || lowerName.includes('grape')) return '🍇';
+  if (lowerName.includes('клубник') || lowerName.includes('strawberry')) return '🍓';
+  if (lowerName.includes('черник') || lowerName.includes('blueberry')) return '🫐';
+  if (lowerName.includes('персик') || lowerName.includes('peach')) return '🍑';
+  if (lowerName.includes('вишн') || lowerName.includes('cherry')) return '🍒';
+  if (lowerName.includes('ананас') || lowerName.includes('pineapple')) return '🍍';
+  if (lowerName.includes('манго') || lowerName.includes('mango')) return '🥭';
+  if (lowerName.includes('дын') || lowerName.includes('melon')) return '🍈';
+  if (lowerName.includes('киви') || lowerName.includes('kiwi')) return '🥝';
+  if (lowerName.includes('помидор') || lowerName.includes('tomato')) return '🍅';
+  if (lowerName.includes('салат') || lowerName.includes('lettuce')) return '🥬';
+  if (lowerName.includes('огурец') || lowerName.includes('cucumber')) return '🥒';
+  if (lowerName.includes('перец') || lowerName.includes('pepper')) return '🌶️';
+  if (lowerName.includes('морков') || lowerName.includes('carrot')) return '🥕';
+  if (lowerName.includes('чеснок') || lowerName.includes('garlic')) return '🧄';
+  if (lowerName.includes('лук') || lowerName.includes('onion')) return '🧅';
+  if (lowerName.includes('картофель') || lowerName.includes('potato')) return '🥔';
+  if (lowerName.includes('гриб') || lowerName.includes('mushroom')) return '🍄';
+  if (lowerName.includes('кукуруз') || lowerName.includes('corn')) return '🌽';
+  
+  // ===== РЫБА И МОРЕПРОДУКТЫ =====
+  if (lowerName.includes('рыб') || lowerName.includes('fish') || lowerName.includes('лосос') || lowerName.includes('salmon') || lowerName.includes('семг')) return '🐟';
+  if (lowerName.includes('лобстер') || lowerName.includes('lobster')) return '🦞';
+  if (lowerName.includes('краб') || lowerName.includes('crab')) return '🦀';
+  if (lowerName.includes('осьминог') || lowerName.includes('octopus')) return '🐙';
+  if (lowerName.includes('кальмар') || lowerName.includes('squid')) return '🦑';
+  
+  // ===== ХОЗТОВАРЫ =====
+  if (lowerName.includes('веник') || lowerName.includes('broom')) return '🧹';
+  if (lowerName.includes('корзин') || lowerName.includes('basket')) return '🧺';
+  if (lowerName.includes('губк') || lowerName.includes('sponge')) return '🧽';
+  if (lowerName.includes('мыть') || lowerName.includes('clean')) return '🧴';
+  if (lowerName.includes('нитк') || lowerName.includes('thread')) return '🧵';
+  if (lowerName.includes('ведр') || lowerName.includes('bucket')) return '🪣';
+  if (lowerName.includes('перчатк') || lowerName.includes('glove')) return '🧤';
+  if (lowerName.includes('носок') || lowerName.includes('sock')) return '🧦';
+  if (lowerName.includes('футболк') || lowerName.includes('t-shirt')) return '👕';
+  if (lowerName.includes('штаны') || lowerName.includes('pants')) return '👖';
+  if (lowerName.includes('плать') || lowerName.includes('dress')) return '👗';
+  if (lowerName.includes('кроссовк') || lowerName.includes('sneaker')) return '👟';
+  if (lowerName.includes('чемодан') || lowerName.includes('suitcase')) return '🧳';
+  if (lowerName.includes('рюкзак') || lowerName.includes('backpack')) return '🎒';
+  if (lowerName.includes('сумк') || lowerName.includes('bag')) return '👜';
+  if (lowerName.includes('кепк') || lowerName.includes('cap')) return '🧢';
+  if (lowerName.includes('игрушк') || lowerName.includes('toy')) return '🧸';
+  if (lowerName.includes('книг') || lowerName.includes('book')) return '📚';
+  
+  // ===== УНИВЕРСАЛЬНЫЕ =====
+  if (lowerName.includes('посылка') || lowerName.includes('package')) return '📦';
+  if (lowerName.includes('корзин') || lowerName.includes('cart')) return '🛒';
+  if (lowerName.includes('подарок') || lowerName.includes('gift')) return '🎁';
+  if (lowerName.includes('магазин') || lowerName.includes('shop')) return '🏪';
+  if (lowerName.includes('ресторан') || lowerName.includes('restaurant')) return '🍽️';
+  
+  // По умолчанию
   return '🍽️';
 };
-
 export default function OfferCard({
   id,
   name: propName,
