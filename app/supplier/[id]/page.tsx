@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
+import OfferCard from '@/app/components/OfferCard';
+import SurpriseBagCard from '../../components/SurCard';
+
+const CourierMap = dynamic(() => import('@/app/components/CourierMap'), { ssr: false });
 
 interface SurpriseBag {
   id: number;
@@ -26,6 +31,23 @@ interface Supplier {
   rating: number;
   cover_image?: string;
   logo?: string;
+  lat?: number;
+  lon?: number;
+}
+
+type ViewMode = 'offers' | 'surprises' | 'map';
+
+// ✅ ФУНКЦИЯ ДЛЯ РАСЧЕТА РАССТОЯНИЯ (в км)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Радиус Земли в км
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
 export default function SupplierPage() {
@@ -34,10 +56,34 @@ export default function SupplierPage() {
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [addingToCart, setAddingToCart] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('offers');
   const [isClient, setIsClient] = useState(false);
+  
+  // ✅ ПОЛУЧАЕМ МЕСТОПОЛОЖЕНИЕ ПОЛЬЗОВАТЕЛЯ
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   const supplierId = params?.id;
+
+  // ✅ ПОЛУЧАЕМ ГЕОЛОКАЦИЮ ПОЛЬЗОВАТЕЛЯ
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setUserLocation({ lat: 50.318754, lon: 57.368359 }); // Актобе по умолчанию
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude
+        });
+      },
+      () => {
+        setUserLocation({ lat: 50.318754, lon: 57.368359 });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -72,56 +118,16 @@ export default function SupplierPage() {
     fetchData();
   }, [supplierId]);
 
-  const addToCart = async (bagId: number, bagName: string) => {
-    const token = sessionStorage.getItem('authToken') || sessionStorage.getItem('userToken');
-    
-    if (!token) {
-      alert('Пожалуйста, войдите в аккаунт');
-      router.push('/login');
-      return;
+  // ✅ ВЫЧИСЛЯЕМ РАССТОЯНИЕ
+  const getDistance = (): string => {
+    if (!userLocation || !supplier?.lat || !supplier?.lon) {
+      return '0 км';
     }
-    
-    setAddingToCart(bagId);
-    
-    try {
-      const response = await fetch('/api/cart/add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ bag_id: bagId, quantity: 1 })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        showNotification(`✅ ${bagName} добавлен в корзину!`, 'success');
-        
-        setBags(prev => prev.map(bag => 
-          bag.id === bagId 
-            ? { ...bag, available_quantity: bag.available_quantity - 1 }
-            : bag
-        ));
-      } else {
-        showNotification(data.detail || 'Ошибка при добавлении', 'error');
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      showNotification('Ошибка при добавлении в корзину', 'error');
-    } finally {
-      setAddingToCart(null);
+    const dist = calculateDistance(userLocation.lat, userLocation.lon, supplier.lat, supplier.lon);
+    if (dist < 1) {
+      return `${Math.round(dist * 1000)} м`;
     }
-  };
-  
-  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const toast = document.createElement('div');
-    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-4 rounded-xl text-white text-center animate-slide-up ${
-      type === 'success' ? 'bg-[#367666]' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
-    }`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    return `${dist.toFixed(1)} км`;
   };
 
   if (loading) {
@@ -144,9 +150,11 @@ export default function SupplierPage() {
     ? `${supplier.logo}?t=${Date.now()}` 
     : supplier.logo;
 
+  const distance = getDistance();
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header с аватаркой */}
+      {/* Header */}
       <div className="bg-[#367666] text-white p-6">
         <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
@@ -180,81 +188,117 @@ export default function SupplierPage() {
           <div className="flex-1">
             <h1 className="text-2xl font-bold">{supplier.business_name}</h1>
             <p className="text-sm opacity-90 mt-1">{supplier.address}</p>
-            {supplier.rating && supplier.rating > 0 && (
-              <div className="flex items-center gap-1 mt-1">
-                <span className="text-yellow-300">★</span>
-                <span>{supplier.rating}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-3 mt-1">
+              {supplier.rating && supplier.rating > 0 && (
+                <span className="text-yellow-300 text-sm">★ {supplier.rating}</span>
+              )}
+              <span className="text-white/60 text-xs">📍 {distance}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Список сюрпризов */}
+      {/* Переключатель режимов */}
+      <div className="px-4 pt-4">
+        <div className="bg-gray-100 p-1 rounded-2xl flex gap-1 max-w-xs mx-auto">
+          <button
+            onClick={() => setViewMode('offers')}
+            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
+              viewMode === 'offers' 
+                ? 'bg-white shadow text-[#367666]' 
+                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
+            }`}
+          >
+            <span>📋</span>
+            <span>Предложения</span>
+          </button>
+          <button
+            onClick={() => setViewMode('surprises')}
+            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
+              viewMode === 'surprises' 
+                ? 'bg-white shadow text-[#367666]' 
+                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
+            }`}
+          >
+            <span>🎁</span>
+            <span>Сюрпризы</span>
+          </button>
+          <button
+            onClick={() => setViewMode('map')}
+            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
+              viewMode === 'map' 
+                ? 'bg-white shadow text-[#367666]' 
+                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
+            }`}
+          >
+            <span>🗺️</span>
+            <span>Карта</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Контент */}
       <div className="px-4 py-6">
-        <h2 className="text-xl font-bold mb-4">Сюрпризы</h2>
-        
-        {bags.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center">
-            <div className="text-5xl mb-3">🎁</div>
-            <p className="text-gray-500">Нет доступных сюрпризов</p>
+        {viewMode === 'map' ? (
+          <div className="w-full h-[500px] rounded-xl overflow-hidden">
+            <CourierMap 
+              restaurantLocation={supplier.lat && supplier.lon ? { lat: supplier.lat, lon: supplier.lon } : undefined}
+              customerLocation={userLocation || undefined}
+              showRoute={true}
+              height="100%"
+            />
           </div>
         ) : (
-          <div className="space-y-4">
-            {bags.map((bag) => (
-              <div key={bag.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition">
-                <div className="flex gap-4">
-                  {bag.image_url && (
-                    <div className="w-24 h-24 flex-shrink-0">
-                      <img 
-                        src={bag.image_url} 
-                        alt={bag.name}
-                        className="w-full h-full object-cover rounded-xl"
-                      />
-                    </div>
-                  )}
-                  
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg">{bag.name}</h3>
-                    <p className="text-gray-500 text-sm line-clamp-2">{bag.description}</p>
-                    
-                    <div className="mt-2">
-                      <span className="text-gray-400 line-through text-sm">{bag.original_price} ₸</span>
-                      <span className="text-[#367666] font-bold text-xl ml-2">{bag.discounted_price} ₸</span>
-                      <span className="text-xs text-gray-400 ml-1">-{bag.discount_percentage}%</span>
-                    </div>
-                    
-                    <div className="mt-1">
-                      <span className="text-xs text-gray-400">
-                        Доступно: {bag.available_quantity} шт.
-                      </span>
-                    </div>
-                    
-                    <button
-                      onClick={() => addToCart(bag.id, bag.name)}
-                      disabled={bag.available_quantity <= 0 || addingToCart === bag.id}
-                      className={`mt-3 w-full py-2 rounded-xl text-sm font-semibold transition ${
-                        bag.available_quantity > 0
-                          ? 'bg-[#367666] text-white hover:bg-[#2a5a4d]'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {addingToCart === bag.id ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Заказ...
-                        </span>
-                      ) : bag.available_quantity > 0 ? (
-                        'Заказать'
-                      ) : (
-                        'Нет в наличии'
-                      )}
-                    </button>
-                  </div>
-                </div>
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">
+                {viewMode === 'offers' ? 'Предложения' : 'Сюрпризы'}
+              </h2>
+              <span className="text-sm text-gray-400">{distance}</span>
+            </div>
+            
+            {bags.length === 0 ? (
+              <div className="bg-white rounded-2xl p-8 text-center">
+                <div className="text-5xl mb-3">🎁</div>
+                <p className="text-gray-500">Нет доступных предложений</p>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {bags.map((bag) => (
+                  viewMode === 'offers' ? (
+                    <OfferCard
+                      key={bag.id}
+                      id={bag.id}
+                      name={bag.name}
+                      businessName={supplier.business_name}
+                      distance={distance}  // ✅ РЕАЛЬНОЕ РАССТОЯНИЕ!
+                      price={bag.discounted_price}
+                      originalPrice={bag.original_price}
+                      discount={bag.discount_percentage}
+                      imageUrl={bag.image_url}
+                      description={bag.description}
+                    />
+                  ) : (
+                    <SurpriseBagCard
+                      key={bag.id}
+                      id={bag.id}
+                      name={bag.name}
+                      supplierName={supplier.business_name}
+                      price={bag.discounted_price}
+                      originalPrice={bag.original_price}
+                      discount={bag.discount_percentage}
+                      imageUrl={bag.image_url}
+                      description={bag.description}
+                      availableQuantity={bag.available_quantity}
+                      address={supplier.address}
+                      pickupStartTime={bag.pickup_start_time}
+                      pickupEndTime={bag.pickup_end_time}
+                    />
+                  )
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
