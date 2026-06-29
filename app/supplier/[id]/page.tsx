@@ -3,12 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
 import OfferCard from '@/app/components/OfferCard';
 import SurpriseBagCard from '../../components/SurCard';
-
-const CourierMap = dynamic(() => import('@/app/components/CourierMap'), { ssr: false });
-
 interface SurpriseBag {
   id: number;
   name: string;
@@ -35,11 +31,11 @@ interface Supplier {
   lon?: number;
 }
 
-type ViewMode = 'offers' | 'surprises' | 'map';
+type ViewMode = 'offers' | 'surprises';
 
-// ✅ ФУНКЦИЯ ДЛЯ РАСЧЕТА РАССТОЯНИЯ (в км)
+// Функция для расчета расстояния
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Радиус Земли в км
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -58,16 +54,14 @@ export default function SupplierPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('offers');
   const [isClient, setIsClient] = useState(false);
-  
-  // ✅ ПОЛУЧАЕМ МЕСТОПОЛОЖЕНИЕ ПОЛЬЗОВАТЕЛЯ
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   const supplierId = params?.id;
 
-  // ✅ ПОЛУЧАЕМ ГЕОЛОКАЦИЮ ПОЛЬЗОВАТЕЛЯ
+  // Получаем геолокацию пользователя
   useEffect(() => {
     if (!navigator.geolocation) {
-      setUserLocation({ lat: 50.318754, lon: 57.368359 }); // Актобе по умолчанию
+      setUserLocation({ lat: 50.318754, lon: 57.368359 });
       return;
     }
 
@@ -118,7 +112,6 @@ export default function SupplierPage() {
     fetchData();
   }, [supplierId]);
 
-  // ✅ ВЫЧИСЛЯЕМ РАССТОЯНИЕ
   const getDistance = (): string => {
     if (!userLocation || !supplier?.lat || !supplier?.lon) {
       return '0 км';
@@ -154,7 +147,7 @@ export default function SupplierPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header */}
+      {/* Header с аватаркой */}
       <div className="bg-[#367666] text-white p-6">
         <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
@@ -198,15 +191,15 @@ export default function SupplierPage() {
         </div>
       </div>
 
-      {/* Переключатель режимов */}
+      {/* ✅ ПЕРЕКЛЮЧАТЕЛЬ - СЕРО-ПРОЗРАЧНЫЙ */}
       <div className="px-4 pt-4">
-        <div className="bg-gray-100 p-1 rounded-2xl flex gap-1 max-w-xs mx-auto">
+        <div className="bg-gray-100/50 p-1 rounded-2xl flex gap-1 max-w-xs mx-auto backdrop-blur-sm">
           <button
             onClick={() => setViewMode('offers')}
             className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
               viewMode === 'offers' 
                 ? 'bg-white shadow text-[#367666]' 
-                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
+                : 'text-gray-500/70 hover:text-[#367666] hover:bg-white/30'
             }`}
           >
             <span>📋</span>
@@ -217,88 +210,64 @@ export default function SupplierPage() {
             className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
               viewMode === 'surprises' 
                 ? 'bg-white shadow text-[#367666]' 
-                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
+                : 'text-gray-500/70 hover:text-[#367666] hover:bg-white/30'
             }`}
           >
             <span>🎁</span>
             <span>Сюрпризы</span>
           </button>
-          <button
-            onClick={() => setViewMode('map')}
-            className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-              viewMode === 'map' 
-                ? 'bg-white shadow text-[#367666]' 
-                : 'text-gray-400 hover:text-[#367666] hover:bg-white/50'
-            }`}
-          >
-            <span>🗺️</span>
-            <span>Карта</span>
-          </button>
         </div>
       </div>
 
-      {/* Контент */}
+      {/* Список */}
       <div className="px-4 py-6">
-        {viewMode === 'map' ? (
-          <div className="w-full h-[500px] rounded-xl overflow-hidden">
-            <CourierMap 
-              restaurantLocation={supplier.lat && supplier.lon ? { lat: supplier.lat, lon: supplier.lon } : undefined}
-              customerLocation={userLocation || undefined}
-              showRoute={true}
-              height="100%"
-            />
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">
+            {viewMode === 'offers' ? 'Предложения' : 'Сюрпризы'}
+          </h2>
+          <span className="text-sm text-gray-400">{bags.length} шт.</span>
+        </div>
+        
+        {bags.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center">
+            <div className="text-5xl mb-3">🎁</div>
+            <p className="text-gray-500">Нет доступных предложений</p>
           </div>
         ) : (
-          <>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">
-                {viewMode === 'offers' ? 'Предложения' : 'Сюрпризы'}
-              </h2>
-              <span className="text-sm text-gray-400">{distance}</span>
-            </div>
-            
-            {bags.length === 0 ? (
-              <div className="bg-white rounded-2xl p-8 text-center">
-                <div className="text-5xl mb-3">🎁</div>
-                <p className="text-gray-500">Нет доступных предложений</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {bags.map((bag) => (
-                  viewMode === 'offers' ? (
-                    <OfferCard
-                      key={bag.id}
-                      id={bag.id}
-                      name={bag.name}
-                      businessName={supplier.business_name}
-                      distance={distance}  // ✅ РЕАЛЬНОЕ РАССТОЯНИЕ!
-                      price={bag.discounted_price}
-                      originalPrice={bag.original_price}
-                      discount={bag.discount_percentage}
-                      imageUrl={bag.image_url}
-                      description={bag.description}
-                    />
-                  ) : (
-                    <SurpriseBagCard
-                      key={bag.id}
-                      id={bag.id}
-                      name={bag.name}
-                      supplierName={supplier.business_name}
-                      price={bag.discounted_price}
-                      originalPrice={bag.original_price}
-                      discount={bag.discount_percentage}
-                      imageUrl={bag.image_url}
-                      description={bag.description}
-                      availableQuantity={bag.available_quantity}
-                      address={supplier.address}
-                      pickupStartTime={bag.pickup_start_time}
-                      pickupEndTime={bag.pickup_end_time}
-                    />
-                  )
-                ))}
-              </div>
-            )}
-          </>
+          <div className="flex flex-col gap-3">
+            {bags.map((bag) => (
+              viewMode === 'offers' ? (
+                <OfferCard
+                  key={bag.id}
+                  id={bag.id}
+                  name={bag.name}
+                  businessName={supplier.business_name}
+                  distance={distance}
+                  price={bag.discounted_price}
+                  originalPrice={bag.original_price}
+                  discount={bag.discount_percentage}
+                  imageUrl={bag.image_url}
+                  description={bag.description}
+                />
+              ) : (
+                <SurpriseBagCard
+                  key={bag.id}
+                  id={bag.id}
+                  name={bag.name}
+                  supplierName={supplier.business_name}
+                  price={bag.discounted_price}
+                  originalPrice={bag.original_price}
+                  discount={bag.discount_percentage}
+                  imageUrl={bag.image_url}
+                  description={bag.description}
+                  availableQuantity={bag.available_quantity}
+                  address={supplier.address}
+                  pickupStartTime={bag.pickup_start_time}
+                  pickupEndTime={bag.pickup_end_time}
+                />
+              )
+            ))}
+          </div>
         )}
       </div>
     </div>
