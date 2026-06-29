@@ -1,10 +1,10 @@
-// app/offers/page.jsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ РАЗНОЦВЕТНЫХ ЭМОДЗИ)
+// app/offers/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import SurpriseBagCard from '../components/SurCard';
+import SurpriseBagCard from '../components/SurCard';  // ✅ ИСПРАВЛЕНО!
 import { Gift, Store } from 'lucide-react';
 import { useLanguage } from '../components/LanguageSwitcher';
 import { useGeolocation } from '../context/GeolocationContext';
@@ -26,6 +26,7 @@ interface SurpriseBag {
   pickup_end_time?: string;
   rating?: number;
   total_reviews?: number;
+  business_type?: string;  // ✅ ДОБАВЛЯЕМ
 }
 
 export default function OffersPage() {
@@ -154,7 +155,7 @@ export default function OffersPage() {
       <div className="bg-[#367666] text-white px-4 pt-12 pb-5">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">{t('surpriseBags')}</h1>
-          <Gift size={24} className="text-white/40" /> {/* ✅ СДЕЛАЛ СЕРОВАТО-ПРОЗРАЧНЫЙ */}
+          <Gift size={24} className="text-white/40" />
         </div>
         <p className="text-emerald-100 text-sm mt-1">{t('chooseSurprise')}</p>
       </div>
@@ -162,7 +163,7 @@ export default function OffersPage() {
       <div className="p-3">
         {bags.length === 0 ? (
           <div className="text-center py-12">
-            <Gift size={48} className="mx-auto text-gray-300/30 mb-3" /> {/* ✅ СЕРОВАТО-ПРОЗРАЧНЫЙ */}
+            <Gift size={48} className="mx-auto text-gray-300/30 mb-3" />
             <p className="text-gray-500 text-sm">{t('noBags')}</p>
             <button 
               onClick={fetchBags}
@@ -188,8 +189,10 @@ export default function OffersPage() {
                 address={bag.address || ''}
                 pickupStartTime={bag.pickup_start_time || ''}
                 pickupEndTime={bag.pickup_end_time || ''}
-                rating={0}
-                totalReviews={0}
+                rating={bag.rating || 0}
+                totalReviews={bag.total_reviews || 0}
+                businessType={bag.business_type || ''}  // ✅ ПЕРЕДАЕМ ТИП
+                // ✅ РАССТОЯНИЕ МОЖНО ПЕРЕДАТЬ, ЕСЛИ ЕСТЬ В API
                 onOrderSuccess={fetchBags}
               />
             ))}

@@ -84,18 +84,24 @@ export default function SurpriseBagCard({
   const [showExpanded, setShowExpanded] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const [bagRating, setBagRating] = useState(rating);
-  const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
+  // ✅ СОСТОЯНИЯ ДЛЯ РЕЙТИНГА
+  const [bagRating, setBagRating] = useState(rating || 0);
+  const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews || 0);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [isRatingLoading, setIsRatingLoading] = useState(false);
+  const [hoveredStar, setHoveredStar] = useState<number | null>(null);
+
   const API_URL = 'https://toogood-production.up.railway.app';
+  const token = getAuthToken();
 
   const handleIconClick = () => {
     setShowExpanded(!showExpanded);
   };
 
+  // ✅ ЗАГРУЗКА РЕЙТИНГА
   useEffect(() => {
     const fetchRating = async () => {
       try {
-        const token = getAuthToken();
         const headers: HeadersInit = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
@@ -104,17 +110,88 @@ export default function SurpriseBagCard({
           const data = await response.json();
           setBagRating(data.rating || 0);
           setBagTotalReviews(data.total_reviews || 0);
+          setUserRating(data.user_rating || null);
         }
       } catch (error) {
         console.error('Error fetching rating:', error);
       }
     };
     fetchRating();
-  }, [id]);
+  }, [id, token]);
+
+  // ✅ ОТПРАВКА ОЦЕНКИ
+  const submitRating = async (ratingValue: number) => {
+    if (!token) {
+      alert('Пожалуйста, войдите в аккаунт');
+      router.push('/login');
+      return;
+    }
+
+    setIsRatingLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/surprise-bags/${id}/rate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ rating: ratingValue })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setUserRating(ratingValue);
+        // Обновляем средний рейтинг
+        const newTotal = bagTotalReviews + 1;
+        const newRating = ((bagRating * bagTotalReviews) + ratingValue) / newTotal;
+        setBagRating(Math.round(newRating * 10) / 10);
+        setBagTotalReviews(newTotal);
+        showNotification('✅ Оценка сохранена!', 'success');
+      } else {
+        showNotification(data.detail || 'Ошибка при оценке', 'error');
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      showNotification('Ошибка при оценке', 'error');
+    } finally {
+      setIsRatingLoading(false);
+    }
+  };
+
+  // ✅ РЕНДЕР ЗВЕЗД (ОДНИ И ТЕ ЖЕ — И ДЛЯ ОТОБРАЖЕНИЯ, И ДЛЯ КЛИКА)
+  const renderStars = () => {
+    const stars = [];
+    const displayRating = userRating || bagRating || 0;
+    const hover = hoveredStar !== null ? hoveredStar : displayRating;
+    const isInteractive = isAuthenticated && userRating === null && !isRatingLoading;
+    
+    for (let i = 1; i <= 5; i++) {
+      const isFilled = i <= Math.round(hover);
+      const isActive = userRating !== null && i <= userRating;
+      
+      stars.push(
+        <button
+          key={i}
+          onMouseEnter={() => isInteractive && setHoveredStar(i)}
+          onMouseLeave={() => isInteractive && setHoveredStar(null)}
+          onClick={() => isInteractive && submitRating(i)}
+          disabled={!isInteractive}
+          className={`text-[11px] transition-all duration-150 ${
+            isFilled ? 'text-yellow-400' : 'text-gray-300'
+          } ${isActive ? 'text-yellow-500' : ''} ${
+            isInteractive ? 'cursor-pointer hover:scale-125' : 'cursor-default'
+          }`}
+        >
+          ★
+        </button>
+      );
+    }
+    return stars;
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = getAuthToken();
       if (token) {
         setIsAuthenticated(true);
         setAuthChecked(true);
@@ -132,7 +209,7 @@ export default function SurpriseBagCard({
       }
     };
     checkAuth();
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     const favorites = localStorage.getItem('favorites');
@@ -156,7 +233,6 @@ export default function SurpriseBagCard({
   };
 
   const addToCart = async () => {
-    const token = getAuthToken();
     if (!token) {
       alert('Пожалуйста, войдите в аккаунт');
       router.push('/login');
@@ -243,16 +319,6 @@ export default function SurpriseBagCard({
     return 'оценок';
   };
 
-  const renderStars = () => {
-    const stars = [];
-    const fullStars = Math.floor(bagRating);
-    const hasHalfStar = bagRating % 1 >= 0.5;
-    for (let i = 0; i < fullStars; i++) stars.push(<span key={`full-${i}`} className="text-yellow-400 text-[10px]">★</span>);
-    if (hasHalfStar) stars.push(<span key="half" className="text-yellow-400 text-[10px]">½</span>);
-    for (let i = stars.length; i < 5; i++) stars.push(<span key={`empty-${i}`} className="text-gray-300 text-[10px]">★</span>);
-    return stars;
-  };
-
   if (!authChecked) {
     return (
       <div className="bg-white rounded-xl overflow-hidden shadow-sm animate-pulse">
@@ -330,13 +396,21 @@ export default function SurpriseBagCard({
           {showExpanded ? address : shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
-        <div className="flex items-center gap-1 mt-1 mb-2">
-          {renderStars()}
-          {bagTotalReviews > 0 && (
-            <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
-          )}
-          {distance && (
-            <span className="text-[10px] text-gray-400 ml-1">• {distance}</span>
+        {/* ✅ ОДИН РЯД ЗВЕЗД — И ДЛЯ ПОКАЗА, И ДЛЯ КЛИКА */}
+        <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
+          <div className="flex items-center gap-0.5">
+            {renderStars()}
+            {bagTotalReviews > 0 && (
+              <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
+            )}
+            {distance && (
+              <span className="text-[10px] text-gray-400 ml-1">• {distance}</span>
+            )}
+          </div>
+          {userRating !== null && (
+            <span className="text-[10px] text-[#367666] font-medium ml-0.5">
+              ✓
+            </span>
           )}
         </div>
         
