@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import OfferCard from '@/app/components/OfferCard';
 import SurpriseBagCard from '../../components/SurCard';
+
 interface SurpriseBag {
   id: number;
   name: string;
@@ -33,7 +34,6 @@ interface Supplier {
 
 type ViewMode = 'offers' | 'surprises';
 
-// Функция для расчета расстояния
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -58,7 +58,6 @@ export default function SupplierPage() {
 
   const supplierId = params?.id;
 
-  // Получаем геолокацию пользователя
   useEffect(() => {
     if (!navigator.geolocation) {
       setUserLocation({ lat: 50.318754, lon: 57.368359 });
@@ -147,7 +146,7 @@ export default function SupplierPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header с аватаркой */}
+      {/* Header */}
       <div className="bg-[#367666] text-white p-6">
         <button onClick={() => router.back()} className="mb-4 text-white hover:opacity-80 transition">
           ← Назад
@@ -191,15 +190,15 @@ export default function SupplierPage() {
         </div>
       </div>
 
-      {/* ✅ ПЕРЕКЛЮЧАТЕЛЬ - СЕРО-ПРОЗРАЧНЫЙ */}
+      {/* ✅ СЕРО-ПРОЗРАЧНЫЕ ИКОНКИ */}
       <div className="px-4 pt-4">
-        <div className="bg-gray-100/50 p-1 rounded-2xl flex gap-1 max-w-xs mx-auto backdrop-blur-sm">
+        <div className="bg-gray-100/30 backdrop-blur-sm p-1 rounded-2xl flex gap-1 max-w-xs mx-auto border border-gray-200/20">
           <button
             onClick={() => setViewMode('offers')}
             className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
               viewMode === 'offers' 
-                ? 'bg-white shadow text-[#367666]' 
-                : 'text-gray-500/70 hover:text-[#367666] hover:bg-white/30'
+                ? 'bg-white/80 shadow-sm text-[#367666]' 
+                : 'text-gray-400/70 hover:text-gray-600 hover:bg-white/20'
             }`}
           >
             <span>📋</span>
@@ -209,8 +208,8 @@ export default function SupplierPage() {
             onClick={() => setViewMode('surprises')}
             className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 ${
               viewMode === 'surprises' 
-                ? 'bg-white shadow text-[#367666]' 
-                : 'text-gray-500/70 hover:text-[#367666] hover:bg-white/30'
+                ? 'bg-white/80 shadow-sm text-[#367666]' 
+                : 'text-gray-400/70 hover:text-gray-600 hover:bg-white/20'
             }`}
           >
             <span>🎁</span>
@@ -219,7 +218,7 @@ export default function SupplierPage() {
         </div>
       </div>
 
-      {/* Список */}
+      {/* Контент */}
       <div className="px-4 py-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">
