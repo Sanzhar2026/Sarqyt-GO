@@ -35,11 +35,10 @@ export default function SupplierPage() {
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingToCart, setAddingToCart] = useState<number | null>(null);
-  const [isClient, setIsClient] = useState(false); // ✅ ФИКС ГИДРАТАЦИИ
+  const [isClient, setIsClient] = useState(false);
 
   const supplierId = params?.id;
 
-  // ✅ ФИКС ГИДРАТАЦИИ
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -141,7 +140,6 @@ export default function SupplierPage() {
     );
   }
 
-  // ✅ ИСПОЛЬЗУЕМ isClient ДЛЯ URL С КЕШЕМ
   const logoUrl = isClient && supplier.logo 
     ? `${supplier.logo}?t=${Date.now()}` 
     : supplier.logo;
