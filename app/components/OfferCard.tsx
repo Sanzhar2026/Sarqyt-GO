@@ -1,5 +1,3 @@
-// app/components/OfferCard.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ С ИКОНКАМИ
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,7 +12,7 @@ interface SurpriseItem {
   name: string;
   price: number;
   quantity: number;
-  icon?: string;  // ✅ ДОБАВЛЯЕМ icon
+  icon?: string;
 }
 
 interface OfferCardProps {
@@ -28,6 +26,7 @@ interface OfferCardProps {
   imageUrl: string;
   description?: string;
   onOrderSuccess?: () => void;
+  businessType?: string; // ✅ ДОБАВЛЯЕМ
 }
 
 const getImageByTitle = (title: string) => {
@@ -51,142 +50,192 @@ const getImageByTitle = (title: string) => {
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
 };
 
-// ✅ ЗАПАСНАЯ ФУНКЦИЯ (ЕСЛИ ИКОНКА НЕ ПРИШЛА)
 // app/components/OfferCard.tsx
 
 const getProductIcon = (name: string, iconFromApi?: string) => {
-  // Если есть иконка из API - используем её
   if (iconFromApi) return iconFromApi;
   
   const lowerName = name.toLowerCase();
   
-  // ===== ЕДА =====
-  if (lowerName.includes('пицц') || lowerName.includes('pizza')) return '🍕';
-  if (lowerName.includes('бургер') || lowerName.includes('burger')) return '🍔';
-  if (lowerName.includes('картошк') || lowerName.includes('fries') || lowerName.includes('фри')) return '🍟';
-  if (lowerName.includes('хот-дог') || lowerName.includes('hot dog')) return '🌭';
-  if (lowerName.includes('сэндвич') || lowerName.includes('sandwich')) return '🥪';
-  if (lowerName.includes('буррито') || lowerName.includes('burrito')) return '🌯';
-  if (lowerName.includes('шаурм') || lowerName.includes('shawarma')) return '🥙';
-  if (lowerName.includes('фалафель') || lowerName.includes('falafel')) return '🧆';
-  if (lowerName.includes('плов') || lowerName.includes('plov')) return '🥘';
-  if (lowerName.includes('суп') || lowerName.includes('soup') || lowerName.includes('борщ')) return '🍲';
-  if (lowerName.includes('салат') || lowerName.includes('salad')) return '🥗';
-  if (lowerName.includes('мясо') || lowerName.includes('meat')) return '🍖';
-  if (lowerName.includes('куриц') || lowerName.includes('chicken') || lowerName.includes('крилс') || lowerName.includes('wings')) return '🍗';
-  if (lowerName.includes('стейк') || lowerName.includes('steak') || lowerName.includes('говядин')) return '🥩';
-  if (lowerName.includes('креветк') || lowerName.includes('shrimp')) return '🍤';
-  if (lowerName.includes('суши') || lowerName.includes('sushi') || lowerName.includes('ролл') || lowerName.includes('roll')) return '🍣';
-  if (lowerName.includes('бенто') || lowerName.includes('bento')) return '🍱';
-  if (lowerName.includes('карри') || lowerName.includes('curry')) return '🍛';
-  if (lowerName.includes('лапш') || lowerName.includes('noodle')) return '🍜';
-  if (lowerName.includes('паста') || lowerName.includes('pasta') || lowerName.includes('спагетти') || lowerName.includes('макарон')) return '🍝';
-  if (lowerName.includes('пельмен') || lowerName.includes('dumpling')) return '🥟';
-  if (lowerName.includes('фондю') || lowerName.includes('fondue')) return '🫕';
+  const iconMap: Record<string, string> = {
+    // ===== ЕДА =====
+    'пицц': '🍕', 'pizza': '🍕', 'маргарит': '🍕', 'пепперони': '🍕',
+    'бургер': '🍔', 'burger': '🍔',
+    'картошк': '🍟', 'fries': '🍟', 'фри': '🍟',
+    'хот-дог': '🌭', 'hot dog': '🌭',
+    'сэндвич': '🥪', 'sandwich': '🥪',
+    'буррито': '🌯', 'burrito': '🌯',
+    'шаурм': '🥙', 'shawarma': '🥙',
+    'фалафель': '🧆', 'falafel': '🧆',
+    'плов': '🥘', 'plov': '🥘',
+    'суп': '🍲', 'soup': '🍲', 'борщ': '🍲',
+    'салат': '🥗', 'salad': '🥗',
+    'мясо': '🍖', 'meat': '🍖',
+    'куриц': '🍗', 'chicken': '🍗', 'крилс': '🍗', 'wings': '🍗', 'наггетс': '🍗',
+    'стейк': '🥩', 'steak': '🥩', 'говядин': '🥩',
+    'креветк': '🍤', 'shrimp': '🍤',
+    'суши': '🍣', 'sushi': '🍣', 'ролл': '🍣', 'roll': '🍣', 'нигири': '🍣', 'сашими': '🍣',
+    'бенто': '🍱', 'bento': '🍱',
+    'карри': '🍛', 'curry': '🍛',
+    'лапш': '🍜', 'noodle': '🍜',
+    'паста': '🍝', 'pasta': '🍝', 'спагетти': '🍝', 'макарон': '🍝',
+    'пельмен': '🥟', 'dumpling': '🥟',
+    'фондю': '🫕', 'fondue': '🫕',
+    
+    // ===== МОЛОЧНЫЕ =====
+    'сыр': '🧀', 'cheese': '🧀',
+    'молоко': '🥛', 'milk': '🥛',
+    'морожен': '🍦', 'ice cream': '🍦',
+    'яйц': '🥚', 'egg': '🥚',
+    'масло': '🧈', 'butter': '🧈',
+    'блин': '🥞', 'pancake': '🥞',
+    'вафл': '🧇', 'waffle': '🧇',
+    'сливк': '🍶', 'cream': '🍶',
+    
+    // ===== ВЫПЕЧКА =====
+    'торт': '🍰', 'cake': '🍰',
+    'кекс': '🧁', 'cupcake': '🧁',
+    'пирог': '🥧', 'pie': '🥧',
+    'печень': '🍪', 'cookie': '🍪',
+    'пончик': '🍩', 'donut': '🍩',
+    'шоколад': '🍫', 'chocolate': '🍫',
+    'конфет': '🍬', 'candy': '🍬',
+    'леденец': '🍭', 'lollipop': '🍭',
+    'пудинг': '🍮', 'pudding': '🍮',
+    'круассан': '🥐', 'croissant': '🥐',
+    'багет': '🥖', 'baguette': '🥖',
+    'хлеб': '🍞', 'bread': '🍞',
+    'бублик': '🥯', 'bagel': '🥯',
+    'лепешк': '🫓', 'flatbread': '🫓',
+    
+    // ===== НАПИТКИ =====
+    'кофе': '☕', 'coffee': '☕', 'капучино': '☕', 'латте': '☕', 'эспрессо': '☕',
+    'чай': '🍵', 'tea': '🍵',
+    'сок': '🧃', 'juice': '🧃',
+    'напит': '🥤', 'drink': '🥤', 'кола': '🥤', 'coca': '🥤', 'лимонад': '🥤',
+    'bubble tea': '🧋',
+    'мате': '🧉', 'mate': '🧉',
+    'пиво': '🍺', 'beer': '🍺',
+    'вино': '🍷', 'wine': '🍷',
+    'виски': '🥃', 'whiskey': '🥃',
+    'коктейль': '🍸', 'cocktail': '🍸',
+    'шампанск': '🍾', 'champagne': '🍾',
+    'вода': '💧', 'water': '💧',
+    'лёд': '🧊', 'ice': '🧊',
+    
+    // ===== ФРУКТЫ И ОВОЩИ =====
+    'яблок': '🍎', 'apple': '🍎',
+    'груш': '🍐', 'pear': '🍐',
+    'апельсин': '🍊', 'orange': '🍊',
+    'лимон': '🍋', 'lemon': '🍋',
+    'банан': '🍌', 'banana': '🍌',
+    'арбуз': '🍉', 'watermelon': '🍉',
+    'виноград': '🍇', 'grape': '🍇',
+    'клубник': '🍓', 'strawberry': '🍓',
+    'черник': '🫐', 'blueberry': '🫐',
+    'персик': '🍑', 'peach': '🍑',
+    'вишн': '🍒', 'cherry': '🍒',
+    'ананас': '🍍', 'pineapple': '🍍',
+    'манго': '🥭', 'mango': '🥭',
+    'дын': '🍈', 'melon': '🍈',
+    'киви': '🥝', 'kiwi': '🥝',
+    'помидор': '🍅', 'tomato': '🍅',
+    
+    'огурец': '🥒', 'cucumber': '🥒',
+    'перец': '🌶️', 'pepper': '🌶️',
+    'морков': '🥕', 'carrot': '🥕',
+    'чеснок': '🧄', 'garlic': '🧄',
+    'лук': '🧅', 'onion': '🧅',
+    'картофель': '🥔', 'potato': '🥔',
+    'гриб': '🍄', 'mushroom': '🍄',
+    'кукуруз': '🌽', 'corn': '🌽',
+    
+    // ===== РЫБА =====
+    'рыб': '🐟', 'fish': '🐟', 'лосос': '🐟', 'salmon': '🐟', 'семг': '🐟',
+
+    'лобстер': '🦞', 'lobster': '🦞',
+    'краб': '🦀', 'crab': '🦀',
+    'осьминог': '🐙', 'octopus': '🐙',
+    'кальмар': '🦑', 'squid': '🦑',
+    'ракушк': '🐚', 'shell': '🐚',
+    
+    // ===== СОУСЫ =====
+    'соль': '🧂', 'salt': '🧂',
+    'трав': '🌿', 'herb': '🌿',
+    'мёд': '🍯', 'honey': '🍯',
+    'соус': '🥫', 'sauce': '🥫',
+    
+    // ===== ХОЗТОВАРЫ =====
+    'веник': '🧹', 'broom': '🧹',
+    'корзин': '🧺', 'basket': '🧺',
+    'губк': '🧽', 'sponge': '🧽',
+    'мыть': '🧴', 'clean': '🧴',
+    'нитк': '🧵', 'thread': '🧵',
+    'ведр': '🪣', 'bucket': '🪣',
+    'вантуз': '🪠', 'plunger': '🪠',
+    'перчатк': '🧤', 'glove': '🧤',
+    'носок': '🧦', 'sock': '🧦',
+    'футболк': '👕', 't-shirt': '👕',
+    'штаны': '👖', 'pants': '👖',
+    'плать': '👗', 'dress': '👗',
+    'галстук': '👔', 'tie': '👔',
+    'кроссовк': '👟', 'sneaker': '👟',
+    'туфл': '👠', 'heel': '👠',
+    'чемодан': '🧳', 'suitcase': '🧳',
+    'рюкзак': '🎒', 'backpack': '🎒',
+    'сумк': '👜', 'bag': '👜',
+    'кепк': '🧢', 'cap': '🧢',
+    'каск': '⛑️', 'helmet': '⛑️',
+    'зубн': '🪥', 'toothbrush': '🪥',
+    'шампун': '🧴', 'shampoo': '🧴',
+    'туалет': '🧻', 'toilet': '🧻',
+    'зеркал': '🪞', 'mirror': '🪞',
+    'бритв': '🪒', 'razor': '🪒',
+    'булавк': '🧷', 'pin': '🧷',
+    'игрушк': '🧸', 'toy': '🧸',
+    'игр': '🎮', 'game': '🎮',
+    'книг': '📚', 'book': '📚',
+    'ручк': '🖊️', 'pen': '🖊️',
+    'блокнот': '📝', 'notebook': '📝',
+    'скрепк': '📎', 'clip': '📎',
+    'линейк': '📏', 'ruler': '📏',
+    
+    // ===== УНИВЕРСАЛЬНЫЕ =====
+    'посылка': '📦', 'package': '📦',
   
-  // ===== МОЛОЧНЫЕ =====
-  if (lowerName.includes('сыр') || lowerName.includes('cheese')) return '🧀';
-  if (lowerName.includes('молоко') || lowerName.includes('milk')) return '🥛';
-  if (lowerName.includes('морожен') || lowerName.includes('ice cream')) return '🍦';
-  if (lowerName.includes('яйц') || lowerName.includes('egg')) return '🥚';
-  if (lowerName.includes('масло') || lowerName.includes('butter')) return '🧈';
-  if (lowerName.includes('блин') || lowerName.includes('pancake')) return '🥞';
-  if (lowerName.includes('вафл') || lowerName.includes('waffle')) return '🧇';
+    'подарок': '🎁', 'gift': '🎁',
+    'магазин': '🏪', 'shop': '🏪',
+    'дом': '🏠', 'home': '🏠',
+    'локация': '📍', 'location': '📍',
+    'время': '⏰', 'time': '⏰',
+    'цена': '💰', 'price': '💰',
+    'рейтинг': '⭐', 'rating': '⭐',
+    'горячее': '🔥', 'hot': '🔥',
+    'новинка': '✨', 'new': '✨',
+    'топ': '💯', 'top': '💯',
+    'первое место': '🥇', 'first': '🥇',
+    'победа': '🏆', 'win': '🏆',
+    'ресторан': '🍽️', 'restaurant': '🍽️',
+  };
   
-  // ===== ВЫПЕЧКА =====
-  if (lowerName.includes('торт') || lowerName.includes('cake')) return '🍰';
-  if (lowerName.includes('кекс') || lowerName.includes('cupcake')) return '🧁';
-  if (lowerName.includes('пирог') || lowerName.includes('pie')) return '🥧';
-  if (lowerName.includes('печень') || lowerName.includes('cookie')) return '🍪';
-  if (lowerName.includes('пончик') || lowerName.includes('donut')) return '🍩';
-  if (lowerName.includes('шоколад') || lowerName.includes('chocolate')) return '🍫';
-  if (lowerName.includes('конфет') || lowerName.includes('candy')) return '🍬';
-  if (lowerName.includes('леденец') || lowerName.includes('lollipop')) return '🍭';
-  if (lowerName.includes('пудинг') || lowerName.includes('pudding')) return '🍮';
-  if (lowerName.includes('круассан') || lowerName.includes('croissant')) return '🥐';
-  if (lowerName.includes('багет') || lowerName.includes('baguette')) return '🥖';
-  if (lowerName.includes('хлеб') || lowerName.includes('bread')) return '🍞';
-  if (lowerName.includes('бублик') || lowerName.includes('bagel')) return '🥯';
-  if (lowerName.includes('лепешк') || lowerName.includes('flatbread')) return '🫓';
+  // Поиск по ключам
+  for (const [key, emoji] of Object.entries(iconMap)) {
+    if (lowerName.includes(key)) return emoji;
+  }
   
-  // ===== НАПИТКИ =====
-  if (lowerName.includes('кофе') || lowerName.includes('coffee') || lowerName.includes('капучино') || lowerName.includes('латте') || lowerName.includes('эспрессо')) return '☕';
-  if (lowerName.includes('чай') || lowerName.includes('tea')) return '🍵';
-  if (lowerName.includes('сок') || lowerName.includes('juice')) return '🧃';
-  if (lowerName.includes('напит') || lowerName.includes('drink') || lowerName.includes('кола') || lowerName.includes('coca') || lowerName.includes('лимонад')) return '🥤';
-  if (lowerName.includes('bubble tea')) return '🧋';
-  if (lowerName.includes('мате') || lowerName.includes('mate')) return '🧉';
-  if (lowerName.includes('пиво') || lowerName.includes('beer')) return '🍺';
-  if (lowerName.includes('вино') || lowerName.includes('wine')) return '🍷';
-  if (lowerName.includes('виски') || lowerName.includes('whiskey')) return '🥃';
-  if (lowerName.includes('коктейль') || lowerName.includes('cocktail')) return '🍸';
-  if (lowerName.includes('шампанск') || lowerName.includes('champagne')) return '🍾';
-  if (lowerName.includes('вода') || lowerName.includes('water')) return '💧';
-  
-  // ===== ФРУКТЫ И ОВОЩИ =====
-  if (lowerName.includes('яблок') || lowerName.includes('apple')) return '🍎';
-  if (lowerName.includes('груш') || lowerName.includes('pear')) return '🍐';
-  if (lowerName.includes('апельсин') || lowerName.includes('orange')) return '🍊';
-  if (lowerName.includes('лимон') || lowerName.includes('lemon')) return '🍋';
-  if (lowerName.includes('банан') || lowerName.includes('banana')) return '🍌';
-  if (lowerName.includes('арбуз') || lowerName.includes('watermelon')) return '🍉';
-  if (lowerName.includes('виноград') || lowerName.includes('grape')) return '🍇';
-  if (lowerName.includes('клубник') || lowerName.includes('strawberry')) return '🍓';
-  if (lowerName.includes('черник') || lowerName.includes('blueberry')) return '🫐';
-  if (lowerName.includes('персик') || lowerName.includes('peach')) return '🍑';
-  if (lowerName.includes('вишн') || lowerName.includes('cherry')) return '🍒';
-  if (lowerName.includes('ананас') || lowerName.includes('pineapple')) return '🍍';
-  if (lowerName.includes('манго') || lowerName.includes('mango')) return '🥭';
-  if (lowerName.includes('дын') || lowerName.includes('melon')) return '🍈';
-  if (lowerName.includes('киви') || lowerName.includes('kiwi')) return '🥝';
-  if (lowerName.includes('помидор') || lowerName.includes('tomato')) return '🍅';
-  if (lowerName.includes('салат') || lowerName.includes('lettuce')) return '🥬';
-  if (lowerName.includes('огурец') || lowerName.includes('cucumber')) return '🥒';
-  if (lowerName.includes('перец') || lowerName.includes('pepper')) return '🌶️';
-  if (lowerName.includes('морков') || lowerName.includes('carrot')) return '🥕';
-  if (lowerName.includes('чеснок') || lowerName.includes('garlic')) return '🧄';
-  if (lowerName.includes('лук') || lowerName.includes('onion')) return '🧅';
-  if (lowerName.includes('картофель') || lowerName.includes('potato')) return '🥔';
-  if (lowerName.includes('гриб') || lowerName.includes('mushroom')) return '🍄';
-  if (lowerName.includes('кукуруз') || lowerName.includes('corn')) return '🌽';
-  
-  // ===== РЫБА И МОРЕПРОДУКТЫ =====
-  if (lowerName.includes('рыб') || lowerName.includes('fish') || lowerName.includes('лосос') || lowerName.includes('salmon') || lowerName.includes('семг')) return '🐟';
-  if (lowerName.includes('лобстер') || lowerName.includes('lobster')) return '🦞';
-  if (lowerName.includes('краб') || lowerName.includes('crab')) return '🦀';
-  if (lowerName.includes('осьминог') || lowerName.includes('octopus')) return '🐙';
-  if (lowerName.includes('кальмар') || lowerName.includes('squid')) return '🦑';
-  
-  // ===== ХОЗТОВАРЫ =====
-  if (lowerName.includes('веник') || lowerName.includes('broom')) return '🧹';
-  if (lowerName.includes('корзин') || lowerName.includes('basket')) return '🧺';
-  if (lowerName.includes('губк') || lowerName.includes('sponge')) return '🧽';
-  if (lowerName.includes('мыть') || lowerName.includes('clean')) return '🧴';
-  if (lowerName.includes('нитк') || lowerName.includes('thread')) return '🧵';
-  if (lowerName.includes('ведр') || lowerName.includes('bucket')) return '🪣';
-  if (lowerName.includes('перчатк') || lowerName.includes('glove')) return '🧤';
-  if (lowerName.includes('носок') || lowerName.includes('sock')) return '🧦';
-  if (lowerName.includes('футболк') || lowerName.includes('t-shirt')) return '👕';
-  if (lowerName.includes('штаны') || lowerName.includes('pants')) return '👖';
-  if (lowerName.includes('плать') || lowerName.includes('dress')) return '👗';
-  if (lowerName.includes('кроссовк') || lowerName.includes('sneaker')) return '👟';
-  if (lowerName.includes('чемодан') || lowerName.includes('suitcase')) return '🧳';
-  if (lowerName.includes('рюкзак') || lowerName.includes('backpack')) return '🎒';
-  if (lowerName.includes('сумк') || lowerName.includes('bag')) return '👜';
-  if (lowerName.includes('кепк') || lowerName.includes('cap')) return '🧢';
-  if (lowerName.includes('игрушк') || lowerName.includes('toy')) return '🧸';
-  if (lowerName.includes('книг') || lowerName.includes('book')) return '📚';
-  
-  // ===== УНИВЕРСАЛЬНЫЕ =====
-  if (lowerName.includes('посылка') || lowerName.includes('package')) return '📦';
-  if (lowerName.includes('корзин') || lowerName.includes('cart')) return '🛒';
-  if (lowerName.includes('подарок') || lowerName.includes('gift')) return '🎁';
-  if (lowerName.includes('магазин') || lowerName.includes('shop')) return '🏪';
-  if (lowerName.includes('ресторан') || lowerName.includes('restaurant')) return '🍽️';
-  
-  // По умолчанию
   return '🍽️';
 };
+
+// ✅ ТИПЫ ЗАВЕДЕНИЙ (НА АНГЛИЙСКОМ)
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  restaurant: 'Restaurant',
+  bakery: 'Bakery',
+  cafe: 'Cafe',
+  fastfood: 'Fast Food',
+  supermarket: 'Supermarket',
+  store: 'Store',
+};
+
 export default function OfferCard({
   id,
   name: propName,
@@ -197,7 +246,8 @@ export default function OfferCard({
   discount: propDiscount,
   imageUrl: propImageUrl,
   description: propDescription,
-  onOrderSuccess
+  onOrderSuccess,
+  businessType
 }: OfferCardProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -212,7 +262,6 @@ export default function OfferCard({
   const [bagRating, setBagRating] = useState(0);
   const [bagTotalReviews, setBagTotalReviews] = useState(0);
 
-  
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || 
@@ -271,6 +320,7 @@ export default function OfferCard({
     }
   }, [id]);
 
+  // ✅ ЗАГРУЗКА СОСТАВА
   const fetchBagItems = async () => {
     if (bagItems.length > 0) return;
     setLoading(true);
@@ -278,9 +328,8 @@ export default function OfferCard({
       const response = await fetch(`/api/surprise-bags/${id}`);
       if (response.ok) {
         const data = await response.json();
-        // ✅ СОХРАНЯЕМ ТОВАРЫ С ИКОНКАМИ
         setBagItems(data.items || []);
-        console.log('📦 Товары с иконками:', data.items);
+        console.log('📦 Состав загружен:', data.items);
       }
     } catch (error) {
       console.error('Error fetching bag items:', error);
@@ -289,13 +338,12 @@ export default function OfferCard({
     }
   };
 
+  // ✅ РАБОТАЕТ ВЕЗДЕ (БЕЗ isSearchPage)
   const handleIconClick = async () => {
-    
-      if (!showExpanded && bagItems.length === 0) {
-        await fetchBagItems();
-      }
-      setShowExpanded(!showExpanded);
-    
+    if (!showExpanded && bagItems.length === 0) {
+      await fetchBagItems();
+    }
+    setShowExpanded(!showExpanded);
   };
 
   const toggleFavorite = (e: React.MouseEvent) => {
@@ -420,6 +468,7 @@ export default function OfferCard({
   }
 
   const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
+  const businessTypeLabel = businessType ? BUSINESS_TYPE_LABELS[businessType] : null;
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
@@ -455,9 +504,9 @@ export default function OfferCard({
         
         <button 
           onClick={handleIconClick}
-          className="absolute bottom-2 right-2 z-10"
+          className="absolute bottom-2 right-2 z-10 bg-black/40 backdrop-blur rounded-full p-1.5 hover:bg-black/60 transition"
         >
-          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </button>
@@ -467,6 +516,11 @@ export default function OfferCard({
         <Link href={`/supplier/${id}`}>
           <p className="font-bold text-[#367666] text-xs hover:text-[#2a5a4d] transition mb-0.5">
             {businessName}
+            {businessTypeLabel && (
+              <span className="font-normal text-gray-400 text-[10px] ml-1">
+                , {businessTypeLabel}
+              </span>
+            )}
           </p>
         </Link>
         
@@ -474,16 +528,16 @@ export default function OfferCard({
           {propName}
         </h3>
         
-        <div className="text-gray-500 text-[9px] mb-0.5 leading-tight">
-          {distance}
-        </div>
-        
         <div className="flex items-center gap-0.5 mt-0.5 mb-1">
           {renderStars()}
-          {bagTotalReviews > 0 && <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>}
+          {bagTotalReviews > 0 && (
+            <span className="text-[8px] text-gray-400">({bagTotalReviews})</span>
+          )}
+          {distance && (
+            <span className="text-[8px] text-gray-400 ml-1">• {distance}</span>
+          )}
         </div>
         
-        {/* ✅ ОТОБРАЖЕНИЕ ТОВАРОВ С ИКОНКАМИ */}
         {showExpanded && (
           <div className="mt-0.5 mb-0.5">
             {loading ? (
@@ -496,7 +550,6 @@ export default function OfferCard({
                 {bagItems.slice(0, 3).map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between text-[8px] py-0.5 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-1">
-                      {/* ✅ ИСПОЛЬЗУЕМ ИКОНКУ ИЗ API ИЛИ ЗАПАСНУЮ */}
                       <span className="text-[10px]">{getProductIcon(item.name, item.icon)}</span>
                       <span className="text-gray-600 truncate max-w-[100px]">{item.name}</span>
                       <span className="text-gray-400 text-[7px]">×{item.quantity}</span>

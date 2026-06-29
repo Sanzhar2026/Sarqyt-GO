@@ -28,6 +28,16 @@ const getImageByTitle = (title: string) => {
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
 };
 
+// ✅ ТИПЫ ЗАВЕДЕНИЙ (НА АНГЛИЙСКОМ, БЕЗ ИКОНОК)
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  restaurant: 'Restaurant',
+  bakery: 'Bakery',
+  cafe: 'Cafe',
+  fastfood: 'Fast Food',
+  supermarket: 'Supermarket',
+  store: 'Store',
+};
+
 interface SurpriseBagCardProps {
   id: number;
   name: string;
@@ -44,6 +54,8 @@ interface SurpriseBagCardProps {
   rating?: number;
   totalReviews?: number;
   onOrderSuccess?: () => void;
+  businessType?: string;
+  distance?: string;
 }
 
 export default function SurpriseBagCard({
@@ -61,7 +73,9 @@ export default function SurpriseBagCard({
   pickupEndTime,
   rating = 0,
   totalReviews = 0,
-  onOrderSuccess
+  onOrderSuccess,
+  businessType,
+  distance
 }: SurpriseBagCardProps) {
   const router = useRouter();
   const [addingToCart, setAddingToCart] = useState(false);
@@ -74,7 +88,6 @@ export default function SurpriseBagCard({
   const [bagTotalReviews, setBagTotalReviews] = useState(totalReviews);
   const API_URL = 'https://toogood-production.up.railway.app';
 
-  // ✅ ТОЛЬКО АДРЕС — БЕЗ СОСТАВА!
   const handleIconClick = () => {
     setShowExpanded(!showExpanded);
   };
@@ -253,6 +266,7 @@ export default function SurpriseBagCard({
   }
 
   const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
+  const businessTypeLabel = businessType ? BUSINESS_TYPE_LABELS[businessType] : null;
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
@@ -286,7 +300,6 @@ export default function SurpriseBagCard({
           />
         </button>
         
-        {/* ✅ КНОПКА ❗ — ПОКАЗЫВАЕТ АДРЕС */}
         <button 
           onClick={handleIconClick}
           className="absolute bottom-2 right-2 z-10 bg-black/40 backdrop-blur rounded-full p-1.5 hover:bg-black/60 transition"
@@ -301,6 +314,11 @@ export default function SurpriseBagCard({
         <Link href={`/supplier/${id}`}>
           <p className="font-bold text-[#367666] text-sm hover:text-[#2a5a4d] transition mb-1">
             {supplierName}
+            {businessTypeLabel && (
+              <span className="font-normal text-gray-400 text-xs ml-1">
+                , {businessTypeLabel}
+              </span>
+            )}
           </p>
         </Link>
         
@@ -308,14 +326,18 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
-        {/* ✅ ПРИ НАЖАТИИ ПОКАЗЫВАЕТ АДРЕС */}
         <div className="text-gray-500 text-xs mb-1 leading-tight">
           {showExpanded ? address : shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
         </div>
         
         <div className="flex items-center gap-1 mt-1 mb-2">
           {renderStars()}
-          {bagTotalReviews > 0 && <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>}
+          {bagTotalReviews > 0 && (
+            <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
+          )}
+          {distance && (
+            <span className="text-[10px] text-gray-400 ml-1">• {distance}</span>
+          )}
         </div>
         
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
