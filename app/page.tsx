@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/page.tsx - ПОЛНАЯ ВЕРСИЯ С РЕАЛЬНЫМ РАССТОЯНИЕМ
 
 'use client';
 
@@ -29,6 +29,8 @@ interface SurpriseBag {
   supplier_name: string;
   supplier_id: number;
   is_active?: boolean;
+  supplier_lat?: number;
+  supplier_lon?: number;
 }
 
 interface LocationData {
@@ -36,6 +38,20 @@ interface LocationData {
   lon: number;
   city: string;
   source: 'geolocation' | 'default';
+}
+
+// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+  const R = 6371; // Радиус Земли в км
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
 export default function HomePage() {
@@ -464,21 +480,38 @@ export default function HomePage() {
                   <p className="text-gray-500">{t('noOffers')}</p>
                 </div>
               ) : (
-                bags.map((bag, bagIdx) => (
-                  <OfferCard
-                    key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
-                    id={bag.id}
-                    name={bag.name}
-                    businessName={bag.supplier_name}
-                    distance={`${(Math.random() * 5 + 1).toFixed(1)} км`}
-                    price={bag.discounted_price}
-                    originalPrice={bag.original_price}
-                    discount={bag.discount_percentage}
-                    imageUrl={bag.image_url}
-                    description={bag.description}
-                    onOrderSuccess={() => fetchBags()}
-                  />
-                ))
+                // ✅ РАСЧЕТ РЕАЛЬНОГО РАССТОЯНИЯ ДЛЯ КАЖДОГО СЮРПРИЗА
+                bags.map((bag, bagIdx) => {
+                  let distanceText = '0 км';
+                  
+                  if (location && bag.supplier_lat && bag.supplier_lon) {
+                    const dist = calculateDistance(
+                      location.lat, 
+                      location.lon, 
+                      bag.supplier_lat, 
+                      bag.supplier_lon
+                    );
+                    distanceText = dist < 1 
+                      ? `${Math.round(dist * 1000)} м` 
+                      : `${dist.toFixed(1)} км`;
+                  }
+                  
+                  return (
+                    <OfferCard
+                      key={`${bag.id}-${lastUpdate.getTime()}-${bagIdx}`}
+                      id={bag.id}
+                      name={bag.name}
+                      businessName={bag.supplier_name}
+                      distance={distanceText}
+                      price={bag.discounted_price}
+                      originalPrice={bag.original_price}
+                      discount={bag.discount_percentage}
+                      imageUrl={bag.image_url}
+                      description={bag.description}
+                      onOrderSuccess={() => fetchBags()}
+                    />
+                  );
+                })
               )}
             </div>
           </>
