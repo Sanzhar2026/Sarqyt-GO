@@ -389,8 +389,11 @@ export default function HomePage() {
               {user.phone}
             </p>
           )}
-         
-          
+          {location?.city && (
+            <p className="text-xs text-white/60 mt-0.5">
+              📍 {location.city}
+            </p>
+          )}
         </div>
       </div>
 
