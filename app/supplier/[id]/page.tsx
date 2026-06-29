@@ -17,6 +17,7 @@ interface SurpriseBag {
   available_quantity: number;
   pickup_start_time?: string;
   pickup_end_time?: string;
+  businessType?: string;
 }
 
 interface Supplier {
@@ -30,6 +31,7 @@ interface Supplier {
   logo?: string;
   lat?: number;
   lon?: number;
+  businessType?: string;
 }
 
 type ViewMode = 'offers' | 'surprises';
