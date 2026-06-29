@@ -462,7 +462,7 @@ const token = getAuthToken();
         <button
           onClick={handleCheckout}
           disabled={timeLeft === 0 || (deliveryType === 'delivery' && !customerAddress)}
-          className="w-full bg-[#367666] text-white py-4 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+          className="w-full bg-[#367666] text-white py-2.8 rounded-2xl font-semibold text-lg shadow-md active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4"
         >
           <span>{timeLeft === 0 ? t('timeExpired') : t('checkout')}</span>
         </button>
