@@ -12,7 +12,8 @@ interface Supplier {
   rating: number;
   distance_km: number;
   surprise_bags_count: number;
-   logo?: string;
+  logo?: string;
+  business_type?: string;
 }
 
 interface SuppliersMapProps {
@@ -21,6 +22,16 @@ interface SuppliersMapProps {
   onSupplierClick?: (supplierId: number, supplierName: string) => void;
   showUserLocation?: boolean;
 }
+
+// ✅ ТИПЫ БИЗНЕСА
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  restaurant: 'Ресторан',
+  cafe: 'Кафе',
+  fastfood: 'Фастфуд',
+  bakery: 'Пекарня',
+  supermarket: 'Супермаркет',
+  store: 'Магазин',
+};
 
 export default function SuppliersMap({ 
   userLat, 
@@ -32,9 +43,66 @@ export default function SuppliersMap({
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [activeSupplierId, setActiveSupplierId] = useState<number | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
+  const markerRefs = useRef<Map<number, any>>(new Map());
+
+  // ✅ WebSocket для отслеживания новых сюрпризов
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    
+    const connectWebSocket = () => {
+      const token = sessionStorage.getItem('userToken');
+      const wsUrl = token 
+        ? `wss://sarqyt-go-production.up.railway.app/ws?token=${token}`
+        : `wss://sarqyt-go-production.up.railway.app/ws`;
+      
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('✅ WebSocket connected (map)');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          // ✅ НОВЫЙ СЮРПРИЗ ИЛИ ОБНОВЛЕНИЕ
+          if (data.type === 'new_bag' || data.type === 'update_bag') {
+            const bag = data.data;
+            console.log('🆕 Новый сюрприз от поставщика:', bag.supplier_id);
+            
+            if (bag.supplier_id) {
+              setActiveSupplierId(bag.supplier_id);
+              
+              // ✅ Обновляем список поставщиков
+              fetchNearbySuppliers(userLat || 50.318754, userLon || 57.368359);
+              
+              // ✅ Через 10 секунд убираем подсветку
+              setTimeout(() => {
+                setActiveSupplierId(null);
+              }, 10000);
+            }
+          }
+        } catch (e) {
+          console.error('❌ WebSocket error:', e);
+        }
+      };
+      
+      ws.onclose = () => {
+        console.log('🔌 WebSocket disconnected (map)');
+        setTimeout(connectWebSocket, 3000);
+      };
+    };
+    
+    connectWebSocket();
+    
+    return () => {
+      if (ws) ws.close();
+    };
+  }, []);
 
   // Загрузка Leaflet
   useEffect(() => {
@@ -57,43 +125,42 @@ export default function SuppliersMap({
     };
     loadLeaflet();
   }, []);
-const fetchNearbySuppliers = async (lat: number, lon: number) => {
-  try {
-    if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
+
+  const fetchNearbySuppliers = async (lat: number, lon: number) => {
+    try {
+      if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
+        setSuppliers([]);
+        setLoading(false);
+        return;
+      }
+      
+      const url = `/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=30`;
+      console.log('📡 Запрос:', url);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        setSuppliers([]);
+        setLoading(false);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('📦 Получено магазинов:', data.suppliers?.length || 0);
+      
+      const validSuppliers = (data.suppliers || []).filter((s: any) => {
+        return s.lat && s.lon && !isNaN(s.lat) && !isNaN(s.lon);
+      });
+      
+      setSuppliers(validSuppliers);
+      
+    } catch (error) {
+      console.error('❌ Ошибка:', error);
       setSuppliers([]);
+    } finally {
       setLoading(false);
-      return;
     }
-    
-    // ✅ УВЕЛИЧИЛИ РАДИУС ДО 30 КМ
-    const url = `/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=30`;
-    console.log('📡 Запрос:', url);
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      setSuppliers([]);
-      setLoading(false);
-      return;
-    }
-    
-    const data = await response.json();
-    console.log('📦 Получено магазинов:', data.suppliers?.length || 0);
-    
-    // ✅ ПОКАЗЫВАЕМ ВСЕХ, ДАЖЕ ДАЛЬНИХ
-    const validSuppliers = (data.suppliers || []).filter((s: any) => {
-      return s.lat && s.lon && !isNaN(s.lat) && !isNaN(s.lon);
-    });
-    
-    setSuppliers(validSuppliers);
-    
-  } catch (error) {
-    console.error('❌ Ошибка:', error);
-    setSuppliers([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Получение геолокации
   useEffect(() => {
@@ -144,11 +211,11 @@ const fetchNearbySuppliers = async (lat: number, lon: number) => {
     
     const bounds: any[] = [];
     
-    // Увеличенный маркер пользователя
+    // ✅ МАРКЕР ПОЛЬЗОВАТЕЛЯ
     if (showUserLocation && userLat && userLon) {
       const userIcon = window.L.divIcon({
-        html: `<div class="w-[26px] h-[26px] bg-blue-500 rounded-full border-4 border-white shadow-2xl animate-bounce"></div>`,
-        iconSize: [26, 26],
+        html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow"></div>`,
+        iconSize: [16, 16],
         className: 'custom-div-icon'
       });
       
@@ -159,77 +226,110 @@ const fetchNearbySuppliers = async (lat: number, lon: number) => {
       bounds.push([userLat, userLon]);
     }
     
-    // Увеличенные маркеры поставщиков
-validSuppliersWithCoords.forEach(supplier => {
-  if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
-  
-  const icon = window.L.divIcon({
-    html: `<div class="w-8 h-8 bg-emerald-500 rounded-full border-4 border-white shadow-2xl hover:scale-125 transition-transform"></div>`,
-    iconSize: [32, 32],
-    className: 'custom-div-icon'
-  });
-  
-  // ✅ ПОПАП С АВАТАРКОЙ
-  const popupContent = `
-    <div class="text-center min-w-[220px] p-3">
-      <!-- АВАТАРКА ПОСТАВЩИКА -->
-      <div class="flex justify-center mb-2">
-        ${supplier.logo ? `
-          <img 
-            src="${supplier.logo}" 
-            alt="${supplier.business_name}"
-            class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
-            onerror="this.style.display='none'"
-          />
-        ` : `
-          <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-600 border-2 border-emerald-500 shadow-md">
-            ${supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
+    // ✅ МАРКЕРЫ ПОСТАВЩИКОВ С ЗЕЛЕНЫМ КОЛЬЦОМ (КАК В WHATSAPP)
+    validSuppliersWithCoords.forEach(supplier => {
+      if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
+      
+      const isActive = activeSupplierId === supplier.id;
+      
+      // ✅ ИКОНКА С ЗЕЛЕНЫМ КОЛЬЦОМ ВОКРУГ (КАК В WHATSAPP)
+      const iconHtml = `
+        <div class="relative flex items-center justify-center">
+          ${isActive ? `
+            <!-- ЗЕЛЕНОЕ КОЛЬЦО (КАК В WHATSAPP) -->
+            <div class="absolute -inset-2 rounded-full border-4 border-green-500 animate-pulse-ring"></div>
+          ` : ''}
+          <!-- ОСНОВНАЯ ИКОНКА -->
+          <div class="w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow relative z-10"></div>
+        </div>
+      `;
+      
+      const icon = window.L.divIcon({
+        html: iconHtml,
+        iconSize: [12, 12],
+        className: 'custom-div-icon',
+        iconAnchor: [6, 6]
+      });
+      
+      // ✅ БИЗНЕС-ТИП В ПОПАПЕ
+      const businessTypeLabel = supplier.business_type 
+        ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
+        : '';
+      
+      const popupContent = `
+        <div class="text-center min-w-[220px] p-3">
+          <!-- АВАТАРКА ПОСТАВЩИКА -->
+          <div class="flex justify-center mb-2">
+            ${supplier.logo ? `
+              <img 
+                src="${supplier.logo}" 
+                alt="${supplier.business_name}"
+                class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+                onerror="this.style.display='none'"
+              />
+            ` : `
+              <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-600 border-2 border-emerald-500 shadow-md">
+                ${supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+            `}
           </div>
-        `}
-      </div>
+          
+          <!-- НАЗВАНИЕ -->
+          <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
+          
+          <!-- БИЗНЕС-ТИП -->
+          ${businessTypeLabel ? `
+            <div class="text-xs text-gray-400 mb-1">${businessTypeLabel}</div>
+          ` : ''}
+          
+          <!-- АДРЕС -->
+          <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
+          
+          <!-- РЕЙТИНГ, ПАКЕТЫ, РАССТОЯНИЕ -->
+          <div class="flex justify-center gap-4 mb-2 text-sm">
+            <span>⭐ ${supplier.rating || '—'}</span>
+            <span>📦 ${supplier.surprise_bags_count || 0}</span>
+            <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
+          </div>
+          
+          <!-- КНОПКА -->
+          <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition view-supplier-btn" 
+                  data-id="${supplier.id}" 
+                  data-name="${supplier.business_name}">
+            🛒 Смотреть сюрпризы
+          </button>
+        </div>
+      `;
       
-      <!-- НАЗВАНИЕ -->
-      <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
+      const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup(popupContent, {
+          className: 'supplier-popup',
+          maxWidth: 260,
+          minWidth: 220
+        });
       
-      <!-- АДРЕС -->
-      <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
+      // ✅ СОХРАНЯЕМ ССЫЛКУ НА МАРКЕР
+      markerRefs.current.set(supplier.id, marker);
       
-      <!-- РЕЙТИНГ, ПАКЕТЫ, РАССТОЯНИЕ -->
-      <div class="flex justify-center gap-4 mb-2 text-sm">
-        <span class="flex items-center gap-1">⭐ ${supplier.rating || 4.5}</span>
-        <span class="flex items-center gap-1">📦 ${supplier.surprise_bags_count || 0}</span>
-        <span class="flex items-center gap-1">📍 ${supplier.distance_km?.toFixed(1) || '?'} км</span>
-      </div>
+      marker.on('popupopen', () => {
+        const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
+        if (btn) {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            router.push(`/supplier/${supplier.id}`);
+          });
+        }
+      });
       
-      <!-- КНОПКА -->
-      <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition view-supplier-btn" 
-              data-id="${supplier.id}" 
-              data-name="${supplier.business_name}">
-        🛒 Смотреть сюрпризы
-      </button>
-    </div>
-  `;
-  
-  const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
-    .addTo(mapInstanceRef.current)
-    .bindPopup(popupContent, {
-      className: 'supplier-popup',
-      maxWidth: 260,
-      minWidth: 220
-    });
-  
-  marker.on('popupopen', () => {
-    const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
-    if (btn) {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
+      // ✅ ПРИ КЛИКЕ НА МАРКЕР - ПЕРЕХОД НА СТРАНИЦУ ПОСТАВЩИКА
+      marker.on('click', () => {
         router.push(`/supplier/${supplier.id}`);
       });
-    }
-  });
-  
-  bounds.push([supplier.lat, supplier.lon]);
-});
+      
+      bounds.push([supplier.lat, supplier.lon]);
+    });
+    
     setTimeout(() => {
       document.querySelectorAll('.view-supplier-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -253,7 +353,16 @@ validSuppliersWithCoords.forEach(supplier => {
       mapInstanceRef.current.fitBounds(mapBounds, { padding: [50, 50] });
     }
     
-  }, [mapLoaded, loading, suppliers, userLat, userLon, onSupplierClick, showUserLocation, router]);
+    // ✅ ОЧИСТКА ПРИ РАЗМОНТИРОВАНИИ
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        markerRefs.current.clear();
+      }
+    };
+    
+  }, [mapLoaded, loading, suppliers, userLat, userLon, onSupplierClick, showUserLocation, router, activeSupplierId]);
 
   if (loading) {
     return (
@@ -288,7 +397,6 @@ validSuppliersWithCoords.forEach(supplier => {
 
   return (
     <div className="relative w-full h-full">
-      {/* ✅ КАРТА */}
       <div ref={mapRef} className="w-full h-full rounded-xl" />
       
       <style jsx>{`
@@ -296,20 +404,27 @@ validSuppliersWithCoords.forEach(supplier => {
           background: transparent !important;
           border: none !important;
         }
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
+        
+        /* ✅ АНИМАЦИЯ ДЛЯ ЗЕЛЕНОГО КОЛЬЦА (КАК В WHATSAPP) */
+        :global(.animate-pulse-ring) {
+          animation: pulse-ring 1.5s ease-out infinite;
         }
-        :global(.animate-bounce) {
-          animation: bounce 0.8s ease-in-out infinite;
+        
+        @keyframes pulse-ring {
+          0% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.3);
+            opacity: 0.6;
+          }
+          100% {
+            transform: scale(1);
+            opacity: 1;
+          }
         }
-        :global(.hover\\:scale-125:hover) {
-          transform: scale(1.25);
-        }
-        :global(.transition-transform) {
-          transition: transform 0.2s ease;
-        }
-        /* ✅ КНОПКА НА ПОВЕРХНОСТИ КАРТЫ */
+        
         .map-button {
           position: absolute;
           bottom: 20px;
@@ -338,7 +453,6 @@ validSuppliersWithCoords.forEach(supplier => {
           height: 24px;
           color: #3b82f6;
         }
-        /* ✅ СЧЕТЧИК МАГАЗИНОВ */
         .store-counter {
           position: absolute;
           bottom: 20px;
@@ -351,9 +465,22 @@ validSuppliersWithCoords.forEach(supplier => {
           font-size: 12px;
           color: #6b7280;
         }
+        :global(.supplier-popup .leaflet-popup-content-wrapper) {
+          border-radius: 16px !important;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+          padding: 0 !important;
+          overflow: hidden !important;
+        }
+        :global(.supplier-popup .leaflet-popup-content) {
+          margin: 0 !important;
+          padding: 0 !important;
+          min-width: 220px !important;
+        }
+        :global(.supplier-popup .leaflet-popup-tip) {
+          background: white !important;
+        }
       `}</style>
       
-      {/* ✅ КНОПКА ЦЕНТРИРОВАНИЯ НА ПОВЕРХНОСТИ КАРТЫ */}
       <button
         onClick={centerOnUser}
         className="map-button"
@@ -367,7 +494,6 @@ validSuppliersWithCoords.forEach(supplier => {
         </svg>
       </button>
       
-      {/* ✅ СЧЕТЧИК МАГАЗИНОВ */}
       <div className="store-counter">
         {suppliers.length} магазинов рядом
       </div>

@@ -185,6 +185,7 @@ export default function OfferCard({
   onOrderSuccess,
   businessType
 }: OfferCardProps) {
+    console.log('🏷️ OfferCard получил businessType:', businessType);
   const router = useRouter();
   const pathname = usePathname();
   const [addingToCart, setAddingToCart] = useState(false);
