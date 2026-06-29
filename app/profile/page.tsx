@@ -156,7 +156,7 @@ const handleLogout = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-sm">
-          <div className="text-5xl mb-4">😢</div>
+       
           <h2 className="text-xl font-bold text-gray-800 mb-2">{t('error')}</h2>
           <p className="text-gray-500">{error}</p>
           <button 
@@ -278,10 +278,7 @@ const handleLogout = () => {
             <h2 className="text-lg font-bold text-gray-800 mt-3">
               {fullName || 'Пользователь'}
             </h2>
-            <p className="text-sm text-gray-500 flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-red-500'}`}></span>
-              {user.is_active ? t('active') : t('inactive')}
-            </p>
+         
           </div>
 
           <div className="space-y-3 border-t border-gray-100 pt-4">
