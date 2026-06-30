@@ -4,11 +4,25 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import SurpriseBagCard from '../components/SurCard';  // ✅ ИСПРАВЛЕНО!
-import { Gift, Store } from 'lucide-react';
+import SurpriseBagCard from '../components/SurCard';
+import { Gift } from 'lucide-react';
 import { useLanguage } from '../components/LanguageSwitcher';
 import { useGeolocation } from '../context/GeolocationContext';
 import GeolocationRequest from '../components/GeolocationRequest';
+
+// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
 
 interface SurpriseBag {
   id: number;
@@ -26,7 +40,9 @@ interface SurpriseBag {
   pickup_end_time?: string;
   rating?: number;
   total_reviews?: number;
-  business_type?: string;  // ✅ ДОБАВЛЯЕМ
+  business_type?: string;
+  supplier_lat?: number;  // ✅ ДОБАВЛЯЕМ!
+  supplier_lon?: number;  // ✅ ДОБАВЛЯЕМ!
 }
 
 export default function OffersPage() {
@@ -174,30 +190,44 @@ export default function OffersPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {bags.map((bag) => (
-              <SurpriseBagCard
-                key={bag.id}
-                id={bag.id}
-                name={bag.name}
-                supplierName={bag.supplier_name}
-                price={bag.discounted_price}
-                originalPrice={bag.original_price}
-                discount={bag.discount_percentage}
-                imageUrl={bag.image_url}
-                description={bag.description}
-                availableQuantity={bag.available_quantity}
-                address={bag.address || ''}
-                pickupStartTime={bag.pickup_start_time || ''}
-                pickupEndTime={bag.pickup_end_time || ''}
-                rating={bag.rating || 0}
-                totalReviews={bag.total_reviews || 0}
-                businessType={bag.business_type || ''} 
-                 distance={bag.distance}
-                // ✅ ПЕРЕДАЕМ ТИП
-                // ✅ РАССТОЯНИЕ МОЖНО ПЕРЕДАТЬ, ЕСЛИ ЕСТЬ В API
-                onOrderSuccess={fetchBags}
-              />
-            ))}
+            {bags.map((bag) => {
+              // ✅ РАССЧИТЫВАЕМ РАССТОЯНИЕ
+              let distanceText = '';
+              if (location && bag.supplier_lat && bag.supplier_lon) {
+                const dist = calculateDistance(
+                  location.lat, 
+                  location.lon, 
+                  bag.supplier_lat, 
+                  bag.supplier_lon
+                );
+                distanceText = dist < 1 
+                  ? `${Math.round(dist * 1000)} м` 
+                  : `${dist.toFixed(1)} км`;
+              }
+              
+              return (
+                <SurpriseBagCard
+                  key={bag.id}
+                  id={bag.id}
+                  name={bag.name}
+                  supplierName={bag.supplier_name}
+                  price={bag.discounted_price}
+                  originalPrice={bag.original_price}
+                  discount={bag.discount_percentage}
+                  imageUrl={bag.image_url}
+                  description={bag.description}
+                  availableQuantity={bag.available_quantity}
+                  address={bag.address || ''}
+                  pickupStartTime={bag.pickup_start_time || ''}
+                  pickupEndTime={bag.pickup_end_time || ''}
+                  rating={bag.rating || 0}
+                  totalReviews={bag.total_reviews || 0}
+                  businessType={bag.business_type || ''}
+                  distance={distanceText}  // ✅ ТЕПЕРЬ ЕСТЬ!
+                  onOrderSuccess={fetchBags}
+                />
+              );
+            })}
           </div>
         )}
       </div>
