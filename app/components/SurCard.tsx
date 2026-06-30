@@ -397,21 +397,23 @@ export default function SurpriseBagCard({
         </div>
         
         {/* ✅ ОДИН РЯД ЗВЕЗД — И ДЛЯ ПОКАЗА, И ДЛЯ КЛИКА */}
-   <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
+   <div className="flex items-center justify-between mt-1 mb-2 flex-wrap">
   <div className="flex items-center gap-0.5">
     {renderStars()}
     {bagTotalReviews > 0 && (
       <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
     )}
   </div>
-  {distance && (
-    <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
-  )}
-  {userRating !== null && (
-    <span className="text-[10px] text-[#367666] font-medium ml-0.5">
-      ✓
-    </span>
-  )}
+  <div className="flex items-center gap-2">
+    {distance && (
+      <span className="text-[10px] text-gray-400">{distance}</span>
+    )}
+    {userRating !== null && (
+      <span className="text-[10px] text-[#367666] font-medium">
+        ✓
+      </span>
+    )}
+  </div>
 </div>
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
           <div>
