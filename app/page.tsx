@@ -71,22 +71,13 @@ export default function HomePage() {
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
-useEffect(() => {
-  console.log('📍 /OFFERS location из хука:', location);
-}, [location]);
+
   useEffect(() => {
     setLocationLoading(true);
     
-    if (!navigator.geolocation) {
-      setLocation({
-        lat: 50.318754,
-        lon: 57.368359,
-        city: 'Актобе',
-        source: 'default'
-      });
-      setLocationLoading(false);
-      return;
-    }
+useEffect(() => {
+  console.log('📍 ГЛАВНАЯ location из хука:', location);
+}, [location]);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
