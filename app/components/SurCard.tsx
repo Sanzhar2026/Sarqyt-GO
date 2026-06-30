@@ -51,6 +51,7 @@ interface SurpriseBagCardProps {
   address?: string;
   pickupStartTime?: string;
   pickupEndTime?: string;
+  pickupTime?: string;  // ✅ ДОБАВЛЕНО!
   rating?: number;
   totalReviews?: number;
   onOrderSuccess?: () => void;
@@ -71,6 +72,7 @@ export default function SurpriseBagCard({
   address,
   pickupStartTime,
   pickupEndTime,
+  pickupTime, 
   rating = 0,
   totalReviews = 0,
   onOrderSuccess,
@@ -96,6 +98,7 @@ export default function SurpriseBagCard({
 
   console.log('🏷️ SurpriseBagCard получил distance:', distance);
   console.log('🏷️ SurpriseBagCard получил businessType:', businessType);
+  console.log('🕐 SurpriseBagCard получил pickupTime:', pickupTime);
 
   const handleIconClick = () => {
     setShowExpanded(!showExpanded);
@@ -336,10 +339,8 @@ export default function SurpriseBagCard({
   const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
   const businessTypeLabel = businessType ? BUSINESS_TYPE_LABELS[businessType] : null;
 
-  // ✅ ФОРМАТИРУЕМ ВРЕМЯ
-  const timeDisplay = pickupStartTime && pickupEndTime 
-    ? `${pickupStartTime} - ${pickupEndTime}` 
-    : '';
+  // ✅ ИСПОЛЬЗУЕМ pickupTime С БЭКЕНДА
+  const displayTime = pickupTime || 'Время не указано';
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
@@ -399,15 +400,15 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
-        {/* ✅ АДРЕС: В ОБЫЧНОМ РЕЖИМЕ - КОРОТКИЙ, ПРИ РАЗВОРОТЕ - ПОЛНЫЙ */}
+        {/* ✅ АДРЕС В ОБЫЧНОМ РЕЖИМЕ */}
         <div className="text-gray-500 text-xs mb-0.5 leading-tight">
           {showExpanded ? address : shortAddress}
         </div>
         
-        {/* ✅ ВРЕМЯ: ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ РАЗВОРОТЕ (ПОСЛЕ НАЖАТИЯ НА ИКОНКУ) */}
-        {showExpanded && timeDisplay && (
+        {/* ✅ ВРЕМЯ ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ НАЖАТИИ НА ИКОНКУ */}
+        {showExpanded && (
           <div className="text-gray-400 text-[10px] mb-1 leading-tight">
-            {timeDisplay}
+            {displayTime}
           </div>
         )}
         
