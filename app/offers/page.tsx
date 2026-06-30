@@ -191,7 +191,9 @@ export default function OffersPage() {
                 pickupEndTime={bag.pickup_end_time || ''}
                 rating={bag.rating || 0}
                 totalReviews={bag.total_reviews || 0}
-                businessType={bag.business_type || ''}  // ✅ ПЕРЕДАЕМ ТИП
+                businessType={bag.business_type || ''} 
+                 distance={bag.distance}
+                // ✅ ПЕРЕДАЕМ ТИП
                 // ✅ РАССТОЯНИЕ МОЖНО ПЕРЕДАТЬ, ЕСЛИ ЕСТЬ В API
                 onOrderSuccess={fetchBags}
               />

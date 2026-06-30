@@ -55,7 +55,9 @@ interface SurpriseBagCardProps {
   totalReviews?: number;
   onOrderSuccess?: () => void;
   businessType?: string;
-  distance?: string;
+distance?: string;  // ✅ ДОБАВИТЬ!
+  supplier_lat?: number;  // ✅ ДОБАВИТЬ ДЛЯ РАСЧЕТА
+  supplier_lon?: number;  // ✅ ДОБАВИТЬ ДЛЯ РАСЧЕТА
 }
 
 export default function SurpriseBagCard({
