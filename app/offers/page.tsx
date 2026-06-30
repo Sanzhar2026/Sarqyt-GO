@@ -24,7 +24,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 useEffect(() => {
-  console.log('📍 ГЛАВНАЯ location из хука:', location);
+  console.log('📍 /OFFERS location из хука:', location);
 }, [location]);
 interface SurpriseBag {
   id: number;
