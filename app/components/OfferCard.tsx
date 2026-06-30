@@ -521,7 +521,7 @@ export default function OfferCard({
             {businessName}
             {businessTypeLabel && (
               <span className="font-normal text-gray-400 text-[10px] ml-1">
-                , {businessTypeLabel}
+                {businessTypeLabel}
               </span>
             )}
           </p>
@@ -541,7 +541,7 @@ export default function OfferCard({
         {/* ✅ ВРЕМЯ: ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ РАЗВОРОТЕ (ПОСЛЕ НАЖАТИЯ НА ИКОНКУ) */}
         {showExpanded && timeDisplay && (
           <div className="text-gray-400 text-[10px] mb-1 leading-tight">
-            🕐 {timeDisplay}
+            {timeDisplay}
           </div>
         )}
         
