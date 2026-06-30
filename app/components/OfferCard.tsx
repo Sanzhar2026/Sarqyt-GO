@@ -31,7 +31,7 @@ interface OfferCardProps {
   address?: string;
   pickupStartTime?: string;
   pickupEndTime?: string;
-  pickupTime 
+  pickup_time 
 }
 
 const getImageByTitle = (title: string) => {
@@ -192,7 +192,7 @@ export default function OfferCard({
   address,
   pickupStartTime,
   pickupEndTime,
-  pickupTime
+  pickup_time
 }: OfferCardProps) {
   console.log('🏷️ OfferCard получил businessType:', businessType);
   
@@ -243,7 +243,7 @@ export default function OfferCard({
       router.push('/login');
       return;
     }
-const displayTime = pickupTime || 'Время не указано';
+const displayTime = pickup_time || 'Время не указано';
     setIsRatingLoading(true);
     try {
       const response = await fetch(`/api/surprise-bags/${id}/rate`, {
