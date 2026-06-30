@@ -1,5 +1,3 @@
-// app/offers/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -41,8 +39,8 @@ interface SurpriseBag {
   rating?: number;
   total_reviews?: number;
   business_type?: string;
-  supplier_lat?: number;  // ✅ ДОБАВЛЯЕМ!
-  supplier_lon?: number;  // ✅ ДОБАВЛЯЕМ!
+  supplier_lat?: number;  // ✅ ДОБАВЛЕНО!
+  supplier_lon?: number;  // ✅ ДОБАВЛЕНО!
 }
 
 export default function OffersPage() {
@@ -65,24 +63,16 @@ export default function OffersPage() {
   useEffect(() => {
     setIsClient(true);
     const token = getAuthToken();
-    console.log('🔑 Токен на странице offers:', token ? 'Есть ✅' : 'Нет ❌');
-    
     if (!token) {
-      console.log('❌ Нет токена, редирект на логин');
       router.push('/login');
     }
   }, [router]);
 
   const fetchBags = async () => {
-    if (!location) {
-      console.log('⏳ Ожидание геолокации...');
-      return;
-    }
+    if (!location) return;
 
     try {
       const { lat, lon } = location;
-      console.log(`📍 Текущее положение: ${lat}, ${lon}`);
-      
       const token = getAuthToken();
       const response = await fetch(
         `/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
@@ -94,23 +84,18 @@ export default function OffersPage() {
         }
       );
       
-      console.log('📡 Статус:', response.status);
-      
       if (response.status === 401) {
-        console.log('❌ Не авторизован, редирект на логин');
         router.push('/login');
         return;
       }
       
       if (!response.ok) {
-        console.error('❌ Ошибка:', await response.text());
         setBags([]);
         setLoading(false);
         return;
       }
       
       const data = await response.json();
-      console.log('📦 Получено сюрпризов:', data.length);
       setBags(data);
       
     } catch (error) {
@@ -223,7 +208,7 @@ export default function OffersPage() {
                   rating={bag.rating || 0}
                   totalReviews={bag.total_reviews || 0}
                   businessType={bag.business_type || ''}
-               distanceText
+                  distance={distanceText}  // ✅ ТЕПЕРЬ ЕСТЬ!
                   onOrderSuccess={fetchBags}
                 />
               );
