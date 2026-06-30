@@ -265,6 +265,7 @@ export default function SupplierPage() {
                   originalPrice={bag.original_price}
                   discount={bag.discount_percentage}
                   imageUrl={bag.image_url}
+                  pickupTime  
                   description={bag.description}
                 />
               ) : (

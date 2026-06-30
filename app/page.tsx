@@ -37,6 +37,7 @@ interface SurpriseBag {
   pickup_end_time?: string;
   rating?: number;
   total_reviews?: number;
+  pickupTime?: string;  
 }
 
 interface LocationData {
@@ -534,6 +535,7 @@ export default function HomePage() {
                       onOrderSuccess={() => fetchBags()}
                       businessType={bag.business_type}
                       address={bag.address}
+                        pickupTime={bag.pickupTime} 
                       pickupStartTime={bag.pickup_start_time}
                       pickupEndTime={bag.pickup_end_time}
                     />
