@@ -1,3 +1,5 @@
+// app/offers/page.tsx - ПОЛНАЯ ВЕРСИЯ
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,10 +10,10 @@ import { useLanguage } from '../components/LanguageSwitcher';
 import { useGeolocation } from '../context/GeolocationContext';
 import GeolocationRequest from '../components/GeolocationRequest';
 
-// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ
+// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ (ТАКАЯ ЖЕ КАК В PAGE.TSX)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
-  const R = 6371;
+  const R = 6371; // Радиус Земли в км
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -39,8 +41,8 @@ interface SurpriseBag {
   rating?: number;
   total_reviews?: number;
   business_type?: string;
-  supplier_lat?: number;  // ✅ ДОБАВЛЕНО!
-  supplier_lon?: number;  // ✅ ДОБАВЛЕНО!
+  supplier_lat?: number;  // ✅ ДЛЯ РАСЧЕТА DISTANCE
+  supplier_lon?: number;  // ✅ ДЛЯ РАСЧЕТА DISTANCE
 }
 
 export default function OffersPage() {
@@ -63,16 +65,24 @@ export default function OffersPage() {
   useEffect(() => {
     setIsClient(true);
     const token = getAuthToken();
+    console.log('🔑 Токен на странице offers:', token ? 'Есть ✅' : 'Нет ❌');
+    
     if (!token) {
+      console.log('❌ Нет токена, редирект на логин');
       router.push('/login');
     }
   }, [router]);
 
   const fetchBags = async () => {
-    if (!location) return;
+    if (!location) {
+      console.log('⏳ Ожидание геолокации...');
+      return;
+    }
 
     try {
       const { lat, lon } = location;
+      console.log(`📍 Текущее положение: ${lat}, ${lon}`);
+      
       const token = getAuthToken();
       const response = await fetch(
         `/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
@@ -84,18 +94,23 @@ export default function OffersPage() {
         }
       );
       
+      console.log('📡 Статус:', response.status);
+      
       if (response.status === 401) {
+        console.log('❌ Не авторизован, редирект на логин');
         router.push('/login');
         return;
       }
       
       if (!response.ok) {
+        console.error('❌ Ошибка:', await response.text());
         setBags([]);
         setLoading(false);
         return;
       }
       
       const data = await response.json();
+      console.log('📦 Получено сюрпризов:', data.length);
       setBags(data);
       
     } catch (error) {
@@ -176,8 +191,9 @@ export default function OffersPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {bags.map((bag) => {
-              // ✅ РАССЧИТЫВАЕМ РАССТОЯНИЕ
-              let distanceText = '';
+              // ✅ РАССЧИТЫВАЕМ РАССТОЯНИЕ (КАК В PAGE.TSX)
+              let distanceText = '0 км';
+              
               if (location && bag.supplier_lat && bag.supplier_lon) {
                 const dist = calculateDistance(
                   location.lat, 
@@ -189,6 +205,14 @@ export default function OffersPage() {
                   ? `${Math.round(dist * 1000)} м` 
                   : `${dist.toFixed(1)} км`;
               }
+              
+              // ✅ ЛОГ ДЛЯ ОТЛАДКИ
+              console.log(`📦 ${bag.name}:`, {
+                supplier_lat: bag.supplier_lat,
+                supplier_lon: bag.supplier_lon,
+                distance: distanceText,
+                business_type: bag.business_type
+              });
               
               return (
                 <SurpriseBagCard
@@ -208,7 +232,7 @@ export default function OffersPage() {
                   rating={bag.rating || 0}
                   totalReviews={bag.total_reviews || 0}
                   businessType={bag.business_type || ''}
-                  distance={distanceText}  // ✅ ТЕПЕРЬ ЕСТЬ!
+                  distance={distanceText}  // ✅ ПЕРЕДАЕМ ГОТОВОЕ РАССТОЯНИЕ
                   onOrderSuccess={fetchBags}
                 />
               );
