@@ -399,19 +399,20 @@ export default function SurpriseBagCard({
         </div>
         
         {/* ✅ ОДИН РЯД ЗВЕЗД — И ДЛЯ ПОКАЗА, И ДЛЯ КЛИКА */}
-  // SurpriseBagCard.tsx - строка с distance
-<div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
+           <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
   <div className="flex items-center gap-0.5">
     {renderStars()}
     {bagTotalReviews > 0 && (
       <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
     )}
   </div>
-  {distance && (  // ✅ ЗДЕСЬ ОТОБРАЖАЕТСЯ!
+  {distance && (
     <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
   )}
   {userRating !== null && (
-    <span className="text-[10px] text-[#367666] font-medium ml-0.5">✓</span>
+    <span className="text-[10px] text-[#367666] font-medium ml-0.5">
+      ✓
+    </span>
   )}
 </div>
         
