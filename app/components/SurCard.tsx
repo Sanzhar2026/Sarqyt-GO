@@ -382,7 +382,7 @@ export default function SurpriseBagCard({
             {supplierName}
             {businessTypeLabel && (
               <span className="font-normal text-gray-400 text-xs ml-1">
-                 {businessTypeLabel}
+               {businessTypeLabel}
               </span>
             )}
           </p>
