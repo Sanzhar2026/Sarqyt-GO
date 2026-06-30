@@ -404,7 +404,7 @@ export default function SurpriseBagCard({
               <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
             )}
             {distance && (
-              <span className="text-[10px] text-gray-400 ml-1">{distance}</span>
+              <span className="text-[10px] text-gray-400 ml-1">• {distance}</span>
             )}
           </div>
           {userRating !== null && (
