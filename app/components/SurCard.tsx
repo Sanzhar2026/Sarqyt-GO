@@ -94,7 +94,6 @@ export default function SurpriseBagCard({
   const API_URL = 'https://toogood-production.up.railway.app';
   const token = getAuthToken();
 
-  // ✅ ЛОГ ДЛЯ ОТЛАДКИ
   console.log('🏷️ SurpriseBagCard получил distance:', distance);
   console.log('🏷️ SurpriseBagCard получил businessType:', businessType);
 
@@ -337,6 +336,11 @@ export default function SurpriseBagCard({
   const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
   const businessTypeLabel = businessType ? BUSINESS_TYPE_LABELS[businessType] : null;
 
+  // ✅ ФОРМАТИРУЕМ ВРЕМЯ
+  const timeDisplay = pickupStartTime && pickupEndTime 
+    ? `${pickupStartTime} - ${pickupEndTime}` 
+    : '';
+
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       <div className="relative h-40">
@@ -395,11 +399,17 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
-        {/* ✅ АДРЕС ВСЕГДА, ВРЕМЯ ТОЛЬКО ПОСЛЕ НАЖАТИЯ НА ИКОНКУ */}
-        <div className="text-gray-500 text-xs mb-1 leading-tight">
+        {/* ✅ АДРЕС: В ОБЫЧНОМ РЕЖИМЕ - КОРОТКИЙ, ПРИ РАЗВОРОТЕ - ПОЛНЫЙ */}
+        <div className="text-gray-500 text-xs mb-0.5 leading-tight">
           {showExpanded ? address : shortAddress}
-          {showExpanded && pickupStartTime && pickupEndTime && ` • ${pickupStartTime}-${pickupEndTime}`}
         </div>
+        
+        {/* ✅ ВРЕМЯ: ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ РАЗВОРОТЕ (ПОСЛЕ НАЖАТИЯ НА ИКОНКУ) */}
+        {showExpanded && timeDisplay && (
+          <div className="text-gray-400 text-[10px] mb-1 leading-tight">
+            {timeDisplay}
+          </div>
+        )}
         
         {/* ✅ ЗВЕЗДЫ И РАССТОЯНИЕ */}
         <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
