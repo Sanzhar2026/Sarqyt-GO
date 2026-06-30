@@ -40,6 +40,7 @@ interface SurpriseBag {
   pickup_start_time?: string;
   pickup_end_time?: string;
   rating?: number;
+  pickup_time?: string; 
   total_reviews?: number;
   business_type?: string;
   supplier_lat?: number;
@@ -234,6 +235,7 @@ function OffersContent() {
                   rating={bag.rating || 0}
                   totalReviews={bag.total_reviews || 0}
                   businessType={bag.business_type || ''}
+                    pickupTime={bag.pickup_time}  // ✅ ДОБАВЛЕНО!
                   distance={distanceText}
                   onOrderSuccess={fetchBags}
                 />
