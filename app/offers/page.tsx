@@ -1,4 +1,4 @@
-// app/offers/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/offers/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -10,7 +10,7 @@ import { useLanguage } from '../components/LanguageSwitcher';
 import { useGeolocation } from '../context/GeolocationContext';
 import GeolocationRequest from '../components/GeolocationRequest';
 
-// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ (ТАКАЯ ЖЕ КАК В PAGE.TSX)
+// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
   const R = 6371;
@@ -23,9 +23,6 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
-
-// ✅ ДЕФОЛТНЫЕ КООРДИНАТЫ (КАК НА ГЛАВНОЙ СТРАНИЦЕ)
-const DEFAULT_LOCATION = { lat: 50.318754, lon: 57.368359 };
 
 interface SurpriseBag {
   id: number;
@@ -77,21 +74,19 @@ export default function OffersPage() {
   }, [router]);
 
   const fetchBags = async () => {
-    // ✅ ИСПОЛЬЗУЕМ location ИЛИ DEFAULT
-    const userLat = location?.lat || DEFAULT_LOCATION.lat;
-    const userLon = location?.lon || DEFAULT_LOCATION.lon;
-    
-    if (!userLat || !userLon) {
+    // ✅ ЖДЕМ РЕАЛЬНЫЙ GPS! НЕ ИСПОЛЬЗУЕМ DEFAULT!
+    if (!location) {
       console.log('⏳ Ожидание геолокации...');
       return;
     }
 
     try {
-      console.log(`📍 Текущее положение: ${userLat}, ${userLon}`);
+      const { lat, lon } = location;
+      console.log(`📍 Текущее положение (GPS): ${lat}, ${lon}`);
       
       const token = getAuthToken();
       const response = await fetch(
-        `/api/surprise-bags/surprise?lat=${userLat}&lon=${userLon}`,
+        `/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
         {
           credentials: 'include',
           headers: {
@@ -127,8 +122,9 @@ export default function OffersPage() {
     }
   };
 
+  // ✅ ЗАГРУЖАЕМ ТОЛЬКО КОГДА ЕСТЬ РЕАЛЬНЫЙ GPS
   useEffect(() => {
-    if (isClient) {
+    if (location && isClient) {
       fetchBags();
     }
   }, [location, isClient]);
@@ -159,9 +155,17 @@ export default function OffersPage() {
     );
   }
 
-  // ✅ ИСПОЛЬЗУЕМ location ИЛИ DEFAULT ДЛЯ ОТОБРАЖЕНИЯ
-  const userLat = location?.lat || DEFAULT_LOCATION.lat;
-  const userLon = location?.lon || DEFAULT_LOCATION.lon;
+  // ✅ ЕСЛИ НЕТ GPS - ПОКАЗЫВАЕМ ЗАГРУЗКУ
+  if (!location) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full mx-auto"></div>
+          <p className="mt-4 text-gray-500">{t('loading')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -190,14 +194,13 @@ export default function OffersPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {bags.map((bag) => {
-              // ✅ РАССЧИТЫВАЕМ РАССТОЯНИЕ С ФИКСИРОВАННЫМИ КООРДИНАТАМИ
+              // ✅ ИСПОЛЬЗУЕМ РЕАЛЬНЫЙ GPS!
               let distanceText = '0 км';
               
-              // ✅ ИСПОЛЬЗУЕМ ТЕ ЖЕ КООРДИНАТЫ, ЧТО И НА ГЛАВНОЙ
-              if (userLat && userLon && bag.supplier_lat && bag.supplier_lon) {
+              if (location && bag.supplier_lat && bag.supplier_lon) {
                 const dist = calculateDistance(
-                  userLat, 
-                  userLon, 
+                  location.lat,   // ✅ РЕАЛЬНЫЙ GPS!
+                  location.lon,   // ✅ РЕАЛЬНЫЙ GPS!
                   bag.supplier_lat, 
                   bag.supplier_lon
                 );
@@ -206,10 +209,9 @@ export default function OffersPage() {
                   : `${dist.toFixed(1)} км`;
               }
               
-              // ✅ ЛОГ ДЛЯ ОТЛАДКИ
               console.log(`📦 ${bag.name}:`, {
-                userLat,
-                userLon,
+                userLat: location.lat,
+                userLon: location.lon,
                 supplier_lat: bag.supplier_lat,
                 supplier_lon: bag.supplier_lon,
                 distance: distanceText,
