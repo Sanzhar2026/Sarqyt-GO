@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ (ТОЛЬКО РЕАЛЬНЫЙ GPS)
 
 'use client';
 
@@ -17,7 +17,6 @@ const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: f
 
 type ViewMode = 'list' | 'map';
 
-// ✅ ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС - ДОБАВЛЕНЫ ВСЕ ПОЛЯ!
 interface SurpriseBag {
   id: number;
   name: string;
@@ -74,21 +73,18 @@ export default function HomePage() {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
+  const [locationError, setLocationError] = useState<string | null>(null);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
-  // ✅ useEffect #1 - ЗАПРОС ГЕОЛОКАЦИИ
+  // ✅ useEffect #1 - ЗАПРОС ГЕОЛОКАЦИИ (ТОЛЬКО РЕАЛЬНЫЙ GPS, БЕЗ ДЕФОЛТОВ!)
   useEffect(() => {
     setLocationLoading(true);
+    setLocationError(null);
     
     if (!navigator.geolocation) {
-      setLocation({
-        lat: 50.318754,
-        lon: 57.368359,
-        city: 'Актобе',
-        source: 'default'
-      });
+      setLocationError('Геолокация не поддерживается вашим браузером');
       setLocationLoading(false);
       return;
     }
@@ -121,12 +117,7 @@ export default function HomePage() {
       },
       (err) => {
         console.warn('⚠️ GPS ошибка:', err.message);
-        setLocation({
-          lat: 50.318754,
-          lon: 57.368359,
-          city: 'Актобе',
-          source: 'default'
-        });
+        setLocationError('Не удалось определить местоположение. Разрешите доступ к геолокации.');
         setLocationLoading(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
@@ -220,11 +211,11 @@ export default function HomePage() {
 
   useEffect(() => {
     if (locationLoading || showSplash) return;
-    if (!initialLoadDoneRef.current) {
+    if (!initialLoadDoneRef.current && location) {
       initialLoadDoneRef.current = true;
       fetchBags(true, true);
     }
-  }, [locationLoading, showSplash, fetchBags]);
+  }, [locationLoading, showSplash, fetchBags, location]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -388,6 +379,25 @@ export default function HomePage() {
     );
   }
 
+  // ✅ ПОКАЗЫВАЕМ ОШИБКУ ЕСЛИ НЕТ GPS
+  if (locationError || !location) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-gray-50 p-6">
+        <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-lg">
+          <div className="text-5xl mb-4">📍</div>
+          <h2 className="text-xl font-bold mb-2">Не удалось определить местоположение</h2>
+          <p className="text-gray-500 text-sm">{locationError || 'Разрешите доступ к геолокации в браузере'}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl hover:bg-[#2a5a4d] transition"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-dvh bg-gray-50">
       <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
@@ -496,6 +506,7 @@ export default function HomePage() {
                 bags.map((bag, bagIdx) => {
                   let distanceText = '0 км';
                   
+                  // ✅ ИСПОЛЬЗУЕМ ТОЛЬКО РЕАЛЬНЫЙ GPS
                   if (location && bag.supplier_lat && bag.supplier_lon) {
                     const dist = calculateDistance(
                       location.lat, 
