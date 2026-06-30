@@ -223,7 +223,7 @@ export default function OffersPage() {
                   rating={bag.rating || 0}
                   totalReviews={bag.total_reviews || 0}
                   businessType={bag.business_type || ''}
-                  distance={distanceText}  // ✅ ТЕПЕРЬ ЕСТЬ!
+               distanceText
                   onOrderSuccess={fetchBags}
                 />
               );
