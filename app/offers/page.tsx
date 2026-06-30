@@ -1,9 +1,10 @@
-// app/offers/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/offers/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ ОШИБОК SSR)
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import SurpriseBagCard from '../components/SurCard';
 import { Gift } from 'lucide-react';
 import { useLanguage } from '../components/LanguageSwitcher';
@@ -23,9 +24,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
-useEffect(() => {
-  console.log('📍 /OFFERS location из хука:', location);
-}, [location]);
+
 interface SurpriseBag {
   id: number;
   name: string;
@@ -47,10 +46,12 @@ interface SurpriseBag {
   supplier_lon?: number;
 }
 
-export default function OffersPage() {
+// ✅ КОМПОНЕНТ С useSearchParams ОБЕРНУТ В SUSPENSE
+function OffersContent() {
   const router = useRouter();
   const { lang, setLang, t } = useLanguage();
   const { location, loading: locationLoading, error: locationError, refreshLocation } = useGeolocation();
+  const searchParams = useSearchParams();
   
   const [bags, setBags] = useState<SurpriseBag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,7 @@ export default function OffersPage() {
            null;
   };
 
+  // ✅ ТОЛЬКО КЛИЕНТ
   useEffect(() => {
     setIsClient(true);
     const token = getAuthToken();
@@ -76,7 +78,8 @@ export default function OffersPage() {
   }, [router]);
 
   const fetchBags = async () => {
-    // ✅ ЖДЕМ РЕАЛЬНЫЙ GPS! НЕ ИСПОЛЬЗУЕМ DEFAULT!
+    // ✅ ПРОВЕРКА НА КЛИЕНТЕ
+    if (typeof window === 'undefined') return;
     if (!location) {
       console.log('⏳ Ожидание геолокации...');
       return;
@@ -84,7 +87,7 @@ export default function OffersPage() {
 
     try {
       const { lat, lon } = location;
-      console.log(`📍 Текущее положение (GPS): ${lat}, ${lon}`);
+      console.log(`📍 Текущее положение: ${lat}, ${lon}`);
       
       const token = getAuthToken();
       const response = await fetch(
@@ -124,13 +127,13 @@ export default function OffersPage() {
     }
   };
 
-  // ✅ ЗАГРУЖАЕМ ТОЛЬКО КОГДА ЕСТЬ РЕАЛЬНЫЙ GPS
   useEffect(() => {
     if (location && isClient) {
       fetchBags();
     }
   }, [location, isClient]);
 
+  // ✅ ЗАГРУЗКА
   if (!isClient || loading || locationLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -139,6 +142,7 @@ export default function OffersPage() {
     );
   }
 
+  // ✅ ОШИБКА ГЕОЛОКАЦИИ
   if (locationError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -157,7 +161,7 @@ export default function OffersPage() {
     );
   }
 
-  // ✅ ЕСЛИ НЕТ GPS - ПОКАЗЫВАЕМ ЗАГРУЗКУ
+  // ✅ НЕТ ЛОКАЦИИ
   if (!location) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -169,6 +173,7 @@ export default function OffersPage() {
     );
   }
 
+  // ✅ ОСНОВНОЙ РЕНДЕР
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <GeolocationRequest />
@@ -196,13 +201,13 @@ export default function OffersPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {bags.map((bag) => {
-              // ✅ ИСПОЛЬЗУЕМ РЕАЛЬНЫЙ GPS!
+              // ✅ РАССЧИТЫВАЕМ РАССТОЯНИЕ
               let distanceText = '0 км';
               
               if (location && bag.supplier_lat && bag.supplier_lon) {
                 const dist = calculateDistance(
-                  location.lat,   // ✅ РЕАЛЬНЫЙ GPS!
-                  location.lon,   // ✅ РЕАЛЬНЫЙ GPS!
+                  location.lat, 
+                  location.lon, 
                   bag.supplier_lat, 
                   bag.supplier_lon
                 );
@@ -210,15 +215,6 @@ export default function OffersPage() {
                   ? `${Math.round(dist * 1000)} м` 
                   : `${dist.toFixed(1)} км`;
               }
-              
-              console.log(`📦 ${bag.name}:`, {
-                userLat: location.lat,
-                userLon: location.lon,
-                supplier_lat: bag.supplier_lat,
-                supplier_lon: bag.supplier_lon,
-                distance: distanceText,
-                business_type: bag.business_type
-              });
               
               return (
                 <SurpriseBagCard
@@ -247,5 +243,18 @@ export default function OffersPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ✅ ОСНОВНОЙ КОМПОНЕНТ С SUSPENSE ДЛЯ useSearchParams
+export default function OffersPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#367666]"></div>
+      </div>
+    }>
+      <OffersContent />
+    </Suspense>
   );
 }
