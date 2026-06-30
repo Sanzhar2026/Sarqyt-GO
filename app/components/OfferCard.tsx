@@ -31,7 +31,7 @@ interface OfferCardProps {
   address?: string;
   pickupStartTime?: string;
   pickupEndTime?: string;
-  pickup_time 
+  pickup_time?: string;
 }
 
 const getImageByTitle = (title: string) => {
@@ -188,13 +188,13 @@ export default function OfferCard({
   description: propDescription,
   onOrderSuccess,
   businessType,
-  
   address,
   pickupStartTime,
   pickupEndTime,
   pickup_time
 }: OfferCardProps) {
   console.log('🏷️ OfferCard получил businessType:', businessType);
+  console.log('🕐 OfferCard получил pickup_time:', pickup_time);
   
   const router = useRouter();
   const pathname = usePathname();
@@ -214,6 +214,12 @@ export default function OfferCard({
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
 
   const token = getAuthToken();
+
+  // ✅ ИСПОЛЬЗУЙ pickup_time ИЗ БЭКЕНДА!
+  const displayTime = pickup_time || 'Время не указано';
+  
+  // ✅ ОБРЕЗАЕМ АДРЕС
+  const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
 
   // ✅ ЗАГРУЗКА РЕЙТИНГА
   useEffect(() => {
@@ -243,7 +249,7 @@ export default function OfferCard({
       router.push('/login');
       return;
     }
-const displayTime = pickup_time || 'Время не указано';
+
     setIsRatingLoading(true);
     try {
       const response = await fetch(`/api/surprise-bags/${id}/rate`, {
@@ -465,16 +471,7 @@ const displayTime = pickup_time || 'Время не указано';
     );
   }
 
-  const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
   const businessTypeLabel = businessType ? BUSINESS_TYPE_LABELS[businessType] : null;
-  
-  // ✅ ОБРЕЗАЕМ АДРЕС (КАК В SURPRISEBAGCARD)
-  const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
-  
-  // ✅ ВРЕМЯ - ТОЛЬКО ПРИ РАЗВОРОТЕ (КАК В SURPRISEBAGCARD)
-  const timeDisplay = pickupStartTime && pickupEndTime 
-    ? `${pickupStartTime} - ${pickupEndTime}` 
-    : '';
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
@@ -524,7 +521,7 @@ const displayTime = pickup_time || 'Время не указано';
             {businessName}
             {businessTypeLabel && (
               <span className="font-normal text-gray-400 text-[10px] ml-1">
-                {businessTypeLabel}
+                , {businessTypeLabel}
               </span>
             )}
           </p>
@@ -541,10 +538,10 @@ const displayTime = pickup_time || 'Время не указано';
           </div>
         )}
         
-        {/* ✅ ВРЕМЯ: ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ РАЗВОРОТЕ (ПОСЛЕ НАЖАТИЯ НА ИКОНКУ) */}
-        {showExpanded && timeDisplay && (
+        {/* ✅ ВРЕМЯ: ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ РАЗВОРОТЕ */}
+        {showExpanded && (
           <div className="text-gray-400 text-[10px] mb-1 leading-tight">
-            {timeDisplay}
+            🕐 {displayTime}
           </div>
         )}
         

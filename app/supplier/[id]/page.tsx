@@ -17,6 +17,7 @@ interface SurpriseBag {
   available_quantity: number;
   pickup_start_time?: string;
   pickup_end_time?: string;
+   pickup_time?: string; 
   business_type?: string;  // ✅ ИСПРАВЛЕНО!
 }
 
@@ -265,7 +266,7 @@ export default function SupplierPage() {
                   originalPrice={bag.original_price}
                   discount={bag.discount_percentage}
                   imageUrl={bag.image_url}
-                  pickup_time  
+                  pickup_time={bag.pickup_time}  
                   description={bag.description}
                 />
               ) : (
