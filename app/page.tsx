@@ -71,7 +71,9 @@ export default function HomePage() {
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
-
+useEffect(() => {
+  console.log('📍 /OFFERS location из хука:', location);
+}, [location]);
   useEffect(() => {
     setLocationLoading(true);
     
