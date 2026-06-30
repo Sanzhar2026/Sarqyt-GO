@@ -492,14 +492,14 @@ export default function OfferCard({
           />
         </button>
         
-        <button 
-          onClick={handleIconClick}
-          className="absolute bottom-2 right-2 z-10 bg-black/40 backdrop-blur rounded-full p-1.5 hover:bg-black/60 transition"
-        >
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path  strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
+     <button 
+  onClick={handleIconClick}
+  className="p-1.5 hover:bg-gray-100 rounded transition"
+>
+  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+</button>
       </div>
       
       <div className="p-2">
