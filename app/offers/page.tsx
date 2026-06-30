@@ -1,4 +1,4 @@
-// app/offers/page.tsx - ПОЛНАЯ ВЕРСИЯ
+// app/offers/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -13,7 +13,7 @@ import GeolocationRequest from '../components/GeolocationRequest';
 // ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ (ТАКАЯ ЖЕ КАК В PAGE.TSX)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
-  const R = 6371; // Радиус Земли в км
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -23,6 +23,9 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
+
+// ✅ ДЕФОЛТНЫЕ КООРДИНАТЫ (КАК НА ГЛАВНОЙ СТРАНИЦЕ)
+const DEFAULT_LOCATION = { lat: 50.318754, lon: 57.368359 };
 
 interface SurpriseBag {
   id: number;
@@ -41,8 +44,8 @@ interface SurpriseBag {
   rating?: number;
   total_reviews?: number;
   business_type?: string;
-  supplier_lat?: number;  // ✅ ДЛЯ РАСЧЕТА DISTANCE
-  supplier_lon?: number;  // ✅ ДЛЯ РАСЧЕТА DISTANCE
+  supplier_lat?: number;
+  supplier_lon?: number;
 }
 
 export default function OffersPage() {
@@ -74,18 +77,21 @@ export default function OffersPage() {
   }, [router]);
 
   const fetchBags = async () => {
-    if (!location) {
+    // ✅ ИСПОЛЬЗУЕМ location ИЛИ DEFAULT
+    const userLat = location?.lat || DEFAULT_LOCATION.lat;
+    const userLon = location?.lon || DEFAULT_LOCATION.lon;
+    
+    if (!userLat || !userLon) {
       console.log('⏳ Ожидание геолокации...');
       return;
     }
 
     try {
-      const { lat, lon } = location;
-      console.log(`📍 Текущее положение: ${lat}, ${lon}`);
+      console.log(`📍 Текущее положение: ${userLat}, ${userLon}`);
       
       const token = getAuthToken();
       const response = await fetch(
-        `/api/surprise-bags/surprise?lat=${lat}&lon=${lon}`,
+        `/api/surprise-bags/surprise?lat=${userLat}&lon=${userLon}`,
         {
           credentials: 'include',
           headers: {
@@ -122,7 +128,7 @@ export default function OffersPage() {
   };
 
   useEffect(() => {
-    if (location && isClient) {
+    if (isClient) {
       fetchBags();
     }
   }, [location, isClient]);
@@ -153,16 +159,9 @@ export default function OffersPage() {
     );
   }
 
-  if (!location) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-b-2 border-[#367666] rounded-full mx-auto"></div>
-          <p className="mt-4 text-gray-500">{t('loading')}</p>
-        </div>
-      </div>
-    );
-  }
+  // ✅ ИСПОЛЬЗУЕМ location ИЛИ DEFAULT ДЛЯ ОТОБРАЖЕНИЯ
+  const userLat = location?.lat || DEFAULT_LOCATION.lat;
+  const userLon = location?.lon || DEFAULT_LOCATION.lon;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -191,13 +190,14 @@ export default function OffersPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {bags.map((bag) => {
-              // ✅ РАССЧИТЫВАЕМ РАССТОЯНИЕ (КАК В PAGE.TSX)
+              // ✅ РАССЧИТЫВАЕМ РАССТОЯНИЕ С ФИКСИРОВАННЫМИ КООРДИНАТАМИ
               let distanceText = '0 км';
               
-              if (location && bag.supplier_lat && bag.supplier_lon) {
+              // ✅ ИСПОЛЬЗУЕМ ТЕ ЖЕ КООРДИНАТЫ, ЧТО И НА ГЛАВНОЙ
+              if (userLat && userLon && bag.supplier_lat && bag.supplier_lon) {
                 const dist = calculateDistance(
-                  location.lat, 
-                  location.lon, 
+                  userLat, 
+                  userLon, 
                   bag.supplier_lat, 
                   bag.supplier_lon
                 );
@@ -208,6 +208,8 @@ export default function OffersPage() {
               
               // ✅ ЛОГ ДЛЯ ОТЛАДКИ
               console.log(`📦 ${bag.name}:`, {
+                userLat,
+                userLon,
                 supplier_lat: bag.supplier_lat,
                 supplier_lon: bag.supplier_lon,
                 distance: distanceText,
@@ -232,7 +234,7 @@ export default function OffersPage() {
                   rating={bag.rating || 0}
                   totalReviews={bag.total_reviews || 0}
                   businessType={bag.business_type || ''}
-                  distance={distanceText}  // ✅ ПЕРЕДАЕМ ГОТОВОЕ РАССТОЯНИЕ
+                  distance={distanceText}
                   onOrderSuccess={fetchBags}
                 />
               );
