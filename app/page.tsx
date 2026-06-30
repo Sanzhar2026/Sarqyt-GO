@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ВЕРСИЯ С РЕАЛЬНЫМ РАССТОЯНИЕМ
+// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -44,7 +44,7 @@ interface LocationData {
 // ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
-  const R = 6371; // Радиус Земли в км
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -72,12 +72,20 @@ export default function HomePage() {
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
 
+  // ✅ useEffect #1 - ЗАПРОС ГЕОЛОКАЦИИ
   useEffect(() => {
     setLocationLoading(true);
     
-useEffect(() => {
-  console.log('📍 ГЛАВНАЯ location из хука:', location);
-}, [location]);
+    if (!navigator.geolocation) {
+      setLocation({
+        lat: 50.318754,
+        lon: 57.368359,
+        city: 'Актобе',
+        source: 'default'
+      });
+      setLocationLoading(false);
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -118,6 +126,11 @@ useEffect(() => {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
     );
   }, []);
+
+  // ✅ useEffect #2 - ЛОГ ДЛЯ ОТЛАДКИ
+  useEffect(() => {
+    console.log('📍 ГЛАВНАЯ location из хука:', location);
+  }, [location]);
 
   const getAuthToken = useCallback(() => {
     if (typeof window === 'undefined') return null;
@@ -474,7 +487,6 @@ useEffect(() => {
                   <p className="text-gray-500">{t('noOffers')}</p>
                 </div>
               ) : (
-                // ✅ РАСЧЕТ РЕАЛЬНОГО РАССТОЯНИЯ ДЛЯ КАЖДОГО СЮРПРИЗА
                 bags.map((bag, bagIdx) => {
                   let distanceText = '0 км';
                   
@@ -503,7 +515,10 @@ useEffect(() => {
                       imageUrl={bag.image_url}
                       description={bag.description}
                       onOrderSuccess={() => fetchBags()}
-                      businessType={bag.business_type} 
+                      businessType={bag.business_type}
+                      address={bag.address}
+                      pickupStartTime={bag.pickup_start_time}
+                      pickupEndTime={bag.pickup_end_time}
                     />
                   );
                 })
