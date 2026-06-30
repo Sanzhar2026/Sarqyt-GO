@@ -519,8 +519,7 @@ export default function OfferCard({
         </h3>
         
         {/* ✅ ОДИН РЯД ЗВЕЗД — И ДЛЯ ПОКАЗА, И ДЛЯ КЛИКА */}
-        <div className="flex items-center gap-0.5 mt-0.5 mb-1 flex-wrap">
-         <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
+      <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
   <div className="flex items-center gap-0.5">
     {renderStars()}
     {bagTotalReviews > 0 && (
@@ -531,17 +530,11 @@ export default function OfferCard({
     <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
   )}
   {userRating !== null && (
-    <span className="text-[10px] text-[#367666] font-medium ml-1">
+    <span className="text-[10px] text-[#367666] font-medium ml-0.5">
       ✓
     </span>
   )}
 </div>
-          {userRating !== null && (
-            <span className="text-[8px] text-[#367666] font-medium ml-0.5">
-              ✓
-            </span>
-          )}
-        </div>
         
         {showExpanded && (
           <div className="mt-0.5 mb-0.5">
