@@ -17,6 +17,7 @@ const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: f
 
 type ViewMode = 'list' | 'map';
 
+// ✅ ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС - ДОБАВЛЕНЫ ВСЕ ПОЛЯ!
 interface SurpriseBag {
   id: number;
   name: string;
@@ -32,6 +33,11 @@ interface SurpriseBag {
   supplier_lat?: number;
   supplier_lon?: number;
   business_type?: string;
+  address?: string;
+  pickup_start_time?: string;
+  pickup_end_time?: string;
+  rating?: number;
+  total_reviews?: number;
 }
 
 interface LocationData {

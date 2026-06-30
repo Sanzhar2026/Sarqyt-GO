@@ -28,7 +28,7 @@ const getImageByTitle = (title: string) => {
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
 };
 
-// ✅ ТИПЫ ЗАВЕДЕНИЙ (НА АНГЛИЙСКОМ, БЕЗ ИКОНОК)
+// ✅ ТИПЫ ЗАВЕДЕНИЙ
 const BUSINESS_TYPE_LABELS: Record<string, string> = {
   restaurant: 'Restaurant',
   bakery: 'Bakery',
@@ -55,7 +55,7 @@ interface SurpriseBagCardProps {
   totalReviews?: number;
   onOrderSuccess?: () => void;
   businessType?: string;
-  distance?: string;  // ✅ ПРИНИМАЕТ ГОТОВОЕ РАССТОЯНИЕ
+  distance?: string;
 }
 
 export default function SurpriseBagCard({
@@ -75,7 +75,7 @@ export default function SurpriseBagCard({
   totalReviews = 0,
   onOrderSuccess,
   businessType,
-  distance  // ✅ ПРИНИМАЕТ ГОТОВОЕ РАССТОЯНИЕ
+  distance
 }: SurpriseBagCardProps) {
   const router = useRouter();
   const [addingToCart, setAddingToCart] = useState(false);
@@ -395,11 +395,13 @@ export default function SurpriseBagCard({
           {name}
         </h3>
         
+        {/* ✅ АДРЕС ВСЕГДА, ВРЕМЯ ТОЛЬКО ПОСЛЕ НАЖАТИЯ НА ИКОНКУ */}
         <div className="text-gray-500 text-xs mb-1 leading-tight">
-          {showExpanded ? address : shortAddress} • {pickupStartTime && pickupEndTime ? `${pickupStartTime}-${pickupEndTime}` : 'Время не указано'}
+          {showExpanded ? address : shortAddress}
+          {showExpanded && pickupStartTime && pickupEndTime && ` • ${pickupStartTime}-${pickupEndTime}`}
         </div>
         
-        {/* ✅ ОДИН РЯД ЗВЕЗД — И ДЛЯ ПОКАЗА, И ДЛЯ КЛИКА */}
+        {/* ✅ ЗВЕЗДЫ И РАССТОЯНИЕ */}
         <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
           <div className="flex items-center gap-0.5">
             {renderStars()}

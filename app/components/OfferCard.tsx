@@ -28,6 +28,9 @@ interface OfferCardProps {
   description?: string;
   onOrderSuccess?: () => void;
   businessType?: string;
+  address?: string;
+  pickupStartTime?: string;
+  pickupEndTime?: string;
 }
 
 const getImageByTitle = (title: string) => {
@@ -51,7 +54,7 @@ const getImageByTitle = (title: string) => {
   return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=400&fit=crop';
 };
 
-// ✅ ТИПЫ ЗАВЕДЕНИЙ (НА АНГЛИЙСКОМ)
+// ✅ ТИПЫ ЗАВЕДЕНИЙ
 const BUSINESS_TYPE_LABELS: Record<string, string> = {
   restaurant: 'Restaurant',
   bakery: 'Bakery',
@@ -183,9 +186,13 @@ export default function OfferCard({
   imageUrl: propImageUrl,
   description: propDescription,
   onOrderSuccess,
-  businessType
+  businessType,
+  address,
+  pickupStartTime,
+  pickupEndTime
 }: OfferCardProps) {
-    console.log('🏷️ OfferCard получил businessType:', businessType);
+  console.log('🏷️ OfferCard получил businessType:', businessType);
+  
   const router = useRouter();
   const pathname = usePathname();
   const [addingToCart, setAddingToCart] = useState(false);
@@ -249,7 +256,6 @@ export default function OfferCard({
       
       if (response.ok) {
         setUserRating(rating);
-        // Обновляем средний рейтинг
         const newTotal = bagTotalReviews + 1;
         const newRating = ((bagRating * bagTotalReviews) + rating) / newTotal;
         setBagRating(Math.round(newRating * 10) / 10);
@@ -266,10 +272,9 @@ export default function OfferCard({
     }
   };
 
-  // ✅ РЕНДЕР ЗВЕЗД (ОДНИ И ТЕ ЖЕ — И ДЛЯ ОТОБРАЖЕНИЯ, И ДЛЯ КЛИКА)
+  // ✅ РЕНДЕР ЗВЕЗД
   const renderStars = () => {
     const stars = [];
-    // Используем userRating если есть, иначе bagRating
     const displayRating = userRating || bagRating || 0;
     const hover = hoveredStar !== null ? hoveredStar : displayRating;
     const isInteractive = isAuthenticated && userRating === null && !isRatingLoading;
@@ -459,6 +464,14 @@ export default function OfferCard({
 
   const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
   const businessTypeLabel = businessType ? BUSINESS_TYPE_LABELS[businessType] : null;
+  
+  // ✅ ОБРЕЗАЕМ АДРЕС
+  const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
+  
+  // ✅ ВРЕМЯ ПОКАЗЫВАЕТСЯ ТОЛЬКО ПОСЛЕ НАЖАТИЯ НА ИКОНКУ
+  const timeDisplay = showExpanded && pickupStartTime && pickupEndTime 
+    ? `${pickupStartTime}-${pickupEndTime}` 
+    : '';
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
@@ -491,15 +504,15 @@ export default function OfferCard({
             fill={isFavorite ? 'currentColor' : 'none'}
           />
         </button>
-     <button 
-  onClick={handleIconClick}
-  className="absolute bottom-2 right-2 z-10"
->
-  <svg className="w-4 h-4 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-</button>
         
+        <button 
+          onClick={handleIconClick}
+          className="absolute bottom-2 right-2 z-10"
+        >
+          <svg className="w-4 h-4 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
       </div>
       
       <div className="p-2">
@@ -518,23 +531,31 @@ export default function OfferCard({
           {propName}
         </h3>
         
-        {/* ✅ ОДИН РЯД ЗВЕЗД — И ДЛЯ ПОКАЗА, И ДЛЯ КЛИКА */}
-      <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
-  <div className="flex items-center gap-0.5">
-    {renderStars()}
-    {bagTotalReviews > 0 && (
-      <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
-    )}
-  </div>
-  {distance && (
-    <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
-  )}
-  {userRating !== null && (
-    <span className="text-[10px] text-[#367666] font-medium ml-0.5">
-      ✓
-    </span>
-  )}
-</div>
+        {/* ✅ АДРЕС ПОКАЗЫВАЕТСЯ ВСЕГДА */}
+        {address && (
+          <div className="text-gray-500 text-[10px] mb-1 leading-tight">
+            {showExpanded ? address : shortAddress}
+            {timeDisplay && ` • ${timeDisplay}`}
+          </div>
+        )}
+        
+        {/* ✅ ЗВЕЗДЫ И РАССТОЯНИЕ */}
+        <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
+          <div className="flex items-center gap-0.5">
+            {renderStars()}
+            {bagTotalReviews > 0 && (
+              <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
+            )}
+          </div>
+          {distance && (
+            <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
+          )}
+          {userRating !== null && (
+            <span className="text-[10px] text-[#367666] font-medium ml-0.5">
+              ✓
+            </span>
+          )}
+        </div>
         
         {showExpanded && (
           <div className="mt-0.5 mb-0.5">
