@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Gift, Info, Heart } from 'lucide-react';
+import { Gift, Heart } from 'lucide-react';
 import { getAuthToken } from '@/lib/auth';
 
 const getImageByTitle = (title: string) => {
@@ -55,9 +55,7 @@ interface SurpriseBagCardProps {
   totalReviews?: number;
   onOrderSuccess?: () => void;
   businessType?: string;
-distance?: string;  // ✅ ДОБАВИТЬ!
-  supplier_lat?: number;  // ✅ ДОБАВИТЬ ДЛЯ РАСЧЕТА
-  supplier_lon?: number;  // ✅ ДОБАВИТЬ ДЛЯ РАСЧЕТА
+  distance?: string;  // ✅ ПРИНИМАЕТ ГОТОВОЕ РАССТОЯНИЕ
 }
 
 export default function SurpriseBagCard({
@@ -77,7 +75,7 @@ export default function SurpriseBagCard({
   totalReviews = 0,
   onOrderSuccess,
   businessType,
-  distance
+  distance  // ✅ ПРИНИМАЕТ ГОТОВОЕ РАССТОЯНИЕ
 }: SurpriseBagCardProps) {
   const router = useRouter();
   const [addingToCart, setAddingToCart] = useState(false);
@@ -95,6 +93,10 @@ export default function SurpriseBagCard({
 
   const API_URL = 'https://toogood-production.up.railway.app';
   const token = getAuthToken();
+
+  // ✅ ЛОГ ДЛЯ ОТЛАДКИ
+  console.log('🏷️ SurpriseBagCard получил distance:', distance);
+  console.log('🏷️ SurpriseBagCard получил businessType:', businessType);
 
   const handleIconClick = () => {
     setShowExpanded(!showExpanded);
@@ -144,7 +146,6 @@ export default function SurpriseBagCard({
       
       if (response.ok) {
         setUserRating(ratingValue);
-        // Обновляем средний рейтинг
         const newTotal = bagTotalReviews + 1;
         const newRating = ((bagRating * bagTotalReviews) + ratingValue) / newTotal;
         setBagRating(Math.round(newRating * 10) / 10);
@@ -161,7 +162,7 @@ export default function SurpriseBagCard({
     }
   };
 
-  // ✅ РЕНДЕР ЗВЕЗД (ОДНИ И ТЕ ЖЕ — И ДЛЯ ОТОБРАЖЕНИЯ, И ДЛЯ КЛИКА)
+  // ✅ РЕНДЕР ЗВЕЗД
   const renderStars = () => {
     const stars = [];
     const displayRating = userRating || bagRating || 0;
@@ -368,14 +369,14 @@ export default function SurpriseBagCard({
           />
         </button>
         
-      <button 
-  onClick={handleIconClick}
-  className="absolute bottom-2 right-2 z-10"
->
-  <svg className="w-4 h-4 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-</button>
+        <button 
+          onClick={handleIconClick}
+          className="absolute bottom-2 right-2 z-10"
+        >
+          <svg className="w-4 h-4 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
       </div>
       
       <div className="p-3">
@@ -384,7 +385,7 @@ export default function SurpriseBagCard({
             {supplierName}
             {businessTypeLabel && (
               <span className="font-normal text-gray-400 text-xs ml-1">
-               {businessTypeLabel}
+                {businessTypeLabel}
               </span>
             )}
           </p>
@@ -399,22 +400,22 @@ export default function SurpriseBagCard({
         </div>
         
         {/* ✅ ОДИН РЯД ЗВЕЗД — И ДЛЯ ПОКАЗА, И ДЛЯ КЛИКА */}
-           <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
-  <div className="flex items-center gap-0.5">
-    {renderStars()}
-    {bagTotalReviews > 0 && (
-      <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
-    )}
-  </div>
-  {distance && (
-    <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
-  )}
-  {userRating !== null && (
-    <span className="text-[10px] text-[#367666] font-medium ml-0.5">
-      ✓
-    </span>
-  )}
-</div>
+        <div className="flex items-center gap-1 mt-1 mb-2 flex-wrap">
+          <div className="flex items-center gap-0.5">
+            {renderStars()}
+            {bagTotalReviews > 0 && (
+              <span className="text-[10px] text-gray-400">({bagTotalReviews} {getReviewText(bagTotalReviews)})</span>
+            )}
+          </div>
+          {distance && (
+            <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
+          )}
+          {userRating !== null && (
+            <span className="text-[10px] text-[#367666] font-medium ml-0.5">
+              ✓
+            </span>
+          )}
+        </div>
         
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
           <div>
