@@ -422,11 +422,7 @@ export default function SurpriseBagCard({
           {distance && (
             <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
           )}
-          {userRating !== null && (
-            <span className="text-[10px] text-[#367666] font-medium ml-0.5">
-              ✓
-            </span>
-          )}
+          {userRating !== null }
         </div>
         
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">

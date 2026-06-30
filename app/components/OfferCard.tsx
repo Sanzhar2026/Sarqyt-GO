@@ -465,12 +465,12 @@ export default function OfferCard({
   const totalItems = bagItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
   const businessTypeLabel = businessType ? BUSINESS_TYPE_LABELS[businessType] : null;
   
-  // ✅ ОБРЕЗАЕМ АДРЕС
+  // ✅ ОБРЕЗАЕМ АДРЕС (КАК В SURPRISEBAGCARD)
   const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
   
-  // ✅ ВРЕМЯ ПОКАЗЫВАЕТСЯ ТОЛЬКО ПОСЛЕ НАЖАТИЯ НА ИКОНКУ
-  const timeDisplay = showExpanded && pickupStartTime && pickupEndTime 
-    ? `${pickupStartTime}-${pickupEndTime}` 
+  // ✅ ВРЕМЯ - ТОЛЬКО ПРИ РАЗВОРОТЕ (КАК В SURPRISEBAGCARD)
+  const timeDisplay = pickupStartTime && pickupEndTime 
+    ? `${pickupStartTime} - ${pickupEndTime}` 
     : '';
 
   return (
@@ -531,11 +531,17 @@ export default function OfferCard({
           {propName}
         </h3>
         
-        {/* ✅ АДРЕС ПОКАЗЫВАЕТСЯ ВСЕГДА */}
+        {/* ✅ АДРЕС: КОРОТКИЙ В ОБЫЧНОМ РЕЖИМЕ, ПОЛНЫЙ ПРИ РАЗВОРОТЕ */}
         {address && (
-          <div className="text-gray-500 text-[10px] mb-1 leading-tight">
+          <div className="text-gray-500 text-[10px] mb-0.5 leading-tight">
             {showExpanded ? address : shortAddress}
-            {timeDisplay && ` • ${timeDisplay}`}
+          </div>
+        )}
+        
+        {/* ✅ ВРЕМЯ: ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ РАЗВОРОТЕ (ПОСЛЕ НАЖАТИЯ НА ИКОНКУ) */}
+        {showExpanded && timeDisplay && (
+          <div className="text-gray-400 text-[10px] mb-1 leading-tight">
+            🕐 {timeDisplay}
           </div>
         )}
         
