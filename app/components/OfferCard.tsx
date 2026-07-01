@@ -29,9 +29,9 @@ interface OfferCardProps {
   onOrderSuccess?: () => void;
   businessType?: string;
   address?: string;
-  pickupStartTime?: string;
-  pickupEndTime?: string;
-  pickup_time?: string;
+   workingTime?: string;    // ✅ ДОБАВЛЯЕМ!
+  openingTime?: string;    // ✅ ДОБАВЛЯЕМ!
+  closingTime?: string;
 }
 
 const getImageByTitle = (title: string) => {
@@ -189,9 +189,9 @@ export default function OfferCard({
   onOrderSuccess,
   businessType,
   address,
-  pickupStartTime,
-  pickupEndTime,
-  pickup_time
+  workingTime,   // ✅ ДОБАВЛЯЕМ!
+  openingTime,   // ✅ ДОБАВЛЯЕМ!
+  closingTime, 
 }: OfferCardProps) {
   console.log('🏷️ OfferCard получил businessType:', businessType);
   console.log('🕐 OfferCard получил pickup_time:', pickup_time);

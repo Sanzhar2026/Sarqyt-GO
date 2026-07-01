@@ -33,8 +33,9 @@ interface SurpriseBag {
   supplier_lon?: number;
   business_type?: string;
   address?: string;
-  pickup_start_time?: string;
-  pickup_end_time?: string;
+  working_time?: string;        // ✅ ДОБАВЛЯЕМ!
+  opening_time?: string;        // ✅ ДОБАВЛЯЕМ!
+  closing_time?: string;    
   rating?: number;
   total_reviews?: number;
   pickup_time?: string;  
@@ -535,9 +536,10 @@ export default function HomePage() {
                       onOrderSuccess={() => fetchBags()}
                       businessType={bag.business_type}
                       address={bag.address}
-                        pickup_time={bag.pickup_time} 
-                      pickupStartTime={bag.pickup_start_time}
-                      pickupEndTime={bag.pickup_end_time}
+                       
+                     workingTime={bag.working_time}  // ✅ ДОБАВЛЯЕМ!
+  openingTime={bag.opening_time}   // ✅ ДОБАВЛЯЕМ!
+  closingTime={bag.closing_time}  
                     />
                   );
                 })
