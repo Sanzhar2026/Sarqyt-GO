@@ -194,7 +194,7 @@ export default function OfferCard({
   closingTime, 
 }: OfferCardProps) {
   console.log('🏷️ OfferCard получил businessType:', businessType);
-  console.log('🕐 OfferCard получил pickup_time:', pickup_time);
+  console.log('🕐 OfferCard получил pickup_time:', );
   
   const router = useRouter();
   const pathname = usePathname();
@@ -216,7 +216,7 @@ export default function OfferCard({
   const token = getAuthToken();
 
   // ✅ ИСПОЛЬЗУЙ pickup_time ИЗ БЭКЕНДА!
-  const displayTime = pickup_time || 'Время не указано';
+  const displayTime = workingTime || 'Время не указано';
   
   // ✅ ОБРЕЗАЕМ АДРЕС
   const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;

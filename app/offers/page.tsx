@@ -37,10 +37,11 @@ interface SurpriseBag {
   supplier_name: string;
   supplier_id: number;
   address?: string;
-  pickup_start_time?: string;
-  pickup_end_time?: string;
+  working_time?: string;   // ✅ ДОБАВЛЯЕМ!
+  opening_time?: string;   // ✅ ДОБАВЛЯЕМ!
+  closing_time?: string; 
   rating?: number;
-  pickup_time?: string; 
+
   total_reviews?: number;
   business_type?: string;
   supplier_lat?: number;
@@ -230,8 +231,9 @@ function OffersContent() {
                   description={bag.description}
                   availableQuantity={bag.available_quantity}
                   address={bag.address || ''}
-                  pickupStartTime={bag.pickup_start_time || ''}
-                  pickupEndTime={bag.pickup_end_time || ''}
+                  workingTime={bag.working_time}
+  openingTime={bag.opening_time}
+  closingTime={bag.closing_time}
                   rating={bag.rating || 0}
                   totalReviews={bag.total_reviews || 0}
                   businessType={bag.business_type || ''}

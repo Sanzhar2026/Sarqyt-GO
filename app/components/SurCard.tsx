@@ -49,9 +49,9 @@ interface SurpriseBagCardProps {
   description?: string;
   availableQuantity: number;
   address?: string;
-  pickupStartTime?: string;
-  pickupEndTime?: string;
-  pickupTime?: string;  // ✅ ДОБАВЛЕНО!
+  workingTime?: string;     // ✅ ВРЕМЯ РАБОТЫ МАГАЗИНА
+  openingTime?: string;     // ✅ ОТКРЫТИЕ
+  closingTime?: string;     // ✅ ЗАКРЫТИЕ
   rating?: number;
   totalReviews?: number;
   onOrderSuccess?: () => void;
@@ -70,9 +70,9 @@ export default function SurpriseBagCard({
   description,
   availableQuantity,
   address,
-  pickupStartTime,
-  pickupEndTime,
-  pickupTime, 
+  workingTime,
+  openingTime,
+  closingTime,
   rating = 0,
   totalReviews = 0,
   onOrderSuccess,
@@ -98,7 +98,7 @@ export default function SurpriseBagCard({
 
   console.log('🏷️ SurpriseBagCard получил distance:', distance);
   console.log('🏷️ SurpriseBagCard получил businessType:', businessType);
-  console.log('🕐 SurpriseBagCard получил pickupTime:', pickupTime);
+  console.log('🕐 SurpriseBagCard получил workingTime:', workingTime);
 
   const handleIconClick = () => {
     setShowExpanded(!showExpanded);
@@ -339,8 +339,8 @@ export default function SurpriseBagCard({
   const shortAddress = address && address.length > 35 ? address.substring(0, 35) + '...' : address;
   const businessTypeLabel = businessType ? BUSINESS_TYPE_LABELS[businessType] : null;
 
-  // ✅ ИСПОЛЬЗУЕМ pickupTime С БЭКЕНДА
-  const displayTime = pickupTime || 'Время не указано';
+  // ✅ ВРЕМЯ РАБОТЫ МАГАЗИНА
+  const displayTime = workingTime || 'Время не указано';
 
   return (
     <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
@@ -405,10 +405,10 @@ export default function SurpriseBagCard({
           {showExpanded ? address : shortAddress}
         </div>
         
-        {/* ✅ ВРЕМЯ ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ НАЖАТИИ НА ИКОНКУ */}
+        {/* ✅ ВРЕМЯ РАБОТЫ МАГАЗИНА - ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ НАЖАТИИ НА ИКОНКУ */}
         {showExpanded && (
           <div className="text-gray-400 text-[10px] mb-1 leading-tight">
-            {displayTime}
+            🕐 {displayTime}
           </div>
         )}
         
@@ -423,7 +423,11 @@ export default function SurpriseBagCard({
           {distance && (
             <span className="text-[10px] text-gray-400 ml-auto">{distance}</span>
           )}
-          {userRating !== null }
+          {userRating !== null && (
+            <span className="text-[10px] text-[#367666] font-medium ml-0.5">
+              ✓
+            </span>
+          )}
         </div>
         
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
