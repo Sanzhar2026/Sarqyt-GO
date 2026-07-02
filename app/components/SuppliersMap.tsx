@@ -1,3 +1,5 @@
+// app/components/SuppliersMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -53,6 +55,7 @@ export default function SuppliersMap({
   const mapInstanceRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
   const markerRefs = useRef<Map<number, any>>(new Map());
+  const isMapInitialized = useRef(false);
 
   // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА
   useEffect(() => {
@@ -85,10 +88,43 @@ export default function SuppliersMap({
       
       if (response.ok) {
         console.log(`✅ Поставщик ${supplierId} отмечен как просмотренный`);
-        fetchNearbySuppliers(userLat || 50.318754, userLon || 57.368359);
+        // ✅ ОБНОВЛЯЕМ ТОЛЬКО КОНКРЕТНОГО ПОСТАВЩИКА
+        updateSingleSupplier(supplierId);
       }
     } catch (error) {
       console.error('❌ Ошибка отметки просмотра:', error);
+    }
+  };
+
+  // ✅ ФУНКЦИЯ ДЛЯ ОБНОВЛЕНИЯ ОДНОГО ПОСТАВЩИКА
+  const updateSingleSupplier = async (supplierId: number) => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`/api/suppliers/${supplierId}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      
+      // ✅ НАХОДИМ ПОСТАВЩИКА В СПИСКЕ И ОБНОВЛЯЕМ
+      setSuppliers(prev => {
+        const index = prev.findIndex(s => s.id === supplierId);
+        if (index === -1) return prev;
+        
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          new_bags_count: 0 // ✅ СБРАСЫВАЕМ СЧЕТЧИК
+        };
+        return updated;
+      });
+      
+    } catch (error) {
+      console.error('❌ Ошибка обновления поставщика:', error);
     }
   };
 
@@ -126,10 +162,24 @@ export default function SuppliersMap({
               
               if (bag.supplier_id) {
                 setActiveSupplierId(bag.supplier_id);
-                fetchNearbySuppliers(userLat || 50.318754, userLon || 57.368359);
+                
+                // ✅ ОБНОВЛЯЕМ ТОЛЬКО КОНКРЕТНОГО ПОСТАВЩИКА
+                setSuppliers(prev => {
+                  const index = prev.findIndex(s => s.id === bag.supplier_id);
+                  if (index === -1) return prev;
+                  
+                  const updated = [...prev];
+                  updated[index] = {
+                    ...updated[index],
+                    new_bags_count: (updated[index].new_bags_count || 0) + 1
+                  };
+                  return updated;
+                });
+                
+                // ✅ ЗАПРАШИВАЕМ ОБНОВЛЕННЫЕ ДАННЫЕ ТОЛЬКО ДЛЯ ЭТОГО ПОСТАВЩИКА
                 setTimeout(() => {
-                  setActiveSupplierId(null);
-                }, 10000);
+                  fetchSingleSupplier(bag.supplier_id);
+                }, 500);
               }
             }
           } catch (e) {
@@ -156,6 +206,34 @@ export default function SuppliersMap({
       if (ws) ws.close();
     };
   }, []);
+
+  // ✅ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ОДНОГО ПОСТАВЩИКА
+  const fetchSingleSupplier = async (supplierId: number) => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`/api/suppliers/${supplierId}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      
+      setSuppliers(prev => {
+        const index = prev.findIndex(s => s.id === supplierId);
+        if (index === -1) return prev;
+        
+        const updated = [...prev];
+        updated[index] = data;
+        return updated;
+      });
+      
+    } catch (error) {
+      console.error('❌ Ошибка получения поставщика:', error);
+    }
+  };
 
   // Загрузка Leaflet
   useEffect(() => {
@@ -389,34 +467,39 @@ export default function SuppliersMap({
       mapInstanceRef.current.fitBounds(mapBounds, { padding: [50, 50] });
     }
     
+    isMapInitialized.current = true;
+    
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markerRefs.current.clear();
+        isMapInitialized.current = false;
       }
     };
     
   }, [mapLoaded, loading, suppliers, userLat, userLon, showUserLocation]);
 
-  // ✅ ОБНОВЛЕНИЕ МАРКЕРОВ - ТОЛЬКО ИКОНКИ, НЕ КАРТА!
+  // ✅ ОБНОВЛЕНИЕ МАРКЕРОВ (БЕЗ ПЕРЕСОЗДАНИЯ КАРТЫ)
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
+    if (!mapInstanceRef.current || !isMapInitialized.current) return;
     if (suppliers.length === 0) return;
     
-    // ✅ НЕ СОХРАНЯЕМ ПОЗИЦИЮ, НЕ ВОССТАНАВЛИВАЕМ - ПРОСТО ОБНОВЛЯЕМ ИКОНКИ!
     const validSuppliersWithCoords = suppliers.filter(s => s.lat && s.lon);
     
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
       const existingMarker = markerRefs.current.get(supplier.id);
-      if (!existingMarker) return;
+      if (!existingMarker) {
+        // ✅ ЕСЛИ МАРКЕРА НЕТ - СОЗДАЕМ
+        // ... (код создания маркера, но лучше не создавать новые)
+        return;
+      }
       
       const isActive = activeSupplierId === supplier.id;
       const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
       const showGreen = isActive || hasNewBags;
-      
       const iconColor = showGreen ? 'bg-green-500' : 'bg-gray-400';
       
       const badge = hasNewBags && supplier.new_bags_count 
@@ -442,8 +525,58 @@ export default function SuppliersMap({
         iconAnchor: window.L.point(8, 8)
       });
       
-      // ✅ МЕНЯЕМ ТОЛЬКО ИКОНКУ, НЕ ПЕРЕСОЗДАЕМ МАРКЕР!
       existingMarker.setIcon(newIcon);
+      
+      // ✅ ОБНОВЛЯЕМ ПОПАП (ЕСЛИ НУЖНО)
+      const businessTypeLabel = supplier.business_type 
+        ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
+        : '';
+      
+      const popupContent = `
+        <div class="text-center min-w-[220px] p-3">
+          <div class="flex justify-center mb-2">
+            ${supplier.logo ? `
+              <img 
+                src="${supplier.logo}" 
+                alt="${supplier.business_name}"
+                class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+                onerror="this.style.display='none'"
+              />
+            ` : `
+              <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-600 border-2 border-emerald-500 shadow-md">
+                ${supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+            `}
+          </div>
+          
+          <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
+          
+          ${businessTypeLabel ? `
+            <div class="text-xs text-gray-400 mb-1">${businessTypeLabel}</div>
+          ` : ''}
+          
+          <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
+          
+          <div class="flex justify-center gap-4 mb-2 text-sm">
+            <span>⭐ ${supplier.rating || '—'}</span>
+            <span>${supplier.surprise_bags_count || 0}</span>
+            <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
+          </div>
+          
+          ${hasNewBags ? `
+            <div class="text-xs text-green-600 font-medium mb-2">
+              🔔 ${supplier.new_bags_count} новых сюрпризов!
+            </div>
+          ` : ''}
+          
+          <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition" 
+                  onclick="window.goToSupplier(${supplier.id})">
+            Смотреть сюрпризы
+          </button>
+        </div>
+      `;
+      
+      existingMarker._popup?.setContent(popupContent);
     });
     
   }, [suppliers, activeSupplierId]);
