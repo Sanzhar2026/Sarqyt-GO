@@ -53,6 +53,7 @@ export default function SuppliersMap({
   const userMarkerRef = useRef<any>(null);
   const markerRefs = useRef<Map<number, any>>(new Map());
   const isMapCreated = useRef(false);
+  const mapPositionRef = useRef<{ lat: number; lon: number; zoom: number } | null>(null);
 
   // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА
   useEffect(() => {
@@ -68,111 +69,6 @@ export default function SuppliersMap({
       delete window.goToSupplier;
     };
   }, [router]);
-
-  // ✅ ОТМЕТКА ПРОСМОТРА С ОБНОВЛЕНИЕМ STATE
-  const markSupplierAsViewed = async (supplierId: number) => {
-    try {
-      const token = getAuthToken();
-      if (!token) return;
-      
-      const response = await fetch('/api/suppliers/mark-viewed', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ supplier_id: supplierId })
-      });
-      
-      if (response.ok) {
-        console.log(`✅ Поставщик ${supplierId} отмечен как просмотренный`);
-        
-        // ✅ ОБНОВЛЯЕМ STATE - УБИРАЕМ ЗЕЛЕНОЕ КОЛЬЦО!
-        setSuppliers(prev => {
-          const index = prev.findIndex(s => s.id === supplierId);
-          if (index === -1) return prev;
-          const updated = [...prev];
-          updated[index] = {
-            ...updated[index],
-            new_bags_count: 0
-          };
-          return updated;
-        });
-      }
-    } catch (error) {
-      console.error('❌ Ошибка отметки просмотра:', error);
-    }
-  };
-
-  // WebSocket
-  useEffect(() => {
-    let ws: WebSocket | null = null;
-    
-    const connectWebSocket = () => {
-      const token = getAuthToken();
-      if (!token) {
-        console.log('⚠️ Нет токена, WebSocket не подключается');
-        return;
-      }
-      
-      const wsUrl = `wss://toogood-production.up.railway.app/ws`;
-      
-      try {
-        ws = new WebSocket(wsUrl);
-        
-        ws.onopen = () => {
-          console.log('✅ WebSocket connected (map)');
-          ws.send(JSON.stringify({
-            type: 'auth',
-            token: token
-          }));
-        };
-        
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            
-            if (data.type === 'new_bag' || data.type === 'update_bag') {
-              const bag = data.data;
-              console.log('🆕 Новый сюрприз от поставщика:', bag.supplier_id);
-              
-              if (bag.supplier_id) {
-                setSuppliers(prev => {
-                  const index = prev.findIndex(s => s.id === bag.supplier_id);
-                  if (index === -1) return prev;
-                  const updated = [...prev];
-                  updated[index] = {
-                    ...updated[index],
-                    new_bags_count: (updated[index].new_bags_count || 0) + 1
-                  };
-                  return updated;
-                });
-              }
-            }
-          } catch (e) {
-            console.error('❌ WebSocket message error:', e);
-          }
-        };
-        
-        ws.onclose = () => {
-          console.log('🔌 WebSocket disconnected (map)');
-          setTimeout(connectWebSocket, 5000);
-        };
-        
-        ws.onerror = (error) => {
-          console.error('❌ WebSocket error:', error);
-        };
-        
-      } catch (error) {
-        console.error('❌ WebSocket connection error:', error);
-      }
-    };
-    
-    connectWebSocket();
-    return () => {
-      if (ws) ws.close();
-    };
-  }, []);
 
   // Загрузка Leaflet
   useEffect(() => {
@@ -261,6 +157,201 @@ export default function SuppliersMap({
     }
   };
 
+  // ✅ ФУНКЦИЯ ОБНОВЛЕНИЯ ИКОНКИ МАРКЕРА (БЕЗ ИЗМЕНЕНИЯ STATE!)
+  const updateMarkerIcon = (supplierId: number, hasNewBags: boolean, count: number) => {
+    const marker = markerRefs.current.get(supplierId);
+    if (!marker) return;
+    
+    const iconColor = hasNewBags ? 'bg-green-500' : 'bg-gray-400';
+    
+    const badge = hasNewBags && count > 0 
+      ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
+          ${count}
+        </div>`
+      : '';
+    
+    const iconHtml = `
+      <div class="relative flex items-center justify-center">
+        ${hasNewBags ? `
+          <div class="absolute -inset-3 rounded-full border-[6px] border-green-500 animate-pulse-ring" style="width: 30px; height: 30px;"></div>
+        ` : ''}
+        ${badge}
+        <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10"></div>
+      </div>
+    `;
+    
+    const newIcon = window.L.divIcon({
+      html: iconHtml,
+      iconSize: window.L.point(16, 16),
+      className: 'custom-div-icon',
+      iconAnchor: window.L.point(8, 8)
+    });
+    
+    marker.setIcon(newIcon);
+  };
+
+  // ✅ ОБНОВЛЕНИЕ ПОПАПА
+  const updatePopupContent = (supplier: Supplier) => {
+    const marker = markerRefs.current.get(supplier.id);
+    if (!marker) return;
+    
+    const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
+    const businessTypeLabel = supplier.business_type 
+      ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
+      : '';
+    
+    const popupContent = `
+      <div class="text-center min-w-[220px] p-3">
+        <div class="flex justify-center mb-2">
+          ${supplier.logo ? `
+            <img 
+              src="${supplier.logo}" 
+              alt="${supplier.business_name}"
+              class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+              onerror="this.style.display='none'"
+            />
+          ` : `
+            <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-600 border-2 border-emerald-500 shadow-md">
+              ${supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
+            </div>
+          `}
+        </div>
+        
+        <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
+        
+        ${businessTypeLabel ? `
+          <div class="text-xs text-gray-400 mb-1">${businessTypeLabel}</div>
+        ` : ''}
+        
+        <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
+        
+        <div class="flex justify-center gap-4 mb-2 text-sm">
+          <span>⭐ ${supplier.rating || '—'}</span>
+          <span>${supplier.surprise_bags_count || 0}</span>
+          <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
+        </div>
+        
+        ${hasNewBags ? `
+          <div class="text-xs text-green-600 font-medium mb-2">
+            🔔 ${supplier.new_bags_count} новых сюрпризов!
+          </div>
+        ` : ''}
+        
+        <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition" 
+                onclick="window.goToSupplier(${supplier.id})">
+          Смотреть сюрпризы
+        </button>
+      </div>
+    `;
+    
+    if (marker._popup) {
+      marker._popup.setContent(popupContent);
+    }
+  };
+
+  // ✅ ОТМЕТКА ПРОСМОТРА (БЕЗ ИЗМЕНЕНИЯ STATE!)
+  const markSupplierAsViewed = async (supplierId: number) => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      
+      const response = await fetch('/api/suppliers/mark-viewed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ supplier_id: supplierId })
+      });
+      
+      if (response.ok) {
+        console.log(`✅ Поставщик ${supplierId} отмечен как просмотренный`);
+        
+        // ✅ ОБНОВЛЯЕМ ТОЛЬКО ИКОНКУ! БЕЗ ИЗМЕНЕНИЯ STATE!
+        updateMarkerIcon(supplierId, false, 0);
+        
+        // ✅ ОБНОВЛЯЕМ ПОПАП
+        const supplier = suppliers.find(s => s.id === supplierId);
+        if (supplier) {
+          const updatedSupplier = { ...supplier, new_bags_count: 0 };
+          updatePopupContent(updatedSupplier);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Ошибка отметки просмотра:', error);
+    }
+  };
+
+  // WebSocket
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    
+    const connectWebSocket = () => {
+      const token = getAuthToken();
+      if (!token) {
+        console.log('⚠️ Нет токена, WebSocket не подключается');
+        return;
+      }
+      
+      const wsUrl = `wss://toogood-production.up.railway.app/ws`;
+      
+      try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('✅ WebSocket connected (map)');
+          ws.send(JSON.stringify({
+            type: 'auth',
+            token: token
+          }));
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'new_bag' || data.type === 'update_bag') {
+              const bag = data.data;
+              console.log('🆕 Новый сюрприз от поставщика:', bag.supplier_id);
+              
+              if (bag.supplier_id) {
+                // ✅ ОБНОВЛЯЕМ ИКОНКУ БЕЗ ИЗМЕНЕНИЯ STATE!
+                const supplier = suppliers.find(s => s.id === bag.supplier_id);
+                const newCount = (supplier?.new_bags_count || 0) + 1;
+                updateMarkerIcon(bag.supplier_id, true, newCount);
+                
+                // ✅ ОБНОВЛЯЕМ ПОПАП
+                if (supplier) {
+                  const updatedSupplier = { ...supplier, new_bags_count: newCount };
+                  updatePopupContent(updatedSupplier);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('❌ WebSocket message error:', e);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('🔌 WebSocket disconnected (map)');
+          setTimeout(connectWebSocket, 5000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket error:', error);
+        };
+        
+      } catch (error) {
+        console.error('❌ WebSocket connection error:', error);
+      }
+    };
+    
+    connectWebSocket();
+    return () => {
+      if (ws) ws.close();
+    };
+  }, [suppliers]);
+
   // ✅ СОЗДАНИЕ КАРТЫ (ТОЛЬКО 1 РАЗ)
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
@@ -274,6 +365,9 @@ export default function SuppliersMap({
     const centerLon = userLon || validSuppliersWithCoords[0].lon || 76.945;
     
     mapInstanceRef.current = window.L.map(mapRef.current).setView([centerLat, centerLon], 12);
+    
+    // ✅ СОХРАНЯЕМ ПОЗИЦИЮ
+    mapPositionRef.current = { lat: centerLat, lon: centerLon, zoom: 12 };
     
     window.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -400,6 +494,10 @@ export default function SuppliersMap({
     if (bounds.length > 0) {
       const mapBounds = window.L.latLngBounds(bounds);
       mapInstanceRef.current.fitBounds(mapBounds, { padding: [50, 50] });
+      // ✅ ОБНОВЛЯЕМ СОХРАНЕННУЮ ПОЗИЦИЮ
+      const center = mapInstanceRef.current.getCenter();
+      const zoom = mapInstanceRef.current.getZoom();
+      mapPositionRef.current = { lat: center.lat, lon: center.lng, zoom: zoom };
     }
     
     isMapCreated.current = true;
@@ -414,100 +512,6 @@ export default function SuppliersMap({
     };
     
   }, [mapLoaded, loading, suppliers, userLat, userLon, showUserLocation]);
-
-  // ✅ ОБНОВЛЕНИЕ МАРКЕРОВ
-  useEffect(() => {
-    if (!mapInstanceRef.current || !isMapCreated.current) return;
-    if (suppliers.length === 0) return;
-    
-    suppliers.forEach(supplier => {
-      if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
-      
-      const marker = markerRefs.current.get(supplier.id);
-      if (!marker) return;
-      
-      const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
-      const iconColor = hasNewBags ? 'bg-green-500' : 'bg-gray-400';
-      
-      const badge = hasNewBags && supplier.new_bags_count 
-        ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
-            ${supplier.new_bags_count}
-          </div>`
-        : '';
-      
-      const iconHtml = `
-        <div class="relative flex items-center justify-center">
-          ${hasNewBags ? `
-            <div class="absolute -inset-3 rounded-full border-[6px] border-green-500 animate-pulse-ring" style="width: 30px; height: 30px;"></div>
-          ` : ''}
-          ${badge}
-          <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10"></div>
-        </div>
-      `;
-      
-      const newIcon = window.L.divIcon({
-        html: iconHtml,
-        iconSize: window.L.point(16, 16),
-        className: 'custom-div-icon',
-        iconAnchor: window.L.point(8, 8)
-      });
-      
-      marker.setIcon(newIcon);
-      
-      const businessTypeLabel = supplier.business_type 
-        ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
-        : '';
-      
-      const popupContent = `
-        <div class="text-center min-w-[220px] p-3">
-          <div class="flex justify-center mb-2">
-            ${supplier.logo ? `
-              <img 
-                src="${supplier.logo}" 
-                alt="${supplier.business_name}"
-                class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
-                onerror="this.style.display='none'"
-              />
-            ` : `
-              <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-600 border-2 border-emerald-500 shadow-md">
-                ${supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
-              </div>
-            `}
-          </div>
-          
-          <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
-          
-          ${businessTypeLabel ? `
-            <div class="text-xs text-gray-400 mb-1">${businessTypeLabel}</div>
-          ` : ''}
-          
-          <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
-          
-          <div class="flex justify-center gap-4 mb-2 text-sm">
-            <span>⭐ ${supplier.rating || '—'}</span>
-            <span>${supplier.surprise_bags_count || 0}</span>
-            <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
-          </div>
-          
-          ${hasNewBags ? `
-            <div class="text-xs text-green-600 font-medium mb-2">
-              🔔 ${supplier.new_bags_count} новых сюрпризов!
-            </div>
-          ` : ''}
-          
-          <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition" 
-                  onclick="window.goToSupplier(${supplier.id})">
-            Смотреть сюрпризы
-          </button>
-        </div>
-      `;
-      
-      if (marker._popup) {
-        marker._popup.setContent(popupContent);
-      }
-    });
-    
-  }, [suppliers]);
 
   if (loading) {
     return (
