@@ -51,6 +51,7 @@ export default function SuppliersMap({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
+  const markerRefs = useRef<Map<number, any>>(new Map());
 
   // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА
   useEffect(() => {
@@ -66,6 +67,110 @@ export default function SuppliersMap({
       delete window.goToSupplier;
     };
   }, [router]);
+
+  const markSupplierAsViewed = async (supplierId: number) => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      
+      const response = await fetch('/api/suppliers/mark-viewed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ supplier_id: supplierId })
+      });
+      
+      if (response.ok) {
+        console.log(`✅ Поставщик ${supplierId} отмечен как просмотренный`);
+        // ✅ ОБНОВЛЯЕМ ТОЛЬКО ЭТОГО ПОСТАВЩИКА В STATE
+        setSuppliers(prev => {
+          const index = prev.findIndex(s => s.id === supplierId);
+          if (index === -1) return prev;
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            new_bags_count: 0
+          };
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('❌ Ошибка отметки просмотра:', error);
+    }
+  };
+
+  // WebSocket
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    
+    const connectWebSocket = () => {
+      const token = getAuthToken();
+      if (!token) {
+        console.log('⚠️ Нет токена, WebSocket не подключается');
+        return;
+      }
+      
+      const wsUrl = `wss://toogood-production.up.railway.app/ws`;
+      
+      try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('✅ WebSocket connected (map)');
+          ws.send(JSON.stringify({
+            type: 'auth',
+            token: token
+          }));
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'new_bag' || data.type === 'update_bag') {
+              const bag = data.data;
+              console.log('🆕 Новый сюрприз от поставщика:', bag.supplier_id);
+              
+              if (bag.supplier_id) {
+                // ✅ ОБНОВЛЯЕМ ТОЛЬКО КОНКРЕТНОГО ПОСТАВЩИКА
+                setSuppliers(prev => {
+                  const index = prev.findIndex(s => s.id === bag.supplier_id);
+                  if (index === -1) return prev;
+                  const updated = [...prev];
+                  updated[index] = {
+                    ...updated[index],
+                    new_bags_count: (updated[index].new_bags_count || 0) + 1
+                  };
+                  return updated;
+                });
+              }
+            }
+          } catch (e) {
+            console.error('❌ WebSocket message error:', e);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('🔌 WebSocket disconnected (map)');
+          setTimeout(connectWebSocket, 5000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket error:', error);
+        };
+        
+      } catch (error) {
+        console.error('❌ WebSocket connection error:', error);
+      }
+    };
+    
+    connectWebSocket();
+    return () => {
+      if (ws) ws.close();
+    };
+  }, []);
 
   // Загрузка Leaflet
   useEffect(() => {
@@ -154,7 +259,7 @@ export default function SuppliersMap({
     }
   };
 
-  // ✅ СОЗДАНИЕ КАРТЫ (ТОЛЬКО 1 РАЗ)
+  // ✅ СОЗДАНИЕ КАРТЫ + МАРКЕРОВ (ТОЛЬКО 1 РАЗ)
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -276,8 +381,14 @@ export default function SuppliersMap({
           keepInView: false
         });
       
+      markerRefs.current.set(supplier.id, marker);
+      
       marker.on('click', () => {
         marker.openPopup();
+      });
+      
+      marker.on('popupopen', () => {
+        markSupplierAsViewed(supplier.id);
       });
       
       bounds.push([supplier.lat, supplier.lon]);
@@ -292,10 +403,106 @@ export default function SuppliersMap({
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
+        markerRefs.current.clear();
       }
     };
     
   }, [mapLoaded, loading, suppliers, userLat, userLon, showUserLocation]);
+
+  // ✅ ОБНОВЛЕНИЕ МАРКЕРОВ (БЕЗ ПЕРЕРИСОВКИ КАРТЫ!)
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    if (suppliers.length === 0) return;
+    
+    suppliers.forEach(supplier => {
+      if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
+      
+      const marker = markerRefs.current.get(supplier.id);
+      if (!marker) return;
+      
+      const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
+      const iconColor = hasNewBags ? 'bg-green-500' : 'bg-gray-400';
+      
+      const badge = hasNewBags && supplier.new_bags_count 
+        ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
+            ${supplier.new_bags_count}
+          </div>`
+        : '';
+      
+      const iconHtml = `
+        <div class="relative flex items-center justify-center">
+          ${hasNewBags ? `
+            <div class="absolute -inset-3 rounded-full border-[6px] border-green-500 animate-pulse-ring" style="width: 30px; height: 30px;"></div>
+          ` : ''}
+          ${badge}
+          <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10"></div>
+        </div>
+      `;
+      
+      const newIcon = window.L.divIcon({
+        html: iconHtml,
+        iconSize: window.L.point(16, 16),
+        className: 'custom-div-icon',
+        iconAnchor: window.L.point(8, 8)
+      });
+      
+      // ✅ МЕНЯЕМ ТОЛЬКО ИКОНКУ! КАРТА НЕ ТРОГАЕТСЯ!
+      marker.setIcon(newIcon);
+      
+      // ✅ ОБНОВЛЯЕМ ПОПАП
+      const businessTypeLabel = supplier.business_type 
+        ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
+        : '';
+      
+      const popupContent = `
+        <div class="text-center min-w-[220px] p-3">
+          <div class="flex justify-center mb-2">
+            ${supplier.logo ? `
+              <img 
+                src="${supplier.logo}" 
+                alt="${supplier.business_name}"
+                class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+                onerror="this.style.display='none'"
+              />
+            ` : `
+              <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-600 border-2 border-emerald-500 shadow-md">
+                ${supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+            `}
+          </div>
+          
+          <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
+          
+          ${businessTypeLabel ? `
+            <div class="text-xs text-gray-400 mb-1">${businessTypeLabel}</div>
+          ` : ''}
+          
+          <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
+          
+          <div class="flex justify-center gap-4 mb-2 text-sm">
+            <span>⭐ ${supplier.rating || '—'}</span>
+            <span>${supplier.surprise_bags_count || 0}</span>
+            <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
+          </div>
+          
+          ${hasNewBags ? `
+            <div class="text-xs text-green-600 font-medium mb-2">
+              🔔 ${supplier.new_bags_count} новых сюрпризов!
+            </div>
+          ` : ''}
+          
+          <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition" 
+                  onclick="window.goToSupplier(${supplier.id})">
+            Смотреть сюрпризы
+          </button>
+        </div>
+      `;
+      
+      // ✅ ОБНОВЛЯЕМ ПОПАП БЕЗ ПЕРЕСОЗДАНИЯ МАРКЕРА
+      marker._popup?.setContent(popupContent);
+    });
+    
+  }, [suppliers]);
 
   if (loading) {
     return (
