@@ -56,6 +56,21 @@ export default function SuppliersMap({
   const userMarkerRef = useRef<any>(null);
   const markerRefs = useRef<Map<number, any>>(new Map());
 
+  // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА
+  useEffect(() => {
+    // @ts-ignore
+    window.goToSupplier = (id: number) => {
+      console.log('🛒 ПЕРЕХОД К ПОСТАВЩИКУ:', id);
+      if (id > 0) {
+        router.push(`/supplier/${id}`);
+      }
+    };
+    return () => {
+      // @ts-ignore
+      delete window.goToSupplier;
+    };
+  }, [router]);
+
   const markSupplierAsViewed = async (supplierId: number) => {
     try {
       const token = getAuthToken();
@@ -79,6 +94,7 @@ export default function SuppliersMap({
     }
   };
 
+  // WebSocket
   useEffect(() => {
     let ws: WebSocket | null = null;
     
@@ -143,6 +159,7 @@ export default function SuppliersMap({
     };
   }, []);
 
+  // Загрузка Leaflet
   useEffect(() => {
     const loadLeaflet = async () => {
       if (typeof window === 'undefined') return;
@@ -232,6 +249,7 @@ export default function SuppliersMap({
     }
   };
 
+  // Инициализация карты
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -302,6 +320,7 @@ export default function SuppliersMap({
         ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
         : '';
       
+      // ✅ ПОПАП С onclick
       const popupContent = `
         <div class="text-center min-w-[220px] p-3">
           <div class="flex justify-center mb-2">
@@ -339,9 +358,9 @@ export default function SuppliersMap({
             </div>
           ` : ''}
           
-          <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition view-supplier-btn" 
-                  data-id="${supplier.id}" 
-                  data-name="${supplier.business_name}">
+          <!-- ✅ onclick НАПРЯМУЮ -->
+          <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition" 
+                  onclick="window.goToSupplier(${supplier.id})">
             Смотреть сюрпризы
           </button>
         </div>
@@ -357,70 +376,16 @@ export default function SuppliersMap({
       
       markerRefs.current.set(supplier.id, marker);
       
-      // ✅ КЛИК НА МАРКЕР → ОТКРЫТЬ ПОПАП
       marker.on('click', () => {
         marker.openPopup();
       });
       
-      // ✅ ОТКРЫТИЕ ПОПАПА → ОТМЕТИТЬ ПРОСМОТР + ПЕРЕХОД ПО КНОПКЕ
       marker.on('popupopen', () => {
         markSupplierAsViewed(supplier.id);
-        
-        setTimeout(() => {
-          const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
-          if (btn) {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode?.replaceChild(newBtn, btn);
-            
-            newBtn.addEventListener('click', function(e) {
-              e.stopPropagation();
-              e.preventDefault();
-              
-              const id = parseInt(this.getAttribute('data-id') || '0');
-              const name = this.getAttribute('data-name') || '';
-              
-              console.log('🛒 ПЕРЕХОД К ПОСТАВЩИКУ:', id, name);
-              
-              if (id > 0) {
-                marker.closePopup();
-                router.push(`/supplier/${id}`);
-              }
-            });
-          }
-        }, 150);
       });
       
       bounds.push([supplier.lat, supplier.lon]);
     });
-    
-    setTimeout(() => {
-      document.querySelectorAll('.view-supplier-btn').forEach(btn => {
-        const newBtn = btn.cloneNode(true);
-        btn.parentNode?.replaceChild(newBtn, btn);
-        
-        newBtn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          e.preventDefault();
-          
-          const id = parseInt(this.getAttribute('data-id') || '0');
-          const name = this.getAttribute('data-name') || '';
-          
-          console.log('🛒 КНОПКА НАЖАТА! ID:', id, 'Name:', name);
-          
-          if (id > 0) {
-            const marker = markerRefs.current.get(id);
-            if (marker) {
-              marker.closePopup();
-            }
-            router.push(`/supplier/${id}`);
-          }
-          
-          if (onSupplierClick && id) {
-            onSupplierClick(id, name);
-          }
-        });
-      });
-    }, 200);
     
     if (bounds.length > 0) {
       const mapBounds = window.L.latLngBounds(bounds);
