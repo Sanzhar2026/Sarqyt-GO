@@ -1,4 +1,4 @@
-// app/components/SuppliersMap.tsx - ПОЛНАЯ ВЕРСИЯ
+// app/components/SuppliersMap.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -16,7 +16,7 @@ interface Supplier {
   surprise_bags_count: number;
   logo?: string;
   business_type?: string;
-  new_bags_count?: number;  // ✅ ДОБАВЛЕНО!
+  new_bags_count?: number;
 }
 
 interface SuppliersMapProps {
@@ -35,7 +35,6 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   store: 'Магазин',
 };
 
-// ✅ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ТОКЕНА
 const getAuthToken = () => {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
@@ -57,9 +56,6 @@ export default function SuppliersMap({
   const userMarkerRef = useRef<any>(null);
   const markerRefs = useRef<Map<number, any>>(new Map());
 
-  // ============================================================
-  // ✅ ФУНКЦИЯ ДЛЯ ОТМЕТКИ ПРОСМОТРА
-  // ============================================================
   const markSupplierAsViewed = async (supplierId: number) => {
     try {
       const token = getAuthToken();
@@ -76,7 +72,6 @@ export default function SuppliersMap({
       
       if (response.ok) {
         console.log(`✅ Поставщик ${supplierId} отмечен как просмотренный`);
-        // Обновляем данные поставщика
         fetchNearbySuppliers(userLat || 50.318754, userLon || 57.368359);
       }
     } catch (error) {
@@ -84,49 +79,62 @@ export default function SuppliersMap({
     }
   };
 
-  // ============================================================
-  // ✅ WebSocket
-  // ============================================================
   useEffect(() => {
     let ws: WebSocket | null = null;
     
     const connectWebSocket = () => {
       const token = getAuthToken();
-      const wsUrl = token 
-        ? `wss://sarqyt-go-production.up.railway.app/ws?token=${token}`
-        : `wss://sarqyt-go-production.up.railway.app/ws`;
+      if (!token) {
+        console.log('⚠️ Нет токена, WebSocket не подключается');
+        return;
+      }
       
-      ws = new WebSocket(wsUrl);
+      const wsUrl = `wss://toogood-production.up.railway.app/ws`;
       
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected (map)');
-      };
-      
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'new_bag' || data.type === 'update_bag') {
-            const bag = data.data;
-            console.log('🆕 Новый сюрприз от поставщика:', bag.supplier_id);
+      try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('✅ WebSocket connected (map)');
+          ws.send(JSON.stringify({
+            type: 'auth',
+            token: token
+          }));
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
             
-            if (bag.supplier_id) {
-              setActiveSupplierId(bag.supplier_id);
-              fetchNearbySuppliers(userLat || 50.318754, userLon || 57.368359);
-              setTimeout(() => {
-                setActiveSupplierId(null);
-              }, 10000);
+            if (data.type === 'new_bag' || data.type === 'update_bag') {
+              const bag = data.data;
+              console.log('🆕 Новый сюрприз от поставщика:', bag.supplier_id);
+              
+              if (bag.supplier_id) {
+                setActiveSupplierId(bag.supplier_id);
+                fetchNearbySuppliers(userLat || 50.318754, userLon || 57.368359);
+                setTimeout(() => {
+                  setActiveSupplierId(null);
+                }, 10000);
+              }
             }
+          } catch (e) {
+            console.error('❌ WebSocket message error:', e);
           }
-        } catch (e) {
-          console.error('❌ WebSocket error:', e);
-        }
-      };
-      
-      ws.onclose = () => {
-        console.log('🔌 WebSocket disconnected (map)');
-        setTimeout(connectWebSocket, 3000);
-      };
+        };
+        
+        ws.onclose = () => {
+          console.log('🔌 WebSocket disconnected (map)');
+          setTimeout(connectWebSocket, 5000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket error:', error);
+        };
+        
+      } catch (error) {
+        console.error('❌ WebSocket connection error:', error);
+      }
     };
     
     connectWebSocket();
@@ -135,7 +143,6 @@ export default function SuppliersMap({
     };
   }, []);
 
-  // Загрузка Leaflet
   useEffect(() => {
     const loadLeaflet = async () => {
       if (typeof window === 'undefined') return;
@@ -176,6 +183,7 @@ export default function SuppliersMap({
       });
       
       if (!response.ok) {
+        console.error('❌ Ошибка:', response.status);
         setSuppliers([]);
         setLoading(false);
         return;
@@ -198,7 +206,6 @@ export default function SuppliersMap({
     }
   };
 
-  // Получение геолокации
   useEffect(() => {
     if (userLat && userLon) {
       fetchNearbySuppliers(userLat, userLon);
@@ -225,7 +232,6 @@ export default function SuppliersMap({
     }
   };
 
-  // Инициализация карты
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -246,7 +252,6 @@ export default function SuppliersMap({
     
     const bounds: any[] = [];
     
-    // ✅ МАРКЕР ПОЛЬЗОВАТЕЛЯ
     if (showUserLocation && userLat && userLon) {
       const userIcon = window.L.divIcon({
         html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow"></div>`,
@@ -261,7 +266,6 @@ export default function SuppliersMap({
       bounds.push([userLat, userLon]);
     }
     
-    // ✅ МАРКЕРЫ ПОСТАВЩИКОВ
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
@@ -269,10 +273,8 @@ export default function SuppliersMap({
       const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
       const showGreen = isActive || hasNewBags;
       
-      // ✅ ИКОНКА: СЕРАЯ ПО УМОЛЧАНИЮ, ЗЕЛЕНАЯ ЕСЛИ НОВЫЕ СЮРПРИЗЫ
       const iconColor = showGreen ? 'bg-green-500' : 'bg-gray-400';
       
-      // ✅ СЧЕТЧИК НОВЫХ СЮРПРИЗОВ
       const badge = hasNewBags && supplier.new_bags_count 
         ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
             ${supplier.new_bags_count}
@@ -355,21 +357,37 @@ export default function SuppliersMap({
       
       markerRefs.current.set(supplier.id, marker);
       
+      // ✅ КЛИК НА МАРКЕР → ОТКРЫТЬ ПОПАП
       marker.on('click', () => {
         marker.openPopup();
       });
       
-      // ✅ ПРИ ОТКРЫТИИ ПОПАПА - ОТМЕЧАЕМ КАК ПРОСМОТРЕННОЕ
+      // ✅ ОТКРЫТИЕ ПОПАПА → ОТМЕТИТЬ ПРОСМОТР + ПЕРЕХОД ПО КНОПКЕ
       marker.on('popupopen', () => {
         markSupplierAsViewed(supplier.id);
         
-        const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
-        if (btn) {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            router.push(`/supplier/${supplier.id}`);
-          });
-        }
+        setTimeout(() => {
+          const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
+          if (btn) {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode?.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', function(e) {
+              e.stopPropagation();
+              e.preventDefault();
+              
+              const id = parseInt(this.getAttribute('data-id') || '0');
+              const name = this.getAttribute('data-name') || '';
+              
+              console.log('🛒 ПЕРЕХОД К ПОСТАВЩИКУ:', id, name);
+              
+              if (id > 0) {
+                marker.closePopup();
+                router.push(`/supplier/${id}`);
+              }
+            });
+          }
+        }, 150);
       });
       
       bounds.push([supplier.lat, supplier.lon]);
@@ -377,12 +395,23 @@ export default function SuppliersMap({
     
     setTimeout(() => {
       document.querySelectorAll('.view-supplier-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode?.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', function(e) {
           e.stopPropagation();
-          const id = parseInt((e.target as HTMLElement).getAttribute('data-id') || '0');
-          const name = (e.target as HTMLElement).getAttribute('data-name') || '';
+          e.preventDefault();
           
-          if (id) {
+          const id = parseInt(this.getAttribute('data-id') || '0');
+          const name = this.getAttribute('data-name') || '';
+          
+          console.log('🛒 КНОПКА НАЖАТА! ID:', id, 'Name:', name);
+          
+          if (id > 0) {
+            const marker = markerRefs.current.get(id);
+            if (marker) {
+              marker.closePopup();
+            }
             router.push(`/supplier/${id}`);
           }
           
@@ -391,7 +420,7 @@ export default function SuppliersMap({
           }
         });
       });
-    }, 100);
+    }, 200);
     
     if (bounds.length > 0) {
       const mapBounds = window.L.latLngBounds(bounds);
