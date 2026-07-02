@@ -226,20 +226,17 @@ export default function SuppliersMap({
       bounds.push([userLat, userLon]);
     }
     
-    // ✅ МАРКЕРЫ ПОСТАВЩИКОВ С ЗЕЛЕНЫМ КОЛЬЦОМ (КАК В WHATSAPP)
+    // ✅ МАРКЕРЫ ПОСТАВЩИКОВ С ЗЕЛЕНЫМ КОЛЬЦОМ
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
       const isActive = activeSupplierId === supplier.id;
       
-      // ✅ ИКОНКА С ЗЕЛЕНЫМ КОЛЬЦОМ ВОКРУГ (КАК В WHATSAPP)
       const iconHtml = `
         <div class="relative flex items-center justify-center">
           ${isActive ? `
-            <!-- ЗЕЛЕНОЕ КОЛЬЦО (КАК В WHATSAPP) -->
             <div class="absolute -inset-2 rounded-full border-4 border-green-500 animate-pulse-ring"></div>
           ` : ''}
-          <!-- ОСНОВНАЯ ИКОНКА -->
           <div class="w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow relative z-10"></div>
         </div>
       `;
@@ -251,14 +248,12 @@ export default function SuppliersMap({
         iconAnchor: [6, 6]
       });
       
-      // ✅ БИЗНЕС-ТИП В ПОПАПЕ
       const businessTypeLabel = supplier.business_type 
         ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
         : '';
       
       const popupContent = `
         <div class="text-center min-w-[220px] p-3">
-          <!-- АВАТАРКА ПОСТАВЩИКА -->
           <div class="flex justify-center mb-2">
             ${supplier.logo ? `
               <img 
@@ -274,25 +269,20 @@ export default function SuppliersMap({
             `}
           </div>
           
-          <!-- НАЗВАНИЕ -->
           <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
           
-          <!-- БИЗНЕС-ТИП -->
           ${businessTypeLabel ? `
             <div class="text-xs text-gray-400 mb-1">${businessTypeLabel}</div>
           ` : ''}
           
-          <!-- АДРЕС -->
           <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
           
-          <!-- РЕЙТИНГ, ПАКЕТЫ, РАССТОЯНИЕ -->
           <div class="flex justify-center gap-4 mb-2 text-sm">
             <span>⭐ ${supplier.rating || '—'}</span>
             <span>📦 ${supplier.surprise_bags_count || 0}</span>
             <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
           </div>
           
-          <!-- КНОПКА -->
           <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition view-supplier-btn" 
                   data-id="${supplier.id}" 
                   data-name="${supplier.business_name}">
@@ -309,22 +299,22 @@ export default function SuppliersMap({
           minWidth: 220
         });
       
-      // ✅ СОХРАНЯЕМ ССЫЛКУ НА МАРКЕР
       markerRefs.current.set(supplier.id, marker);
+      
+      // ✅ ОТКРЫВАЕМ ПОПАП ПРИ КЛИКЕ НА МАРКЕР (БЕЗ ПЕРЕХОДА)
+      marker.on('click', () => {
+        marker.openPopup();
+      });
       
       marker.on('popupopen', () => {
         const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
         if (btn) {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
+            // ✅ ПЕРЕХОД ТОЛЬКО ПО КНОПКЕ
             router.push(`/supplier/${supplier.id}`);
           });
         }
-      });
-      
-      // ✅ ПРИ КЛИКЕ НА МАРКЕР - ПЕРЕХОД НА СТРАНИЦУ ПОСТАВЩИКА
-      marker.on('click', () => {
-        router.push(`/supplier/${supplier.id}`);
       });
       
       bounds.push([supplier.lat, supplier.lon]);
@@ -353,7 +343,6 @@ export default function SuppliersMap({
       mapInstanceRef.current.fitBounds(mapBounds, { padding: [50, 50] });
     }
     
-    // ✅ ОЧИСТКА ПРИ РАЗМОНТИРОВАНИИ
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -405,7 +394,6 @@ export default function SuppliersMap({
           border: none !important;
         }
         
-        /* ✅ АНИМАЦИЯ ДЛЯ ЗЕЛЕНОГО КОЛЬЦА (КАК В WHATSAPP) */
         :global(.animate-pulse-ring) {
           animation: pulse-ring 1.5s ease-out infinite;
         }
