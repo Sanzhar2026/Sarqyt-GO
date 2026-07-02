@@ -1,7 +1,7 @@
 // lib/api.ts - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 // ============================================================
-// ✅ ПРАВИЛЬНЫЙ URL БЕКЕНДА
+// ✅ ПРАВИЛЬНЫЙ URL БЭКЕНДА
 // ============================================================
 const API_BASE = 'https://toogood-production.up.railway.app';
 
@@ -39,6 +39,10 @@ export interface Supplier {
   distance_km: number;
   rating: number;
   surprise_bags: SurpriseBag[];
+  logo?: string;
+  address?: string;
+  lat?: number;
+  lon?: number;
 }
 
 export interface SurpriseBag {
@@ -55,10 +59,13 @@ export interface SurpriseBag {
   pickup_start_time?: string;
   pickup_end_time?: string;
   is_active?: boolean;
+  supplier_lat?: number;
+  supplier_lon?: number;
 }
 
-// lib/api.ts
-
+// ============================================================
+// ✅ ИНТЕРФЕЙС ORDER - РАСШИРЕННАЯ ВЕРСИЯ
+// ============================================================
 export interface Order {
   id: number;
   order_number: string;
@@ -68,26 +75,52 @@ export interface Order {
   bag_name?: string;
   surprise_bag_name?: string;
   supplier_name?: string;
-  supplier_logo?: string;  // ✅ ДОБАВЛЯЕМ
-  supplier?: {             // ✅ ИЛИ ТАК (если приходит объект)
+  supplier_logo?: string;
+  supplier?: {
     id: number;
     business_name: string;
     logo?: string;
+    lat?: number;
+    lon?: number;
+    address?: string;
   };
-  delivery_type?: string;
-  address?: string;
+  supplier_lat?: number;
+  supplier_lon?: number;
+  supplier_address?: string;
+  customer_lat?: number;
+  customer_lon?: number;
   customer_address?: string;
+  address?: string;
+  delivery_type?: string;
+  delivery_deadline?: string;
   created_at: string;
   updated_at?: string;
+  assigned_courier_id?: number;
+  courier?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    phone: string;
+    car_model?: string;
+    car_number?: string;
+    rating?: number;
+  };
 }
 
 export interface WebSocketMessage {
-  type: 'new_bag' | 'update_bag' | 'delete_bag' | 'bag_quantity_updated';
+  type: 'new_bag' | 'update_bag' | 'delete_bag' | 'bag_quantity_updated' | 'order_status_updated' | 'courier_location';
   data?: {
     bag_id: number;
     available_quantity: number;
     is_active: boolean;
     old_quantity?: number;
+    order_id?: number;
+    new_status?: string;
+    old_status?: string;
+    lat?: number;
+    lon?: number;
+    courier_id?: number;
+    courier_name?: string;
   };
   timestamp?: string;
 }
@@ -243,7 +276,9 @@ export async function getUserOrders(): Promise<Order[]> {
   return data.orders || [];
 }
 
-// Get order by ID (full)
+// ============================================================
+// ✅ GET ORDER BY ID - РАСШИРЕННАЯ ВЕРСИЯ
+// ============================================================
 export async function getOrderById(orderId: number): Promise<Order> {
   const token = getAuthToken();
   
@@ -259,7 +294,20 @@ export async function getOrderById(orderId: number): Promise<Order> {
     throw new Error(`Failed to fetch order: ${response.status}`);
   }
   
-  return response.json();
+  const data = await response.json();
+  
+  // ✅ ПРЕОБРАЗУЕМ ДАННЫЕ В ЕДИНЫЙ ФОРМАТ
+  return {
+    ...data,
+    supplier_logo: data.supplier_logo || data.supplier?.logo || null,
+    supplier_lat: data.supplier_lat || data.supplier?.lat || null,
+    supplier_lon: data.supplier_lon || data.supplier?.lon || null,
+    supplier_address: data.supplier_address || data.supplier?.address || null,
+    amount: data.amount || data.amount_paid || 0,
+    amount_paid: data.amount_paid || data.amount || 0,
+    address: data.address || data.customer_address || '',
+    bag_name: data.bag_name || data.surprise_bag_name || ''
+  };
 }
 
 // Get all orders (admin/supplier)

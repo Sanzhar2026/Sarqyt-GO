@@ -1,14 +1,18 @@
-// app/orders/[id]/page.tsx - ПОЛНАЯ ВЕРСИЯ С АВАТАРКОЙ
+// app/orders/[id]/page.tsx - ПОЛНАЯ ВЕРСИЯ С ГЕОЛОКАЦИЕЙ КУРЬЕРА
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { getOrderById, getAuthToken, type Order } from '../../../lib/api';
 import { useLanguage } from '../../components/LanguageSwitcher';
 import OrderStatusBadge from '../../components/OrderStatusBadge';
+
+// ✅ ДИНАМИЧЕСКИЙ ИМПОРТ КАРТЫ
+const CourierMap = dynamic(() => import('../../components/CourierMap'), { ssr: false });
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -18,9 +22,102 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  
+  // ✅ СОСТОЯНИЯ ДЛЯ КУРЬЕРА
+  const [courierLocation, setCourierLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [courierOnline, setCourierOnline] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<string>('');
+  const [deliveryProgress, setDeliveryProgress] = useState<number>(0);
+  
+  const wsRef = useRef<WebSocket | null>(null);
+  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const orderId = params.id as string;
 
+  // ============================================================
+  // ✅ WEBSOCKET ДЛЯ ОТСЛЕЖИВАНИЯ КУРЬЕРА
+  // ============================================================
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token || !orderId) return;
+
+    const ws = new WebSocket(`wss://toogood-production.up.railway.app/ws?token=${encodeURIComponent(token)}`);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log('✅ WebSocket для отслеживания заказа подключен');
+      // Подписываемся на обновления заказа
+      ws.send(JSON.stringify({
+        type: 'subscribe',
+        channel: `order_${orderId}`
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📨 Получено сообщение:', data);
+
+        if (data.type === 'courier_location') {
+          setCourierLocation({ lat: data.lat, lon: data.lon });
+          setCourierOnline(true);
+          
+          // Обновляем прогресс доставки
+          if (data.progress !== undefined) {
+            setDeliveryProgress(data.progress);
+          }
+        }
+
+        if (data.type === 'order_status_updated') {
+          setOrderStatus(data.new_status);
+          if (data.new_status === 'delivered') {
+            setDeliveryProgress(100);
+          }
+        }
+
+        if (data.type === 'delivery_started') {
+          setOrderStatus('out_for_delivery');
+        }
+
+        if (data.type === 'courier_arrived') {
+          setOrderStatus('nearby');
+          setDeliveryProgress(90);
+        }
+
+        if (data.type === 'delivery_confirmed_by_customer') {
+          setOrderStatus('delivered');
+          setDeliveryProgress(100);
+          showNotification('✅ Заказ доставлен!', 'success');
+        }
+
+        if (data.type === 'order_cancelled') {
+          setOrderStatus('cancelled');
+          showNotification('❌ Заказ отменен', 'error');
+        }
+
+      } catch (error) {
+        console.error('WebSocket error:', error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('🔌 WebSocket отключен');
+      setTimeout(() => {
+        if (wsRef.current?.readyState !== WebSocket.OPEN) {
+          // Попытка переподключения
+        }
+      }, 3000);
+    };
+
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
+    };
+  }, [orderId]);
+
+  // ============================================================
+  // ✅ ЗАГРУЗКА ЗАКАЗА
+  // ============================================================
   useEffect(() => {
     const token = getAuthToken();
     
@@ -42,6 +139,7 @@ export default function OrderDetailPage() {
       .then((data) => {
         console.log('✅ Заказ загружен:', data);
         setOrder(data);
+        setOrderStatus(data.status);
         setError(null);
       })
       .catch((err) => {
@@ -53,6 +151,43 @@ export default function OrderDetailPage() {
       });
   }, [orderId, router]);
 
+  // ============================================================
+  // ✅ ПОЛУЧЕНИЕ ГЕОЛОКАЦИИ КУРЬЕРА
+  // ============================================================
+  const fetchCourierLocation = async () => {
+    if (!order) return;
+    
+    const token = getAuthToken();
+    try {
+      const response = await fetch(`/api/order/${order.id}/delivery-status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      
+      if (data.has_courier && data.courier) {
+        setCourierOnline(true);
+        // Если есть координаты курьера
+        if (data.courier.lat && data.courier.lon) {
+          setCourierLocation({ lat: data.courier.lat, lon: data.courier.lon });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching courier location:', error);
+    }
+  };
+
+  // Периодическое обновление геолокации
+  useEffect(() => {
+    if (order && ['confirmed', 'out_for_delivery', 'nearby'].includes(orderStatus)) {
+      fetchCourierLocation();
+      const interval = setInterval(fetchCourierLocation, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [order, orderStatus]);
+
+  // ============================================================
+  // ✅ ФУНКЦИИ
+  // ============================================================
   const handleConfirmDelivery = async () => {
     if (!order) return;
     
@@ -77,12 +212,14 @@ export default function OrderDetailPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Заказ подтвержден:', data);
-        alert(t('deliveryConfirmed'));
+        showNotification(t('deliveryConfirmed'), 'success');
         
         setOrder({
           ...order,
           status: 'delivered'
         });
+        setOrderStatus('delivered');
+        setDeliveryProgress(100);
         
         setTimeout(() => {
           router.push('/orders');
@@ -90,11 +227,11 @@ export default function OrderDetailPage() {
       } else {
         const errorData = await response.json();
         console.error('❌ Ошибка подтверждения:', errorData);
-        alert(errorData.detail || t('confirmError'));
+        showNotification(errorData.detail || t('confirmError'), 'error');
       }
     } catch (err) {
       console.error('❌ Ошибка сети:', err);
-      alert(t('networkError'));
+      showNotification(t('networkError'), 'error');
     } finally {
       setConfirming(false);
     }
@@ -124,12 +261,13 @@ export default function OrderDetailPage() {
 
       if (response.ok) {
         console.log('✅ Заказ отменен');
-        alert(t('orderCancelled'));
+        showNotification(t('orderCancelled'), 'success');
         
         setOrder({
           ...order,
           status: 'cancelled'
         });
+        setOrderStatus('cancelled');
         
         setTimeout(() => {
           router.push('/orders');
@@ -137,12 +275,25 @@ export default function OrderDetailPage() {
       } else {
         const errorData = await response.json();
         console.error('❌ Ошибка отмены:', errorData);
-        alert(errorData.detail || t('cancelError'));
+        showNotification(errorData.detail || t('cancelError'), 'error');
       }
     } catch (err) {
       console.error('❌ Ошибка сети:', err);
-      alert(t('networkError'));
+      showNotification(t('networkError'), 'error');
     }
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const toast = document.createElement('div');
+    const colors = {
+      success: 'bg-[#367666]',
+      error: 'bg-red-500',
+      info: 'bg-blue-500'
+    };
+    toast.className = `fixed bottom-20 left-4 right-4 z-50 p-3 rounded-xl text-white text-center animate-slide-up text-sm ${colors[type]}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
   };
 
   const getOrderName = (order: Order): string => {
@@ -159,9 +310,24 @@ export default function OrderDetailPage() {
     return order.supplier_name || t('unknown');
   };
 
-  // ✅ ПОЛУЧАЕМ ЛОГОТИП ИЗ ЗАКАЗА
   const getSupplierLogo = (order: Order): string | null => {
     return order.supplier_logo || order.supplier?.logo || null;
+  };
+
+  const getStatusText = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      'pending': 'Ожидает',
+      'confirmed': 'Подтвержден',
+      'preparing': 'Готовится',
+      'ready_for_pickup': 'Готов к выдаче',
+      'picked_up': 'Забран курьером',
+      'out_for_delivery': 'В пути',
+      'nearby': 'Курьер рядом',
+      'waiting_confirmation': 'Ожидает подтверждения',
+      'delivered': 'Доставлен',
+      'cancelled': 'Отменен'
+    };
+    return statusMap[status] || status;
   };
 
   if (loading) {
@@ -191,6 +357,7 @@ export default function OrderDetailPage() {
 
   const supplierLogo = getSupplierLogo(order);
   const supplierName = getSupplierName(order);
+  const isDeliveryInProgress = ['confirmed', 'out_for_delivery', 'nearby', 'waiting_confirmation'].includes(orderStatus);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -204,7 +371,6 @@ export default function OrderDetailPage() {
             ←
           </button>
           
-          {/* ✅ АВАТАРКА ПОСТАВЩИКА */}
           <div className="flex items-center gap-3 flex-1">
             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/50 flex-shrink-0">
               {supplierLogo ? (
@@ -272,6 +438,65 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
+        {/* ✅ КАРТА С МАРШРУТОМ И КУРЬЕРОМ */}
+        {isDeliveryInProgress && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                <span>📍</span> Отслеживание доставки
+              </h3>
+              {courierOnline ? (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  Курьер в пути
+                </span>
+              ) : (
+                <span className="text-xs text-gray-400">Курьер не назначен</span>
+              )}
+            </div>
+            
+            <div className="relative h-56 rounded-xl overflow-hidden border border-gray-200">
+              <CourierMap
+                orderId={order.id}
+                restaurantLocation={order.supplier_lat ? { 
+                  lat: order.supplier_lat, 
+                  lon: order.supplier_lon 
+                } : order.supplier?.lat ? { 
+                  lat: order.supplier.lat, 
+                  lon: order.supplier.lon 
+                } : undefined}
+                customerLocation={order.customer_lat ? { 
+                  lat: order.customer_lat, 
+                  lon: order.customer_lon 
+                } : undefined}
+                courierLocation={courierLocation || undefined}
+                height="100%"
+                showRoute={true}
+                routeColor="#3b82f6"
+                routeWidth={3}
+                showUserLocation={true}
+              />
+            </div>
+            
+            {/* Прогресс доставки */}
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Заказ принят</span>
+                <span>Доставлен</span>
+              </div>
+              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[#367666] rounded-full transition-all duration-500"
+                  style={{ width: `${deliveryProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1 text-center">
+                {getStatusText(orderStatus)}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Информация о заказе */}
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-3">{t('orderDetails')}</h3>
@@ -298,12 +523,23 @@ export default function OrderDetailPage() {
                 <span className="text-gray-800 text-right max-w-[60%]">{order.address}</span>
               </div>
             )}
+            
+            {/* Информация о курьере */}
+            {courierOnline && (
+              <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                <span className="text-gray-500">Курьер</span>
+                <span className="text-gray-800 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  В пути
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Кнопки действий */}
         <div className="flex flex-col gap-3 pt-4">
-          {order.status === 'waiting_confirmation' && (
+          {orderStatus === 'waiting_confirmation' && (
             <button
               onClick={handleConfirmDelivery}
               disabled={confirming}
@@ -320,7 +556,7 @@ export default function OrderDetailPage() {
             </button>
           )}
 
-          {['pending', 'confirmed', 'waiting_confirmation'].includes(order.status) && (
+          {['pending', 'confirmed', 'waiting_confirmation'].includes(orderStatus) && (
             <button
               onClick={handleCancelOrder}
               className="w-full bg-red-500 text-white py-4 rounded-2xl font-semibold hover:bg-red-600 transition active:scale-[0.98]"

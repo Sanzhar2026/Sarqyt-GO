@@ -1,4 +1,4 @@
-// app/components/CourierMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (зеленая линия)
+// app/components/CourierMap.tsx - ПОЛНАЯ ВЕРСИЯ С ЗЕЛЕНОЙ ЛИНИЕЙ И ПОДДЕРЖКОЙ ВСЕХ ПРОПСОВ
 
 'use client';
 
@@ -104,12 +104,13 @@ const LIGHT_MAP_TILE = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{
 interface CourierMapProps {
   restaurantLocation?: { lat: number; lon: number };
   customerLocation?: { lat: number; lon: number };
-  height?: string;
+  height?: string | number;
   showRoute?: boolean;
   routeColor?: string;
   routeWidth?: number;
   courierLocation?: { lat: number; lon: number };
   orderId?: string | number;
+  showUserLocation?: boolean;
 }
 
 export default function CourierMap({ 
@@ -121,6 +122,7 @@ export default function CourierMap({
   routeWidth = 4,
   courierLocation,
   orderId,
+  showUserLocation = true,
 }: CourierMapProps) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
@@ -130,26 +132,26 @@ export default function CourierMap({
   const mapRef = useRef<any>(null);
   const mapInstanceRef = useRef<any>(null);
   const routeLayerRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
+    if (showUserLocation && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lon: position.coords.longitude
+          });
+        },
+        () => {
+          setUserLocation({ lat: 50.289, lon: 57.149 });
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
       setUserLocation({ lat: 50.289, lon: 57.149 });
-      return;
     }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude
-        });
-      },
-      () => {
-        setUserLocation({ lat: 50.289, lon: 57.149 });
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }, []);
+  }, [showUserLocation]);
 
   useEffect(() => {
     if (restaurantLocation?.lat && restaurantLocation?.lon) {
@@ -232,7 +234,6 @@ export default function CourierMap({
           }
         }
         
-        // Если ORS не вернул маршрут - используем прямую линию
         if (points.length === 0) {
           console.log('⚠️ ORS не вернул маршрут, используем прямую линию');
           points = getStraightLineRoute(
@@ -241,26 +242,26 @@ export default function CourierMap({
           );
         }
 
-        // ✅ СОЗДАЕМ ЛИНИЮ С ПРИНУДИТЕЛЬНЫМ ЗЕЛЕНЫМ ЦВЕТОМ
+        // ✅ ЗЕЛЕНАЯ ЛИНИЯ
         routeLayerRef.current = L.polyline(points, {
-          color: '#367666',        // ЯВНО ЗЕЛЕНЫЙ
-          weight: 4,
-          opacity: 1,              // 100% непрозрачность
+          color: routeColor,
+          weight: routeWidth,
+          opacity: 1,
           lineCap: 'round',
           lineJoin: 'round',
-          className: 'courier-route-line'  // добавляем класс для CSS
+          className: 'courier-route-line'
         }).addTo(mapInstanceRef.current);
 
-        // ✅ ПРИНУДИТЕЛЬНО УСТАНАВЛИВАЕМ СТИЛЬ ЧЕРЕЗ DOM
+        // ✅ ПРИНУДИТЕЛЬНО ЗЕЛЕНЫЙ ЦВЕТ ЧЕРЕЗ DOM
         const routeElement = routeLayerRef.current._path;
         if (routeElement) {
-          routeElement.style.stroke = '#367666';
-          routeElement.style.strokeWidth = '4px';
+          routeElement.style.stroke = routeColor;
+          routeElement.style.strokeWidth = routeWidth + 'px';
           routeElement.style.opacity = '1';
         }
 
         setRouteBuilt(true);
-        console.log('✅ Маршрут построен! Цвет:', '#367666');
+        console.log('✅ Маршрут построен! Цвет:', routeColor);
         
         mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds(), { 
           padding: [50, 50] 
@@ -272,11 +273,15 @@ export default function CourierMap({
     };
 
     setTimeout(buildRoute, 500);
-  }, [showRoute, restaurantLocation, customerLocation, mapLoaded, routeBuilt]);
+  }, [showRoute, restaurantLocation, customerLocation, mapLoaded, routeBuilt, routeColor, routeWidth]);
 
   // Маркеры
   useEffect(() => {
     if (!mapInstanceRef.current) return;
+    
+    // Очищаем старые маркеры
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
     
     // Ресторан
     if (restaurantLocation?.lat && restaurantLocation?.lon) {
@@ -285,9 +290,10 @@ export default function CourierMap({
         iconSize: [32, 32],
         className: 'custom-div-icon'
       });
-      L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon })
+      const marker = L.marker([restaurantLocation.lat, restaurantLocation.lon], { icon })
         .addTo(mapInstanceRef.current)
-        .bindPopup('Ресторан');
+        .bindPopup('🏪 Ресторан');
+      markersRef.current.push(marker);
     }
     
     // Клиент
@@ -297,23 +303,38 @@ export default function CourierMap({
         iconSize: [32, 32],
         className: 'custom-div-icon'
       });
-      L.marker([customerLocation.lat, customerLocation.lon], { icon })
+      const marker = L.marker([customerLocation.lat, customerLocation.lon], { icon })
         .addTo(mapInstanceRef.current)
-        .bindPopup('Клиент');
+        .bindPopup('📍 Клиент');
+      markersRef.current.push(marker);
+    }
+    
+    // Курьер (если есть)
+    if (courierLocation?.lat && courierLocation?.lon) {
+      const icon = L.divIcon({
+        html: `<div class="w-6 h-6 bg-emerald-500 rounded-full border-2 border-white shadow-lg animate-pulse flex items-center justify-center text-white text-xs">🚚</div>`,
+        iconSize: [24, 24],
+        className: 'custom-div-icon'
+      });
+      const marker = L.marker([courierLocation.lat, courierLocation.lon], { icon })
+        .addTo(mapInstanceRef.current)
+        .bindPopup('🚚 Курьер');
+      markersRef.current.push(marker);
     }
     
     // Пользователь
-    if (userLocation?.lat && userLocation?.lon) {
+    if (showUserLocation && userLocation?.lat && userLocation?.lon) {
       const icon = L.divIcon({
-        html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg"></div>`,
+        html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse"></div>`,
         iconSize: [16, 16],
         className: 'custom-div-icon'
       });
-      L.marker([userLocation.lat, userLocation.lon], { icon })
+      const marker = L.marker([userLocation.lat, userLocation.lon], { icon })
         .addTo(mapInstanceRef.current)
-        .bindPopup('Вы здесь');
+        .bindPopup('📍 Вы здесь');
+      markersRef.current.push(marker);
     }
-  }, [restaurantLocation, customerLocation, userLocation, mapLoaded]);
+  }, [restaurantLocation, customerLocation, courierLocation, userLocation, mapLoaded, showUserLocation]);
 
   if (!mapLoaded || !mapCenter) {
     return (
@@ -328,15 +349,14 @@ export default function CourierMap({
 
   return (
     <div className="relative w-full h-full" style={{ height }}>
-      {/* ✅ ДОБАВЛЯЕМ CSS ДЛЯ ПРИНУДИТЕЛЬНОГО ЗЕЛЕНОГО ЦВЕТА */}
       <style jsx>{`
         :global(.courier-route-line) {
-          stroke: #367666 !important;
-          stroke-width: 4px !important;
+          stroke: ${routeColor} !important;
+          stroke-width: ${routeWidth}px !important;
           opacity: 1 !important;
         }
         :global(.leaflet-interactive) {
-          stroke: #367666 !important;
+          stroke: ${routeColor} !important;
         }
       `}</style>
       
