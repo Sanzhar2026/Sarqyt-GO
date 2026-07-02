@@ -349,14 +349,18 @@ export default function SuppliersMap({
           </div>
         `;
         
-        const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
-          .addTo(mapInstanceRef.current)
-          .bindPopup(popupContent, {
-            className: 'supplier-popup',
-            maxWidth: 260,
-            minWidth: 220
-          });
-        
+       // app/components/SuppliersMap.tsx - ИСПРАВЛЕННЫЙ МАРКЕР
+
+const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
+  .addTo(mapInstanceRef.current)
+  .bindPopup(popupContent, {
+    className: 'supplier-popup',
+    maxWidth: 260,
+    minWidth: 220,
+    autoPan: false,        // ✅ ОТКЛЮЧАЕМ АВТОПАНОРАМИРОВАНИЕ
+  // ✅ УБИРАЕМ ОТСТУПЫ
+    keepInView: false      // ✅ НЕ ДЕРЖАТЬ В ВИДЕ
+  });
         markerRefs.current.set(supplier.id, marker);
         
         marker.on('click', () => {
