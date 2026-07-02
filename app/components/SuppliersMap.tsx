@@ -1,3 +1,5 @@
+// app/components/SuppliersMap.tsx - ПОЛНАЯ ВЕРСИЯ
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -14,6 +16,7 @@ interface Supplier {
   surprise_bags_count: number;
   logo?: string;
   business_type?: string;
+  new_bags_count?: number;  // ✅ ДОБАВЛЕНО!
 }
 
 interface SuppliersMapProps {
@@ -23,7 +26,6 @@ interface SuppliersMapProps {
   showUserLocation?: boolean;
 }
 
-// ✅ ТИПЫ БИЗНЕСА
 const BUSINESS_TYPE_LABELS: Record<string, string> = {
   restaurant: 'Ресторан',
   cafe: 'Кафе',
@@ -31,6 +33,12 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   bakery: 'Пекарня',
   supermarket: 'Супермаркет',
   store: 'Магазин',
+};
+
+// ✅ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ТОКЕНА
+const getAuthToken = () => {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
 };
 
 export default function SuppliersMap({ 
@@ -49,12 +57,41 @@ export default function SuppliersMap({
   const userMarkerRef = useRef<any>(null);
   const markerRefs = useRef<Map<number, any>>(new Map());
 
-  // ✅ WebSocket для отслеживания новых сюрпризов
+  // ============================================================
+  // ✅ ФУНКЦИЯ ДЛЯ ОТМЕТКИ ПРОСМОТРА
+  // ============================================================
+  const markSupplierAsViewed = async (supplierId: number) => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      
+      const response = await fetch('/api/suppliers/mark-viewed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ supplier_id: supplierId })
+      });
+      
+      if (response.ok) {
+        console.log(`✅ Поставщик ${supplierId} отмечен как просмотренный`);
+        // Обновляем данные поставщика
+        fetchNearbySuppliers(userLat || 50.318754, userLon || 57.368359);
+      }
+    } catch (error) {
+      console.error('❌ Ошибка отметки просмотра:', error);
+    }
+  };
+
+  // ============================================================
+  // ✅ WebSocket
+  // ============================================================
   useEffect(() => {
     let ws: WebSocket | null = null;
     
     const connectWebSocket = () => {
-      const token = sessionStorage.getItem('userToken');
+      const token = getAuthToken();
       const wsUrl = token 
         ? `wss://sarqyt-go-production.up.railway.app/ws?token=${token}`
         : `wss://sarqyt-go-production.up.railway.app/ws`;
@@ -131,7 +168,12 @@ export default function SuppliersMap({
       const url = `/api/suppliers/nearby?lat=${lat}&lon=${lon}&radius=30`;
       console.log('📡 Запрос:', url);
       
-      const response = await fetch(url);
+      const token = getAuthToken();
+      const response = await fetch(url, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       
       if (!response.ok) {
         setSuppliers([]);
@@ -219,34 +261,45 @@ export default function SuppliersMap({
       bounds.push([userLat, userLon]);
     }
     
-    // ✅ МАРКЕРЫ ПОСТАВЩИКОВ С ЗЕЛЕНЫМ КОЛЬЦОМ (КАК В WHATSAPP)
+    // ✅ МАРКЕРЫ ПОСТАВЩИКОВ
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
       const isActive = activeSupplierId === supplier.id;
+      const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
+      const showGreen = isActive || hasNewBags;
       
-      // ✅ ИКОНКА С ЗЕЛЕНЫМ КОЛЬЦОМ
+      // ✅ ИКОНКА: СЕРАЯ ПО УМОЛЧАНИЮ, ЗЕЛЕНАЯ ЕСЛИ НОВЫЕ СЮРПРИЗЫ
+      const iconColor = showGreen ? 'bg-green-500' : 'bg-gray-400';
+      
+      // ✅ СЧЕТЧИК НОВЫХ СЮРПРИЗОВ
+      const badge = hasNewBags && supplier.new_bags_count 
+        ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
+            ${supplier.new_bags_count}
+          </div>`
+        : '';
+      
       const iconHtml = `
         <div class="relative flex items-center justify-center">
-          ${isActive ? `
-            <div class="absolute -inset-2 rounded-full border-4 border-green-500 animate-pulse-ring" style="width: 20px; height: 20px;"></div>
+          ${showGreen ? `
+            <div class="absolute -inset-3 rounded-full border-[6px] border-green-500 animate-pulse-ring" style="width: 30px; height: 30px;"></div>
           ` : ''}
-          <div class="w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow relative z-10"></div>
+          ${badge}
+          <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10"></div>
         </div>
       `;
       
       const icon = window.L.divIcon({
         html: iconHtml,
-        iconSize: [12, 12],
+        iconSize: [16, 16],
         className: 'custom-div-icon',
-        iconAnchor: [6, 6]
+        iconAnchor: [8, 8]
       });
       
       const businessTypeLabel = supplier.business_type 
         ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
         : '';
       
-      // ✅ ПОПАП БЕЗ ИКОНОК (ТОЛЬКО АВАТАР И ИНФО)
       const popupContent = `
         <div class="text-center min-w-[220px] p-3">
           <div class="flex justify-center mb-2">
@@ -278,6 +331,12 @@ export default function SuppliersMap({
             <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
           </div>
           
+          ${hasNewBags ? `
+            <div class="text-xs text-green-600 font-medium mb-2">
+              🔔 ${supplier.new_bags_count} новых сюрпризов!
+            </div>
+          ` : ''}
+          
           <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition view-supplier-btn" 
                   data-id="${supplier.id}" 
                   data-name="${supplier.business_name}">
@@ -300,12 +359,14 @@ export default function SuppliersMap({
         marker.openPopup();
       });
       
+      // ✅ ПРИ ОТКРЫТИИ ПОПАПА - ОТМЕЧАЕМ КАК ПРОСМОТРЕННОЕ
       marker.on('popupopen', () => {
+        markSupplierAsViewed(supplier.id);
+        
         const btn = document.querySelector(`.view-supplier-btn[data-id="${supplier.id}"]`);
         if (btn) {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            console.log('🛒 Переход на страницу поставщика:', supplier.id);
             router.push(`/supplier/${supplier.id}`);
           });
         }
@@ -322,7 +383,6 @@ export default function SuppliersMap({
           const name = (e.target as HTMLElement).getAttribute('data-name') || '';
           
           if (id) {
-            console.log('🛒 Переход на страницу поставщика:', id);
             router.push(`/supplier/${id}`);
           }
           
@@ -391,19 +451,21 @@ export default function SuppliersMap({
         
         :global(.animate-pulse-ring) {
           animation: pulse-ring 1.5s ease-out infinite;
+          border-color: #22c55e !important;
+          border-width: 6px !important;
         }
         
         @keyframes pulse-ring {
           0% {
-            transform: scale(1);
+            transform: scale(0.8);
             opacity: 1;
           }
           50% {
-            transform: scale(1.4);
-            opacity: 0.5;
+            transform: scale(1.6);
+            opacity: 0.4;
           }
           100% {
-            transform: scale(1);
+            transform: scale(0.8);
             opacity: 1;
           }
         }
