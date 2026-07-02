@@ -1,4 +1,4 @@
-// app/components/SuppliersMap.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ ДУБЛИРОВАНИЯ И ОШИБОК TS)
+// app/components/SuppliersMap.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 
 'use client';
 
@@ -55,6 +55,7 @@ export default function SuppliersMap({
   const mapInstanceRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
   const markerRefs = useRef<Map<number, any>>(new Map());
+  const isMapInitialized = useRef(false); // ✅ ФЛАГ ДЛЯ ПЕРВОГО ЗАПУСКА
 
   // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА
   useEffect(() => {
@@ -249,7 +250,7 @@ export default function SuppliersMap({
     }
   };
 
-  // ✅ ФУНКЦИЯ СОЗДАНИЯ МАРКЕРА (ИСПРАВЛЕННАЯ)
+  // ✅ ФУНКЦИЯ СОЗДАНИЯ МАРКЕРА
   const createMarker = (supplier: Supplier, map: any) => {
     const isActive = activeSupplierId === supplier.id;
     const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
@@ -273,7 +274,6 @@ export default function SuppliersMap({
       </div>
     `;
     
-    // ✅ ИСПРАВЛЕНО: используем L.point() для избежания ошибки TypeScript
     const icon = window.L.divIcon({
       html: iconHtml,
       iconSize: window.L.point(16, 16),
@@ -336,7 +336,6 @@ export default function SuppliersMap({
         maxWidth: 260,
         minWidth: 220,
         autoPan: false,
-        autoPanPadding: 0,
         keepInView: false
       });
     
@@ -351,37 +350,12 @@ export default function SuppliersMap({
     return marker;
   };
 
-  // ✅ ИНИЦИАЛИЗАЦИЯ КАРТЫ
+  // ✅ ОТДЕЛЬНЫЙ useEffect ДЛЯ СОЗДАНИЯ КАРТЫ (ТОЛЬКО 1 РАЗ)
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
     if (!mapRef.current) return;
+    if (isMapInitialized.current) return; // ✅ НЕ СОЗДАЕМ КАРТУ ВТОРОЙ РАЗ!
     
-    // ✅ ЕСЛИ КАРТА УЖЕ ЕСТЬ - ОБНОВЛЯЕМ ТОЛЬКО МАРКЕРЫ
-    if (mapInstanceRef.current) {
-      const center = mapInstanceRef.current.getCenter();
-      const zoom = mapInstanceRef.current.getZoom();
-      
-      markerRefs.current.forEach(marker => {
-        mapInstanceRef.current.removeLayer(marker);
-      });
-      markerRefs.current.clear();
-      
-      const validSuppliersWithCoords = suppliers.filter(s => s.lat && s.lon);
-      
-      validSuppliersWithCoords.forEach(supplier => {
-        if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
-        const marker = createMarker(supplier, mapInstanceRef.current);
-        markerRefs.current.set(supplier.id, marker);
-      });
-      
-      // ✅ ВОССТАНАВЛИВАЕМ ПОЗИЦИЮ (БЕЗ FITBOUNDS!)
-      if (center && zoom) {
-        mapInstanceRef.current.setView(center, zoom);
-      }
-      return;
-    }
-    
-    // ✅ СОЗДАНИЕ КАРТЫ (ПЕРВЫЙ РАЗ)
     const validSuppliersWithCoords = suppliers.filter(s => s.lat && s.lon);
     if (validSuppliersWithCoords.length === 0) return;
     
@@ -419,21 +393,55 @@ export default function SuppliersMap({
       bounds.push([supplier.lat, supplier.lon]);
     });
     
-    // ✅ ТОЛЬКО ПРИ ПЕРВОМ СОЗДАНИИ КАРТЫ
     if (bounds.length > 0) {
       const mapBounds = window.L.latLngBounds(bounds);
       mapInstanceRef.current.fitBounds(mapBounds, { padding: [50, 50] });
     }
+    
+    isMapInitialized.current = true; // ✅ КАРТА СОЗДАНА!
     
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
         markerRefs.current.clear();
+        isMapInitialized.current = false;
       }
     };
     
-  }, [mapLoaded, loading, suppliers, userLat, userLon, onSupplierClick, showUserLocation, router, activeSupplierId]);
+  }, [mapLoaded, loading, suppliers, userLat, userLon, showUserLocation]);
+
+  // ✅ ОТДЕЛЬНЫЙ useEffect ДЛЯ ОБНОВЛЕНИЯ МАРКЕРОВ (БЕЗ FITBOUNDS!)
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    if (suppliers.length === 0) return;
+    if (!isMapInitialized.current) return; // ✅ ЖДЕМ, ПОКА КАРТА СОЗДАСТСЯ
+    
+    // Сохраняем позицию
+    const center = mapInstanceRef.current.getCenter();
+    const zoom = mapInstanceRef.current.getZoom();
+    
+    // Удаляем старые маркеры
+    markerRefs.current.forEach(marker => {
+      mapInstanceRef.current.removeLayer(marker);
+    });
+    markerRefs.current.clear();
+    
+    // Добавляем новые маркеры
+    const validSuppliersWithCoords = suppliers.filter(s => s.lat && s.lon);
+    
+    validSuppliersWithCoords.forEach(supplier => {
+      if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
+      const marker = createMarker(supplier, mapInstanceRef.current);
+      markerRefs.current.set(supplier.id, marker);
+    });
+    
+    // ✅ ВОССТАНАВЛИВАЕМ ПОЗИЦИЮ (НЕ МЕНЯЕМ ЗУМ!)
+    if (center && zoom) {
+      mapInstanceRef.current.setView(center, zoom);
+    }
+    
+  }, [suppliers, activeSupplierId]);
 
   if (loading) {
     return (
