@@ -69,18 +69,13 @@ export default function SuppliersMap({
         try {
           const data = JSON.parse(event.data);
           
-          // ✅ НОВЫЙ СЮРПРИЗ ИЛИ ОБНОВЛЕНИЕ
           if (data.type === 'new_bag' || data.type === 'update_bag') {
             const bag = data.data;
             console.log('🆕 Новый сюрприз от поставщика:', bag.supplier_id);
             
             if (bag.supplier_id) {
               setActiveSupplierId(bag.supplier_id);
-              
-              // ✅ Обновляем список поставщиков
               fetchNearbySuppliers(userLat || 50.318754, userLon || 57.368359);
-              
-              // ✅ Через 10 секунд убираем подсветку
               setTimeout(() => {
                 setActiveSupplierId(null);
               }, 10000);
@@ -98,7 +93,6 @@ export default function SuppliersMap({
     };
     
     connectWebSocket();
-    
     return () => {
       if (ws) ws.close();
     };
@@ -180,7 +174,6 @@ export default function SuppliersMap({
     }
   }, [userLat, userLon]);
 
-  // Функция центрирования на пользователе
   const centerOnUser = () => {
     if (mapInstanceRef.current && userLat && userLon) {
       mapInstanceRef.current.setView([userLat, userLon], 15);
@@ -226,16 +219,17 @@ export default function SuppliersMap({
       bounds.push([userLat, userLon]);
     }
     
-    // ✅ МАРКЕРЫ ПОСТАВЩИКОВ С ЗЕЛЕНЫМ КОЛЬЦОМ
+    // ✅ МАРКЕРЫ ПОСТАВЩИКОВ С ЗЕЛЕНЫМ КОЛЬЦОМ (КАК В WHATSAPP)
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
       const isActive = activeSupplierId === supplier.id;
       
+      // ✅ ИКОНКА С ЗЕЛЕНЫМ КОЛЬЦОМ
       const iconHtml = `
         <div class="relative flex items-center justify-center">
           ${isActive ? `
-            <div class="absolute -inset-2 rounded-full border-4 border-green-500 animate-pulse-ring"></div>
+            <div class="absolute -inset-2 rounded-full border-4 border-green-500 animate-pulse-ring" style="width: 20px; height: 20px;"></div>
           ` : ''}
           <div class="w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow relative z-10"></div>
         </div>
@@ -252,6 +246,7 @@ export default function SuppliersMap({
         ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
         : '';
       
+      // ✅ ПОПАП БЕЗ ИКОНОК (ТОЛЬКО АВАТАР И ИНФО)
       const popupContent = `
         <div class="text-center min-w-[220px] p-3">
           <div class="flex justify-center mb-2">
@@ -279,14 +274,14 @@ export default function SuppliersMap({
           
           <div class="flex justify-center gap-4 mb-2 text-sm">
             <span>⭐ ${supplier.rating || '—'}</span>
-            <span>📦 ${supplier.surprise_bags_count || 0}</span>
+            <span>${supplier.surprise_bags_count || 0}</span>
             <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
           </div>
           
           <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition view-supplier-btn" 
                   data-id="${supplier.id}" 
                   data-name="${supplier.business_name}">
-            🛒 Смотреть сюрпризы
+            Смотреть сюрпризы
           </button>
         </div>
       `;
@@ -301,7 +296,6 @@ export default function SuppliersMap({
       
       markerRefs.current.set(supplier.id, marker);
       
-      // ✅ ОТКРЫВАЕМ ПОПАП ПРИ КЛИКЕ НА МАРКЕР (БЕЗ ПЕРЕХОДА)
       marker.on('click', () => {
         marker.openPopup();
       });
@@ -311,7 +305,7 @@ export default function SuppliersMap({
         if (btn) {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            // ✅ ПЕРЕХОД ТОЛЬКО ПО КНОПКЕ
+            console.log('🛒 Переход на страницу поставщика:', supplier.id);
             router.push(`/supplier/${supplier.id}`);
           });
         }
@@ -328,6 +322,7 @@ export default function SuppliersMap({
           const name = (e.target as HTMLElement).getAttribute('data-name') || '';
           
           if (id) {
+            console.log('🛒 Переход на страницу поставщика:', id);
             router.push(`/supplier/${id}`);
           }
           
@@ -404,8 +399,8 @@ export default function SuppliersMap({
             opacity: 1;
           }
           50% {
-            transform: scale(1.3);
-            opacity: 0.6;
+            transform: scale(1.4);
+            opacity: 0.5;
           }
           100% {
             transform: scale(1);
