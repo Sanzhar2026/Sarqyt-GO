@@ -1,4 +1,4 @@
-// app/profile/page.tsx - БОЛЬШАЯ ВЕРСИЯ, НО БЕЗ ИКОНКИ ⏳
+// app/profile/page.tsx - ДВУЯЗЫЧНАЯ ВЕРСИЯ (РУССКИЙ/КАЗАХСКИЙ)
 
 'use client';
 
@@ -231,9 +231,77 @@ export default function ProfilePage() {
   const fullName = user.full_name || `${user.first_name} ${user.last_name}`;
   const userInitials = user.first_name?.[0]?.toUpperCase() || '?';
 
+  // Тексты на двух языках
+  const texts = {
+    ru: {
+      courierStatusOnline: 'На линии',
+      courierStatusOffline: 'Офлайн',
+      courierStatusUnverified: 'Не подтвержден',
+      courierDashboard: 'Панель курьера',
+      becomeCourier: 'Стать курьером',
+      applicationPending: 'Заявка на рассмотрении',
+      profile: 'Профиль',
+      name: 'Имя',
+      phone: 'Телефон',
+      email: 'Email',
+      registered: 'Зарегистрирован',
+      logout: 'Выйти',
+      home: 'Главная',
+      callCenter: 'Колл-центр',
+      callUs: 'Позвоните нам',
+      workingHours: 'Работаем с 9:00 до 18:00',
+      call: 'Позвонить',
+      whatsapp: 'WhatsApp',
+      telegram: 'Telegram',
+      selectImage: 'Выберите изображение',
+      avatarUpdated: 'Аватар обновлен',
+      avatarError: 'Ошибка загрузки аватара',
+      error: 'Ошибка',
+      tryAgain: 'Попробовать снова',
+      userNotFound: 'Пользователь не найден',
+      login: 'Войти',
+      confirmLogout: 'Вы уверены, что хотите выйти?',
+      loading: 'Загрузка...',
+    },
+    kz: {
+      courierStatusOnline: 'Желіде',
+      courierStatusOffline: 'Желіде емес',
+      courierStatusUnverified: 'Расталмаған',
+      courierDashboard: 'Курьер панелі',
+      becomeCourier: 'Курьер болу',
+      applicationPending: 'Өтініш қаралуда',
+      profile: 'Профиль',
+      name: 'Аты-жөні',
+      phone: 'Телефон',
+      email: 'Электронды пошта',
+      registered: 'Тіркелген',
+      logout: 'Шығу',
+      home: 'Басты бет',
+      callCenter: 'Колл-орталық',
+      callUs: 'Бізге қоңырау шалыңыз',
+      workingHours: '9:00-ден 18:00-ге дейін жұмыс істейміз',
+      call: 'Қоңырау шалу',
+      whatsapp: 'WhatsApp',
+      telegram: 'Telegram',
+      selectImage: 'Суретті таңдаңыз',
+      avatarUpdated: 'Аватар жаңартылды',
+      avatarError: 'Аватар жүктеу қатесі',
+      error: 'Қате',
+      tryAgain: 'Қайталап көріңіз',
+      userNotFound: 'Пайдаланушы табылмады',
+      login: 'Кіру',
+      confirmLogout: 'Шығуға сенімдісіз бе?',
+      loading: 'Жүктелуде...',
+    }
+  };
+
+  const getText = (key: keyof typeof texts.ru) => {
+    return texts[lang as 'ru' | 'kz']?.[key] || texts.ru[key];
+  };
+
   const courierStatusText = courierStatus?.is_verified 
-    ? (courierStatus.is_online ? 'На линии' : 'Офлайн')
-    : 'Не подтвержден';
+    ? (courierStatus.is_online ? getText('courierStatusOnline') : getText('courierStatusOffline'))
+    : getText('courierStatusUnverified');
   
   const courierStatusColor = courierStatus?.is_verified 
     ? (courierStatus.is_online ? 'text-emerald-600' : 'text-gray-400')
@@ -254,7 +322,7 @@ export default function ProfilePage() {
 
       <div className="bg-[#367666] text-white px-6 pt-12 pb-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{t('profile')}</h1>
+          <h1 className="text-2xl font-bold">{getText('profile')}</h1>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setLang('ru')}
@@ -323,7 +391,7 @@ export default function ProfilePage() {
               </label>
             </div>
             {uploading && (
-              <p className="text-xs text-gray-400 mt-2">{t('loading')}</p>
+              <p className="text-xs text-gray-400 mt-2">{getText('loading')}</p>
             )}
             <h2 className="text-lg font-bold text-gray-800 mt-3">
               {fullName || 'Пользователь'}
@@ -346,7 +414,7 @@ export default function ProfilePage() {
                 <User size={14} className="text-gray-400" />
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t('name')}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">{getText('name')}</p>
                 <p className="text-sm font-medium text-gray-800">{fullName || '—'}</p>
               </div>
             </div>
@@ -356,7 +424,7 @@ export default function ProfilePage() {
                 <Phone size={14} className="text-gray-400" />
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t('phone')}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider">{getText('phone')}</p>
                 <p className="text-sm font-medium text-gray-800">{user.phone || '—'}</p>
               </div>
             </div>
@@ -367,7 +435,7 @@ export default function ProfilePage() {
                   <Mail size={14} className="text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t('email')}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{getText('email')}</p>
                   <p className="text-sm font-medium text-gray-800">{user.email}</p>
                 </div>
               </div>
@@ -379,7 +447,7 @@ export default function ProfilePage() {
                   <Calendar size={14} className="text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{t('registered')}</p>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">{getText('registered')}</p>
                   <p className="text-sm font-medium text-gray-800">{formatDate(user.created_at)}</p>
                 </div>
               </div>
@@ -391,7 +459,7 @@ export default function ProfilePage() {
               <Link href="/courier/dashboard">
                 <button className="w-full bg-emerald-500 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-600 transition flex items-center justify-center gap-2 shadow-sm">
                   <Truck size={16} />
-                  {t('courierDashboard') || 'Панель курьера'}
+                  {getText('courierDashboard')}
                 </button>
               </Link>
             )}
@@ -400,7 +468,7 @@ export default function ProfilePage() {
               <Link href="/courier/register">
                 <button className="w-full bg-[#367666]/10 text-[#367666] text-sm font-medium py-2.5 rounded-xl hover:bg-[#367666]/20 transition flex items-center justify-center gap-2">
                   <Truck size={16} className="opacity-60" />
-                  {isCourier ? 'Заявка на рассмотрении' : t('becomeCourier')}
+                  {isCourier ? getText('applicationPending') : getText('becomeCourier')}
                 </button>
               </Link>
             )}
@@ -410,13 +478,13 @@ export default function ProfilePage() {
               className="w-full bg-red-50 text-red-600 text-sm font-medium py-2.5 rounded-xl hover:bg-red-100 transition flex items-center justify-center gap-2"
             >
               <LogOut size={16} className="opacity-60" />
-              {t('logout')}
+              {getText('logout')}
             </button>
 
             <Link href="/">
               <button className="w-full bg-gray-50 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-100 transition flex items-center justify-center gap-2">
                 <Home size={16} className="opacity-60" />
-                {t('home')}
+                {getText('home')}
               </button>
             </Link>
           </div>
@@ -426,12 +494,12 @@ export default function ProfilePage() {
         <div className="mt-4 bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center gap-2 mb-4">
             <PhoneCall size={18} className="text-[#367666]" />
-            <h3 className="text-base font-bold text-gray-800">{t('callCenter')}</h3>
+            <h3 className="text-base font-bold text-gray-800">{getText('callCenter')}</h3>
           </div>
           
-          <p className="text-sm text-gray-500 mb-1">{t('callUs')}</p>
+          <p className="text-sm text-gray-500 mb-1">{getText('callUs')}</p>
           <p className="text-sm font-medium text-gray-700 mb-3">📞 {PHONE_NUMBER}</p>
-          <p className="text-xs text-gray-400 mb-4">{t('workingHours')}</p>
+          <p className="text-xs text-gray-400 mb-4">{getText('workingHours')}</p>
           
           <div className="flex flex-wrap gap-3">
             <a 
@@ -439,7 +507,7 @@ export default function ProfilePage() {
               className="flex items-center gap-2 px-4 py-2.5 bg-[#367666] text-white rounded-xl hover:bg-[#2a5a4d] transition text-sm font-medium flex-1 justify-center"
             >
               <Phone size={16} />
-              {t('call')}
+              {getText('call')}
             </a>
             
             <a 
@@ -449,7 +517,7 @@ export default function ProfilePage() {
               className="flex items-center gap-2 px-4 py-2.5 bg-green-500 text-white rounded-xl hover:bg-green-600 transition text-sm font-medium flex-1 justify-center"
             >
               <MessageCircle size={16} />
-              {t('whatsapp')}
+              {getText('whatsapp')}
             </a>
             
             <a 
@@ -461,7 +529,7 @@ export default function ProfilePage() {
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
               </svg>
-              {t('telegram')}
+              {getText('telegram')}
             </a>
           </div>
         </div>

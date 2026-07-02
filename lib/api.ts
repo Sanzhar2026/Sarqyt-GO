@@ -422,3 +422,242 @@ export async function getUserById(userId: number): Promise<User> {
   
   return response.json();
 }
+
+// lib/api.ts - ДОБАВИТЬ В КОНЕЦ ФАЙЛА
+
+// ============================================================
+// ✅ КУРЬЕР: СТАТУС
+// ============================================================
+export interface CourierStatus {
+  is_verified: boolean;
+  is_online: boolean;
+  is_available: boolean;
+  current_order_id?: number;
+  courier_type?: string;
+  rating?: number;
+  total_deliveries?: number;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+}
+
+export async function getCourierStatus(): Promise<CourierStatus | null> {
+  const token = getAuthToken();
+  if (!token) {
+    console.error('❌ Нет токена для получения статуса курьера');
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/courier/status`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      console.error('❌ Ошибка получения статуса курьера:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      return data;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Ошибка:', error);
+    return null;
+  }
+}
+
+// ============================================================
+// ✅ КУРЬЕР: ВЫЙТИ НА ЛИНИЮ
+// ============================================================
+export async function courierGoOnline(lat: number, lon: number): Promise<{ success: boolean; message?: string }> {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, message: 'Нет токена' };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/courier/go-online`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ lat, lon })
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('❌ Ошибка:', error);
+    return { success: false, message: 'Ошибка соединения' };
+  }
+}
+
+// ============================================================
+// ✅ КУРЬЕР: УЙТИ С ЛИНИИ
+// ============================================================
+export async function courierGoOffline(): Promise<{ success: boolean; message?: string }> {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, message: 'Нет токена' };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/courier/go-offline`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('❌ Ошибка:', error);
+    return { success: false, message: 'Ошибка соединения' };
+  }
+}
+
+// ============================================================
+// ✅ КУРЬЕР: ПОЛУЧИТЬ ДОСТУПНЫЕ ЗАКАЗЫ
+// ============================================================
+export interface AvailableOrder {
+  order_id: number;
+  order_number: string;
+  amount: number;
+  supplier_name: string;
+  supplier_address: string;
+  supplier_lat: number;
+  supplier_lon: number;
+  customer_address: string;
+  customer_lat: number;
+  customer_lon: number;
+  bag_name: string;
+  distance_km: number;
+  delivery_type: string;
+}
+
+export async function getAvailableOrders(): Promise<AvailableOrder[]> {
+  const token = getAuthToken();
+  if (!token) {
+    console.error('❌ Нет токена для получения заказов');
+    return [];
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/courier/available-orders`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      console.error('❌ Ошибка получения заказов:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    if (data.success) {
+      return data.orders || [];
+    }
+    return [];
+  } catch (error) {
+    console.error('❌ Ошибка:', error);
+    return [];
+  }
+}
+
+// ============================================================
+// ✅ КУРЬЕР: ВЗЯТЬ ЗАКАЗ
+// ============================================================
+export async function takeOrder(orderId: number): Promise<{ success: boolean; message?: string }> {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, message: 'Нет токена' };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/courier/take-order/${orderId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('❌ Ошибка:', error);
+    return { success: false, message: 'Ошибка соединения' };
+  }
+}
+
+// ============================================================
+// ✅ КУРЬЕР: ОБНОВИТЬ ГЕОЛОКАЦИЮ
+// ============================================================
+export async function updateCourierLocation(lat: number, lon: number): Promise<{ success: boolean }> {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/courier/update-location`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ lat, lon })
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('❌ Ошибка:', error);
+    return { success: false };
+  }
+}
+
+// ============================================================
+// ✅ КУРЬЕР: ПОЛУЧИТЬ ИНФОРМАЦИЮ О ЗАКАЗЕ
+// ============================================================
+export async function getOrderForCourier(orderId: number): Promise<Order | null> {
+  const token = getAuthToken();
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/api/orders/${orderId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return {
+      ...data,
+      supplier_logo: data.supplier_logo || data.supplier?.logo || null,
+      supplier_lat: data.supplier_lat || data.supplier?.lat || null,
+      supplier_lon: data.supplier_lon || data.supplier?.lon || null,
+      supplier_address: data.supplier_address || data.supplier?.address || null,
+      amount: data.amount || data.amount_paid || 0,
+      amount_paid: data.amount_paid || data.amount || 0,
+      address: data.address || data.customer_address || '',
+      bag_name: data.bag_name || data.surprise_bag_name || ''
+    };
+  } catch (error) {
+    console.error('❌ Ошибка:', error);
+    return null;
+  }
+}
