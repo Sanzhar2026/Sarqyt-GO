@@ -69,6 +69,111 @@ export default function SuppliersMap({
     };
   }, [router]);
 
+  // ✅ ОТМЕТКА ПРОСМОТРА С ОБНОВЛЕНИЕМ STATE
+  const markSupplierAsViewed = async (supplierId: number) => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      
+      const response = await fetch('/api/suppliers/mark-viewed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ supplier_id: supplierId })
+      });
+      
+      if (response.ok) {
+        console.log(`✅ Поставщик ${supplierId} отмечен как просмотренный`);
+        
+        // ✅ ОБНОВЛЯЕМ STATE - УБИРАЕМ ЗЕЛЕНОЕ КОЛЬЦО!
+        setSuppliers(prev => {
+          const index = prev.findIndex(s => s.id === supplierId);
+          if (index === -1) return prev;
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            new_bags_count: 0
+          };
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('❌ Ошибка отметки просмотра:', error);
+    }
+  };
+
+  // WebSocket
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    
+    const connectWebSocket = () => {
+      const token = getAuthToken();
+      if (!token) {
+        console.log('⚠️ Нет токена, WebSocket не подключается');
+        return;
+      }
+      
+      const wsUrl = `wss://toogood-production.up.railway.app/ws`;
+      
+      try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('✅ WebSocket connected (map)');
+          ws.send(JSON.stringify({
+            type: 'auth',
+            token: token
+          }));
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'new_bag' || data.type === 'update_bag') {
+              const bag = data.data;
+              console.log('🆕 Новый сюрприз от поставщика:', bag.supplier_id);
+              
+              if (bag.supplier_id) {
+                setSuppliers(prev => {
+                  const index = prev.findIndex(s => s.id === bag.supplier_id);
+                  if (index === -1) return prev;
+                  const updated = [...prev];
+                  updated[index] = {
+                    ...updated[index],
+                    new_bags_count: (updated[index].new_bags_count || 0) + 1
+                  };
+                  return updated;
+                });
+              }
+            }
+          } catch (e) {
+            console.error('❌ WebSocket message error:', e);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('🔌 WebSocket disconnected (map)');
+          setTimeout(connectWebSocket, 5000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('❌ WebSocket error:', error);
+        };
+        
+      } catch (error) {
+        console.error('❌ WebSocket connection error:', error);
+      }
+    };
+    
+    connectWebSocket();
+    return () => {
+      if (ws) ws.close();
+    };
+  }, []);
+
   // Загрузка Leaflet
   useEffect(() => {
     const loadLeaflet = async () => {
@@ -156,7 +261,7 @@ export default function SuppliersMap({
     }
   };
 
-  // ✅ СОЗДАНИЕ КАРТЫ - ТОЛЬКО 1 РАЗ!
+  // ✅ СОЗДАНИЕ КАРТЫ (ТОЛЬКО 1 РАЗ)
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
     if (!mapRef.current) return;
@@ -285,6 +390,10 @@ export default function SuppliersMap({
         marker.openPopup();
       });
       
+      marker.on('popupopen', () => {
+        markSupplierAsViewed(supplier.id);
+      });
+      
       bounds.push([supplier.lat, supplier.lon]);
     });
     
@@ -306,7 +415,7 @@ export default function SuppliersMap({
     
   }, [mapLoaded, loading, suppliers, userLat, userLon, showUserLocation]);
 
-  // ✅ ОБНОВЛЕНИЕ МАРКЕРОВ - МЕНЯЕТСЯ КОГДА ПОЛЬЗОВАТЕЛЬ ПРОСМАТРИВАЕТ
+  // ✅ ОБНОВЛЕНИЕ МАРКЕРОВ
   useEffect(() => {
     if (!mapInstanceRef.current || !isMapCreated.current) return;
     if (suppliers.length === 0) return;
@@ -317,10 +426,7 @@ export default function SuppliersMap({
       const marker = markerRefs.current.get(supplier.id);
       if (!marker) return;
       
-      // ✅ ПРОВЕРЯЕМ, ЕСТЬ ЛИ НОВЫЕ СЮРПРИЗЫ
       const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
-      
-      // ✅ МЕНЯЕМ ТОЛЬКО ИКОНКУ
       const iconColor = hasNewBags ? 'bg-green-500' : 'bg-gray-400';
       
       const badge = hasNewBags && supplier.new_bags_count 
@@ -346,10 +452,8 @@ export default function SuppliersMap({
         iconAnchor: window.L.point(8, 8)
       });
       
-      // ✅ МЕНЯЕМ ИКОНКУ БЕЗ ПЕРЕРИСОВКИ КАРТЫ
       marker.setIcon(newIcon);
       
-      // ✅ ОБНОВЛЯЕМ ПОПАП
       const businessTypeLabel = supplier.business_type 
         ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
         : '';
@@ -398,7 +502,6 @@ export default function SuppliersMap({
         </div>
       `;
       
-      // ✅ ОБНОВЛЯЕМ ПОПАП
       if (marker._popup) {
         marker._popup.setContent(popupContent);
       }
