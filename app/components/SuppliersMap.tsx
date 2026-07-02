@@ -1,4 +1,4 @@
-// app/components/SuppliersMap.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// app/components/SuppliersMap.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ СБРОСА ЗУМА)
 
 'use client';
 
@@ -249,11 +249,135 @@ export default function SuppliersMap({
     }
   };
 
-  // Инициализация карты
+  // ✅ ИНИЦИАЛИЗАЦИЯ КАРТЫ (БЕЗ СБРОСА ЗУМА ПРИ ОБНОВЛЕНИИ)
   useEffect(() => {
     if (!mapLoaded || loading || suppliers.length === 0) return;
-    if (!mapRef.current || mapInstanceRef.current) return;
+    if (!mapRef.current) return;
     
+    // ✅ ЕСЛИ КАРТА УЖЕ ЕСТЬ - ОБНОВЛЯЕМ ТОЛЬКО МАРКЕРЫ
+    if (mapInstanceRef.current) {
+      // Сохраняем текущую позицию и зум
+      const center = mapInstanceRef.current.getCenter();
+      const zoom = mapInstanceRef.current.getZoom();
+      
+      // Удаляем старые маркеры
+      markerRefs.current.forEach(marker => {
+        mapInstanceRef.current.removeLayer(marker);
+      });
+      markerRefs.current.clear();
+      
+      // Добавляем новые маркеры
+      const validSuppliersWithCoords = suppliers.filter(s => s.lat && s.lon);
+      
+      validSuppliersWithCoords.forEach(supplier => {
+        if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
+        
+        const isActive = activeSupplierId === supplier.id;
+        const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0;
+        const showGreen = isActive || hasNewBags;
+        
+        const iconColor = showGreen ? 'bg-green-500' : 'bg-gray-400';
+        
+        const badge = hasNewBags && supplier.new_bags_count 
+          ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
+              ${supplier.new_bags_count}
+            </div>`
+          : '';
+        
+        const iconHtml = `
+          <div class="relative flex items-center justify-center">
+            ${showGreen ? `
+              <div class="absolute -inset-3 rounded-full border-[6px] border-green-500 animate-pulse-ring" style="width: 30px; height: 30px;"></div>
+            ` : ''}
+            ${badge}
+            <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10"></div>
+          </div>
+        `;
+        
+        const icon = window.L.divIcon({
+          html: iconHtml,
+          iconSize: [16, 16],
+          className: 'custom-div-icon',
+          iconAnchor: [8, 8]
+        });
+        
+        const businessTypeLabel = supplier.business_type 
+          ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
+          : '';
+        
+        const popupContent = `
+          <div class="text-center min-w-[220px] p-3">
+            <div class="flex justify-center mb-2">
+              ${supplier.logo ? `
+                <img 
+                  src="${supplier.logo}" 
+                  alt="${supplier.business_name}"
+                  class="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+                  onerror="this.style.display='none'"
+                />
+              ` : `
+                <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-2xl font-bold text-emerald-600 border-2 border-emerald-500 shadow-md">
+                  ${supplier.business_name?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+              `}
+            </div>
+            
+            <div class="font-bold text-lg text-gray-800 mb-0.5">${supplier.business_name || 'Магазин'}</div>
+            
+            ${businessTypeLabel ? `
+              <div class="text-xs text-gray-400 mb-1">${businessTypeLabel}</div>
+            ` : ''}
+            
+            <div class="text-sm text-gray-500 mb-2">${supplier.address || 'Адрес не указан'}</div>
+            
+            <div class="flex justify-center gap-4 mb-2 text-sm">
+              <span>⭐ ${supplier.rating || '—'}</span>
+              <span>${supplier.surprise_bags_count || 0}</span>
+              <span>${supplier.distance_km?.toFixed(1) || '?'} км</span>
+            </div>
+            
+            ${hasNewBags ? `
+              <div class="text-xs text-green-600 font-medium mb-2">
+                🔔 ${supplier.new_bags_count} новых сюрпризов!
+              </div>
+            ` : ''}
+            
+            <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition" 
+                    onclick="window.goToSupplier(${supplier.id})">
+              Смотреть сюрпризы
+            </button>
+          </div>
+        `;
+        
+        const marker = window.L.marker([supplier.lat, supplier.lon], { icon })
+          .addTo(mapInstanceRef.current)
+          .bindPopup(popupContent, {
+            className: 'supplier-popup',
+            maxWidth: 260,
+            minWidth: 220
+          });
+        
+        markerRefs.current.set(supplier.id, marker);
+        
+        marker.on('click', () => {
+          marker.openPopup();
+        });
+        
+        marker.on('popupopen', () => {
+          markSupplierAsViewed(supplier.id);
+        });
+      });
+      
+      // ✅ ВОССТАНАВЛИВАЕМ ПОЗИЦИЮ (БЕЗ fitBounds!)
+      if (center && zoom) {
+        mapInstanceRef.current.setView(center, zoom);
+      }
+      // ❌ НЕ ВЫЗЫВАЕМ fitBounds!
+      
+      return;
+    }
+    
+    // ✅ ЕСЛИ КАРТЫ НЕТ - СОЗДАЕМ НОВУЮ (ТОЛЬКО ПЕРВЫЙ РАЗ)
     const validSuppliersWithCoords = suppliers.filter(s => s.lat && s.lon);
     if (validSuppliersWithCoords.length === 0) return;
     
@@ -320,7 +444,6 @@ export default function SuppliersMap({
         ? BUSINESS_TYPE_LABELS[supplier.business_type] || supplier.business_type
         : '';
       
-      // ✅ ПОПАП С onclick
       const popupContent = `
         <div class="text-center min-w-[220px] p-3">
           <div class="flex justify-center mb-2">
@@ -358,7 +481,6 @@ export default function SuppliersMap({
             </div>
           ` : ''}
           
-          <!-- ✅ onclick НАПРЯМУЮ -->
           <button class="mt-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm w-full transition" 
                   onclick="window.goToSupplier(${supplier.id})">
             Смотреть сюрпризы
@@ -387,6 +509,7 @@ export default function SuppliersMap({
       bounds.push([supplier.lat, supplier.lon]);
     });
     
+    // ✅ ТОЛЬКО ПРИ ПЕРВОМ СОЗДАНИИ КАРТЫ
     if (bounds.length > 0) {
       const mapBounds = window.L.latLngBounds(bounds);
       mapInstanceRef.current.fitBounds(mapBounds, { padding: [50, 50] });
