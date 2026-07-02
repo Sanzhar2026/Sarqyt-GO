@@ -541,7 +541,7 @@ export default function OfferCard({
         {/* ✅ ВРЕМЯ: ПОЯВЛЯЕТСЯ ТОЛЬКО ПРИ РАЗВОРОТЕ */}
         {showExpanded && (
           <div className="text-gray-400 text-[10px] mb-1 leading-tight">
-            🕐 {displayTime}
+           {displayTime}
           </div>
         )}
         
