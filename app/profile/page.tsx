@@ -1,4 +1,4 @@
-// app/profile/page.tsx
+// app/profile/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ С КНОПКОЙ "ПАНЕЛЬ КУРЬЕРА"
 
 'use client';
 
@@ -8,8 +8,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useLanguage } from '../components/LanguageSwitcher';
 import AvatarCropper from '../components/AvatarCropper';
-import { User, Phone, Mail, Calendar, LogOut, Home, Truck, MessageCircle, PhoneCall } from 'lucide-react';
+import { User, Phone, Mail, Calendar, LogOut, Home, Truck, MessageCircle, PhoneCall, ShieldCheck } from 'lucide-react';
 import { getAuthToken, clearAuthToken } from '@/lib/auth';
+
 interface UserData {
   id: number;
   first_name: string;
@@ -20,6 +21,16 @@ interface UserData {
   role: string;
   is_active: boolean;
   created_at: string;
+}
+
+interface CourierStatus {
+  is_verified: boolean;
+  is_online: boolean;
+  is_available: boolean;
+  current_order_id?: number;
+  courier_type?: string;
+  rating?: number;
+  total_deliveries?: number;
 }
 
 export default function ProfilePage() {
@@ -33,17 +44,28 @@ export default function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // ✅ СОСТОЯНИЕ ДЛЯ КУРЬЕРА
+  const [courierStatus, setCourierStatus] = useState<CourierStatus | null>(null);
+  const [courierLoading, setCourierLoading] = useState(false);
+  const [isCourier, setIsCourier] = useState(false);
 
   const PHONE_NUMBER = '+77089249375';
   const PHONE_LINK = 'tel:+77089249375';
   const WHATSAPP_LINK = 'https://wa.me/77089249375';
   const TELEGRAM_LINK = 'https://t.me/77089249375';
 
+  // ============================================================
+  // ✅ ПОЛУЧЕНИЕ ТОКЕНА
+  // ============================================================
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
   };
 
+  // ============================================================
+  // ✅ ЗАГРУЗКА ПРОФИЛЯ
+  // ============================================================
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
@@ -62,6 +84,12 @@ export default function ProfilePage() {
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
+          
+          // ✅ ПРОВЕРЯЕМ, ЯВЛЯЕТСЯ ЛИ ПОЛЬЗОВАТЕЛЬ КУРЬЕРОМ
+          if (data.user.role === 'courier') {
+            setIsCourier(true);
+            fetchCourierStatus(token);
+          }
           
           try {
             const avatarResponse = await fetch(`/users/avatar-file/${data.user.id}`);
@@ -83,6 +111,34 @@ export default function ProfilePage() {
     fetchUser();
   }, [router, t]);
 
+  // ============================================================
+  // ✅ ЗАГРУЗКА СТАТУСА КУРЬЕРА
+  // ============================================================
+  const fetchCourierStatus = async (token: string) => {
+    setCourierLoading(true);
+    try {
+      const response = await fetch('/api/courier/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setCourierStatus(data);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки статуса курьера:', error);
+    } finally {
+      setCourierLoading(false);
+    }
+  };
+
+  // ============================================================
+  // ✅ АВАТАР
+  // ============================================================
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -125,14 +181,18 @@ export default function ProfilePage() {
     }
   };
 
-const handleLogout = () => {
-  if (confirm(t('confirmLogout'))) {
-    clearAuthToken();
-    sessionStorage.removeItem('isLoggedIn');
-    router.push('/login');
-  }
-
-};
+  // ============================================================
+  // ✅ ВЫХОД
+  // ============================================================
+  const handleLogout = () => {
+    if (confirm(t('confirmLogout'))) {
+      clearAuthToken();
+      sessionStorage.removeItem('isLoggedIn');
+      sessionStorage.removeItem('courier');
+      sessionStorage.removeItem('courierToken');
+      router.push('/login');
+    }
+  };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '—';
@@ -144,6 +204,9 @@ const handleLogout = () => {
     });
   };
 
+  // ============================================================
+  // ✅ ЗАГРУЗКА
+  // ============================================================
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -156,7 +219,6 @@ const handleLogout = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-sm">
-       
           <h2 className="text-xl font-bold text-gray-800 mb-2">{t('error')}</h2>
           <p className="text-gray-500">{error}</p>
           <button 
@@ -188,6 +250,15 @@ const handleLogout = () => {
 
   const fullName = user.full_name || `${user.first_name} ${user.last_name}`;
   const userInitials = user.first_name?.[0]?.toUpperCase() || '?';
+
+  // ✅ СТАТУС КУРЬЕРА ДЛЯ ОТОБРАЖЕНИЯ
+  const courierStatusText = courierStatus?.is_verified 
+    ? (courierStatus.is_online ? '🟢 На линии' : '⚪ Офлайн')
+    : '⏳ Не подтвержден';
+  
+  const courierStatusColor = courierStatus?.is_verified 
+    ? (courierStatus.is_online ? 'text-emerald-600' : 'text-gray-400')
+    : 'text-amber-500';
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -278,7 +349,17 @@ const handleLogout = () => {
             <h2 className="text-lg font-bold text-gray-800 mt-3">
               {fullName || 'Пользователь'}
             </h2>
-         
+            
+            {/* ✅ СТАТУС КУРЬЕРА (ЕСЛИ ЕСТЬ) */}
+            {isCourier && (
+              <div className={`text-xs font-medium ${courierStatusColor} mt-1 flex items-center gap-1`}>
+                <ShieldCheck size={14} />
+                {courierStatusText}
+                {courierStatus?.current_order_id && (
+                  <span className="ml-1 text-emerald-600">• Заказ #{courierStatus.current_order_id}</span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3 border-t border-gray-100 pt-4">
@@ -328,11 +409,22 @@ const handleLogout = () => {
           </div>
 
           <div className="mt-6 space-y-2.5">
-            {user.role !== 'courier' && (
+            {/* ✅ КНОПКА "ПАНЕЛЬ КУРЬЕРА" - ЕСЛИ ПОЛЬЗОВАТЕЛЬ УЖЕ КУРЬЕР */}
+            {isCourier && courierStatus?.is_verified && (
+              <Link href="/courier/dashboard">
+                <button className="w-full bg-emerald-500 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-600 transition flex items-center justify-center gap-2 shadow-sm">
+                  <Truck size={16} />
+                  {t('courierDashboard') || 'Панель курьера'}
+                </button>
+              </Link>
+            )}
+
+            {/* ✅ КНОПКА "СТАТЬ КУРЬЕРОМ" - ЕСЛИ НЕ КУРЬЕР ИЛИ НЕ ПОДТВЕРЖДЕН */}
+            {(!isCourier || (isCourier && !courierStatus?.is_verified)) && (
               <Link href="/courier/register">
                 <button className="w-full bg-[#367666]/10 text-[#367666] text-sm font-medium py-2.5 rounded-xl hover:bg-[#367666]/20 transition flex items-center justify-center gap-2">
                   <Truck size={16} className="opacity-60" />
-                  {t('becomeCourier')}
+                  {isCourier ? '⏳ Заявка на рассмотрении' : t('becomeCourier')}
                 </button>
               </Link>
             )}
