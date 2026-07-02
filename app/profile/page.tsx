@@ -1,4 +1,4 @@
-// app/profile/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ С КНОПКОЙ "ПАНЕЛЬ КУРЬЕРА"
+// app/profile/page.tsx - БОЛЬШАЯ ВЕРСИЯ, НО БЕЗ ИКОНКИ ⏳
 
 'use client';
 
@@ -45,7 +45,6 @@ export default function ProfilePage() {
   const [showCropper, setShowCropper] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
-  // ✅ СОСТОЯНИЕ ДЛЯ КУРЬЕРА
   const [courierStatus, setCourierStatus] = useState<CourierStatus | null>(null);
   const [courierLoading, setCourierLoading] = useState(false);
   const [isCourier, setIsCourier] = useState(false);
@@ -55,17 +54,11 @@ export default function ProfilePage() {
   const WHATSAPP_LINK = 'https://wa.me/77089249375';
   const TELEGRAM_LINK = 'https://t.me/77089249375';
 
-  // ============================================================
-  // ✅ ПОЛУЧЕНИЕ ТОКЕНА
-  // ============================================================
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('userToken') || localStorage.getItem('userToken');
   };
 
-  // ============================================================
-  // ✅ ЗАГРУЗКА ПРОФИЛЯ
-  // ============================================================
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
@@ -85,7 +78,6 @@ export default function ProfilePage() {
           const data = await response.json();
           setUser(data.user);
           
-          // ✅ ПРОВЕРЯЕМ, ЯВЛЯЕТСЯ ЛИ ПОЛЬЗОВАТЕЛЬ КУРЬЕРОМ
           if (data.user.role === 'courier') {
             setIsCourier(true);
             fetchCourierStatus(token);
@@ -111,9 +103,6 @@ export default function ProfilePage() {
     fetchUser();
   }, [router, t]);
 
-  // ============================================================
-  // ✅ ЗАГРУЗКА СТАТУСА КУРЬЕРА
-  // ============================================================
   const fetchCourierStatus = async (token: string) => {
     setCourierLoading(true);
     try {
@@ -136,9 +125,6 @@ export default function ProfilePage() {
     }
   };
 
-  // ============================================================
-  // ✅ АВАТАР
-  // ============================================================
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -181,9 +167,6 @@ export default function ProfilePage() {
     }
   };
 
-  // ============================================================
-  // ✅ ВЫХОД
-  // ============================================================
   const handleLogout = () => {
     if (confirm(t('confirmLogout'))) {
       clearAuthToken();
@@ -204,9 +187,6 @@ export default function ProfilePage() {
     });
   };
 
-  // ============================================================
-  // ✅ ЗАГРУЗКА
-  // ============================================================
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -251,10 +231,9 @@ export default function ProfilePage() {
   const fullName = user.full_name || `${user.first_name} ${user.last_name}`;
   const userInitials = user.first_name?.[0]?.toUpperCase() || '?';
 
-  // ✅ СТАТУС КУРЬЕРА ДЛЯ ОТОБРАЖЕНИЯ
   const courierStatusText = courierStatus?.is_verified 
-    ? (courierStatus.is_online ? '🟢 На линии' : '⚪ Офлайн')
-    : '⏳ Не подтвержден';
+    ? (courierStatus.is_online ? 'На линии' : 'Офлайн')
+    : 'Не подтвержден';
   
   const courierStatusColor = courierStatus?.is_verified 
     ? (courierStatus.is_online ? 'text-emerald-600' : 'text-gray-400')
@@ -350,7 +329,6 @@ export default function ProfilePage() {
               {fullName || 'Пользователь'}
             </h2>
             
-            {/* ✅ СТАТУС КУРЬЕРА (ЕСЛИ ЕСТЬ) */}
             {isCourier && (
               <div className={`text-xs font-medium ${courierStatusColor} mt-1 flex items-center gap-1`}>
                 <ShieldCheck size={14} />
@@ -409,7 +387,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-6 space-y-2.5">
-            {/* ✅ КНОПКА "ПАНЕЛЬ КУРЬЕРА" - ЕСЛИ ПОЛЬЗОВАТЕЛЬ УЖЕ КУРЬЕР */}
             {isCourier && courierStatus?.is_verified && (
               <Link href="/courier/dashboard">
                 <button className="w-full bg-emerald-500 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-emerald-600 transition flex items-center justify-center gap-2 shadow-sm">
@@ -419,12 +396,11 @@ export default function ProfilePage() {
               </Link>
             )}
 
-            {/* ✅ КНОПКА "СТАТЬ КУРЬЕРОМ" - ЕСЛИ НЕ КУРЬЕР ИЛИ НЕ ПОДТВЕРЖДЕН */}
             {(!isCourier || (isCourier && !courierStatus?.is_verified)) && (
               <Link href="/courier/register">
                 <button className="w-full bg-[#367666]/10 text-[#367666] text-sm font-medium py-2.5 rounded-xl hover:bg-[#367666]/20 transition flex items-center justify-center gap-2">
                   <Truck size={16} className="opacity-60" />
-                  {isCourier ? '⏳ Заявка на рассмотрении' : t('becomeCourier')}
+                  {isCourier ? 'Заявка на рассмотрении' : t('becomeCourier')}
                 </button>
               </Link>
             )}
