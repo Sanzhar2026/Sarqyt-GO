@@ -1,4 +1,4 @@
-// app/orders/[id]/page.tsx - ПОЛНАЯ ВЕРСИЯ С ГЕОЛОКАЦИЕЙ КУРЬЕРА
+// app/orders/[id]/page.tsx - ИСПРАВЛЕННАЯ ВЕРСИЯ (БЕЗ ПРОГРЕССА И КУРЬЕРОВ ДЛЯ САМОВЫВОЗА)
 
 'use client';
 
@@ -27,17 +27,25 @@ export default function OrderDetailPage() {
   const [courierLocation, setCourierLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [courierOnline, setCourierOnline] = useState(false);
   const [orderStatus, setOrderStatus] = useState<string>('');
-  const [deliveryProgress, setDeliveryProgress] = useState<number>(0);
   
   const wsRef = useRef<WebSocket | null>(null);
-  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const orderId = params.id as string;
 
   // ============================================================
-  // ✅ WEBSOCKET ДЛЯ ОТСЛЕЖИВАНИЯ КУРЬЕРА
+  // ✅ ПРОВЕРКА - САМОВЫВОЗ ИЛИ ДОСТАВКА
+  // ============================================================
+  const isDelivery = order?.delivery_type === 'delivery';
+
+  // ============================================================
+  // ✅ WEBSOCKET ДЛЯ ОТСЛЕЖИВАНИЯ КУРЬЕРА (ТОЛЬКО ДЛЯ ДОСТАВКИ)
   // ============================================================
   useEffect(() => {
+    if (!isDelivery) {
+      console.log('📦 Самовывоз - WebSocket не нужен');
+      return;
+    }
+
     const token = getAuthToken();
     if (!token || !orderId) return;
 
@@ -46,7 +54,6 @@ export default function OrderDetailPage() {
 
     ws.onopen = () => {
       console.log('✅ WebSocket для отслеживания заказа подключен');
-      // Подписываемся на обновления заказа
       ws.send(JSON.stringify({
         type: 'subscribe',
         channel: `order_${orderId}`
@@ -61,18 +68,10 @@ export default function OrderDetailPage() {
         if (data.type === 'courier_location') {
           setCourierLocation({ lat: data.lat, lon: data.lon });
           setCourierOnline(true);
-          
-          // Обновляем прогресс доставки
-          if (data.progress !== undefined) {
-            setDeliveryProgress(data.progress);
-          }
         }
 
         if (data.type === 'order_status_updated') {
           setOrderStatus(data.new_status);
-          if (data.new_status === 'delivered') {
-            setDeliveryProgress(100);
-          }
         }
 
         if (data.type === 'delivery_started') {
@@ -81,12 +80,10 @@ export default function OrderDetailPage() {
 
         if (data.type === 'courier_arrived') {
           setOrderStatus('nearby');
-          setDeliveryProgress(90);
         }
 
         if (data.type === 'delivery_confirmed_by_customer') {
           setOrderStatus('delivered');
-          setDeliveryProgress(100);
           showNotification('✅ Заказ доставлен!', 'success');
         }
 
@@ -102,18 +99,12 @@ export default function OrderDetailPage() {
 
     ws.onclose = () => {
       console.log('🔌 WebSocket отключен');
-      setTimeout(() => {
-        if (wsRef.current?.readyState !== WebSocket.OPEN) {
-          // Попытка переподключения
-        }
-      }, 3000);
     };
 
     return () => {
       if (wsRef.current) wsRef.current.close();
-      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
     };
-  }, [orderId]);
+  }, [orderId, isDelivery]);
 
   // ============================================================
   // ✅ ЗАГРУЗКА ЗАКАЗА
@@ -152,40 +143,6 @@ export default function OrderDetailPage() {
   }, [orderId, router]);
 
   // ============================================================
-  // ✅ ПОЛУЧЕНИЕ ГЕОЛОКАЦИИ КУРЬЕРА
-  // ============================================================
-  const fetchCourierLocation = async () => {
-    if (!order) return;
-    
-    const token = getAuthToken();
-    try {
-      const response = await fetch(`/api/order/${order.id}/delivery-status`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      
-      if (data.has_courier && data.courier) {
-        setCourierOnline(true);
-        // Если есть координаты курьера
-        if (data.courier.lat && data.courier.lon) {
-          setCourierLocation({ lat: data.courier.lat, lon: data.courier.lon });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching courier location:', error);
-    }
-  };
-
-  // Периодическое обновление геолокации
-  useEffect(() => {
-    if (order && ['confirmed', 'out_for_delivery', 'nearby'].includes(orderStatus)) {
-      fetchCourierLocation();
-      const interval = setInterval(fetchCourierLocation, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [order, orderStatus]);
-
-  // ============================================================
   // ✅ ФУНКЦИИ
   // ============================================================
   const handleConfirmDelivery = async () => {
@@ -219,7 +176,6 @@ export default function OrderDetailPage() {
           status: 'delivered'
         });
         setOrderStatus('delivered');
-        setDeliveryProgress(100);
         
         setTimeout(() => {
           router.push('/orders');
@@ -357,7 +313,7 @@ export default function OrderDetailPage() {
 
   const supplierLogo = getSupplierLogo(order);
   const supplierName = getSupplierName(order);
-  const isDeliveryInProgress = ['confirmed', 'out_for_delivery', 'nearby', 'waiting_confirmation'].includes(orderStatus);
+  const isDeliveryInProgress = isDelivery && ['confirmed', 'out_for_delivery', 'nearby', 'waiting_confirmation'].includes(orderStatus);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -438,7 +394,7 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* ✅ КАРТА С МАРШРУТОМ И КУРЬЕРОМ */}
+        {/* ✅ КАРТА - ТОЛЬКО ДЛЯ ДОСТАВКИ */}
         {isDeliveryInProgress && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-3">
@@ -472,28 +428,22 @@ export default function OrderDetailPage() {
                 courierLocation={courierLocation || undefined}
                 height="100%"
                 showRoute={true}
-                routeColor="#3b82f6"
+                routeColor="#367666"
                 routeWidth={3}
                 showUserLocation={true}
               />
             </div>
-            
-            {/* Прогресс доставки */}
-            <div className="mt-3">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>Заказ принят</span>
-                <span>Доставлен</span>
-              </div>
-              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[#367666] rounded-full transition-all duration-500"
-                  style={{ width: `${deliveryProgress}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-400 mt-1 text-center">
-                {getStatusText(orderStatus)}
-              </p>
-            </div>
+          </div>
+        )}
+
+        {/* ✅ ДЛЯ САМОВЫВОЗА - ПОКАЗЫВАЕМ АДРЕС РЕСТОРАНА */}
+        {!isDelivery && order.supplier_address && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+              <span>📍</span> Адрес самовывоза
+            </h3>
+            <p className="text-gray-600">{order.supplier_address}</p>
+            <p className="text-sm text-gray-400 mt-1">Заберите заказ по этому адресу</p>
           </div>
         )}
 
@@ -514,24 +464,13 @@ export default function OrderDetailPage() {
             <div className="flex justify-between">
               <span className="text-gray-500">{t('deliveryTypeLabel')}</span>
               <span className="text-gray-800">
-                {order.delivery_type === 'delivery' ? t('delivery') : t('pickup')}
+                {isDelivery ? t('delivery') : t('pickup')}
               </span>
             </div>
-            {order.address && (
+            {order.address && isDelivery && (
               <div className="flex justify-between items-start">
                 <span className="text-gray-500">{t('address')}</span>
                 <span className="text-gray-800 text-right max-w-[60%]">{order.address}</span>
-              </div>
-            )}
-            
-            {/* Информация о курьере */}
-            {courierOnline && (
-              <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                <span className="text-gray-500">Курьер</span>
-                <span className="text-gray-800 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                  В пути
-                </span>
               </div>
             )}
           </div>
@@ -539,7 +478,7 @@ export default function OrderDetailPage() {
 
         {/* Кнопки действий */}
         <div className="flex flex-col gap-3 pt-4">
-          {orderStatus === 'waiting_confirmation' && (
+          {orderStatus === 'waiting_confirmation' && isDelivery && (
             <button
               onClick={handleConfirmDelivery}
               disabled={confirming}
