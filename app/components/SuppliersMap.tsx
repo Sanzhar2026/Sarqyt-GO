@@ -95,24 +95,26 @@ export default function SuppliersMap({
     }
   };
 
-  // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА - ГАСИМ МАРКЕР!
+  // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА - СНАЧАЛА ПЕРЕХОД, ПОТОМ ГАСИМ!
   useEffect(() => {
     // @ts-ignore
-    window.goToSupplier = async (id: number) => {
+    window.goToSupplier = (id: number) => {
       console.log('🛒 ПЕРЕХОД К ПОСТАВЩИКУ:', id);
       if (id > 0) {
-        // ✅ ПЕРВЫМ ДЕЛОМ - ГАСИМ МАРКЕР!
-        await markSupplierAsViewed(id);
-        
-        // ✅ ПОТОМ ПЕРЕХОДИМ НА СТРАНИЦУ
+        // ✅ СНАЧАЛА ПЕРЕХОДИМ НА СТРАНИЦУ
         router.push(`/supplier/${id}`);
+        
+        // ✅ ПОТОМ (ЧЕРЕЗ 1 СЕКУНДУ) ГАСИМ МАРКЕР
+        setTimeout(() => {
+          markSupplierAsViewed(id);
+        }, 1000);
       }
     };
     return () => {
       // @ts-ignore
       delete window.goToSupplier;
     };
-  }, [router, suppliers]);
+  }, [router]);
 
   // Загрузка Leaflet
   useEffect(() => {
