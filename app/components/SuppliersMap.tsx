@@ -62,7 +62,6 @@ export default function SuppliersMap({
   // ✅ ФУНКЦИЯ ДЛЯ ОТМЕТКИ ПРОСМОТРА И ГАШЕНИЯ МАРКЕРА
   const markSupplierAsViewed = async (supplierId: number) => {
     try {
-      // ✅ ДОБАВЛЯЕМ В СПИСОК ПОСЕЩЕННЫХ
       visitedSuppliers.current.add(supplierId);
       
       const token = getAuthToken();
@@ -82,7 +81,6 @@ export default function SuppliersMap({
       // ✅ ГАСИМ МАРКЕР (СТАНОВИТСЯ СЕРЫМ)
       updateMarkerIcon(supplierId, false, 0);
       
-      // ✅ ОБНОВЛЯЕМ ПОПАП
       const supplier = suppliers.find(s => s.id === supplierId);
       if (supplier) {
         const updatedSupplier = { ...supplier, new_bags_count: 0 };
@@ -90,21 +88,18 @@ export default function SuppliersMap({
       }
     } catch (error) {
       console.error('❌ Ошибка отметки просмотра:', error);
-      // ✅ ДАЖЕ ПРИ ОШИБКЕ - ГАСИМ МАРКЕР!
       updateMarkerIcon(supplierId, false, 0);
     }
   };
 
-  // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА - СНАЧАЛА ПЕРЕХОД, ПОТОМ ГАСИМ!
+  // ✅ ГЛОБАЛЬНАЯ ФУНКЦИЯ ДЛЯ ПЕРЕХОДА
   useEffect(() => {
     // @ts-ignore
     window.goToSupplier = (id: number) => {
       console.log('🛒 ПЕРЕХОД К ПОСТАВЩИКУ:', id);
       if (id > 0) {
-        // ✅ СНАЧАЛА ПЕРЕХОДИМ НА СТРАНИЦУ
         router.push(`/supplier/${id}`);
         
-        // ✅ ПОТОМ (ЧЕРЕЗ 1 СЕКУНДУ) ГАСИМ МАРКЕР
         setTimeout(() => {
           markSupplierAsViewed(id);
         }, 1000);
@@ -207,18 +202,15 @@ export default function SuppliersMap({
     }
   };
 
-  // ✅ ФУНКЦИЯ ОБНОВЛЕНИЯ ИКОНКИ МАРКЕРА
+  // ✅ ФУНКЦИЯ ОБНОВЛЕНИЯ ИКОНКИ МАРКЕРА - ВСЕГДА ЗЕЛЕНАЯ!
   const updateMarkerIcon = (supplierId: number, hasNewBags: boolean, count: number) => {
     const marker = markerRefs.current.get(supplierId);
     if (!marker) return;
     
-    // ✅ ПРОВЕРЯЕМ - ЕСЛИ УЖЕ ПОСЕЩАЛ, ТО СЕРЫЙ!
-    const isVisited = visitedSuppliers.current.has(supplierId);
-    const shouldBeGreen = hasNewBags && !isVisited;
+    // ✅ ВСЕГДА ЗЕЛЕНАЯ ИКОНКА!
+    const iconColor = 'bg-green-500';
     
-    const iconColor = shouldBeGreen ? 'bg-green-500' : 'bg-gray-400';
-    
-    const badge = shouldBeGreen && count > 0 
+    const badge = hasNewBags && count > 0 
       ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
           ${count}
         </div>`
@@ -226,7 +218,7 @@ export default function SuppliersMap({
     
     const iconHtml = `
       <div class="relative flex items-center justify-center">
-        ${shouldBeGreen ? `
+        ${hasNewBags ? `
           <div class="absolute -inset-3 rounded-full border-[6px] border-green-500 animate-pulse-ring" style="width: 30px; height: 30px;"></div>
         ` : ''}
         ${badge}
@@ -342,7 +334,6 @@ export default function SuppliersMap({
                 const supplier = suppliers.find(s => s.id === bag.supplier_id);
                 const newCount = (supplier?.new_bags_count || 0) + 1;
                 
-                // ✅ ЕСЛИ УЖЕ ПОСЕЩАЛ - НЕ ДЕЛАЕМ ЗЕЛЕНЫМ!
                 if (!visitedSuppliers.current.has(bag.supplier_id)) {
                   updateMarkerIcon(bag.supplier_id, true, newCount);
                 }
@@ -418,11 +409,11 @@ export default function SuppliersMap({
     validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
-      // ✅ ПРОВЕРЯЕМ - ЕСЛИ УЖЕ ПОСЕЩАЛ, ТО СЕРЫЙ!
+      // ✅ ВСЕГДА ЗЕЛЕНАЯ ИКОНКА!
       const isVisited = visitedSuppliers.current.has(supplier.id);
       const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0 && !isVisited;
       const newBagsCount = supplier.new_bags_count || 0;
-      const iconColor = hasNewBags ? 'bg-green-500' : 'bg-gray-400';
+      const iconColor = 'bg-green-500'; // ✅ ВСЕГДА ЗЕЛЕНАЯ!
       
       const badge = hasNewBags && newBagsCount > 0 
         ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
