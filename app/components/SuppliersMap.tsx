@@ -57,26 +57,32 @@ export default function SuppliersMap({
   const isUserInteracting = useRef(false);
   const userMarkerJumpInterval = useRef<NodeJS.Timeout | null>(null);
   
-  // ✅ ХРАНИМ ID ПОСЕЩЕННЫХ МАГАЗИНОВ
   const visitedSuppliers = useRef<Set<number>>(new Set());
 
   // ✅ ФУНКЦИЯ ДЛЯ ПРЫЖКА МАРКЕРА
-  const bounceMarker = (markerElement: HTMLElement | null | undefined, delay: number = 0) => {
-    if (!markerElement) return;
+  const bounceMarker = (marker: any) => {
+    if (!marker) return;
+    
+    // Получаем DOM элемент маркера
+    const el = marker._icon;
+    if (!el) return;
+    
+    // Убираем предыдущую анимацию
+    el.style.animation = 'none';
+    // Force reflow
+    void el.offsetHeight;
+    // Запускаем анимацию
+    el.style.animation = 'markerBounce 0.6s ease';
+    
+    // Убираем анимацию после завершения
     setTimeout(() => {
-      markerElement.style.animation = 'none';
-      // Force reflow
-      void markerElement.offsetHeight;
-      markerElement.style.animation = 'markerBounce 0.6s ease';
-      setTimeout(() => {
-        if (markerElement) {
-          markerElement.style.animation = '';
-        }
-      }, 600);
-    }, delay);
+      if (el) {
+        el.style.animation = '';
+      }
+    }, 600);
   };
 
-  // ✅ ФУНКЦИЯ ДЛЯ ОТМЕТКИ ПРОСМОТРА И ГАШЕНИЯ МАРКЕРА
+  // ✅ ФУНКЦИЯ ДЛЯ ОТМЕТКИ ПРОСМОТРА
   const markSupplierAsViewed = async (supplierId: number) => {
     try {
       visitedSuppliers.current.add(supplierId);
@@ -214,8 +220,8 @@ export default function SuppliersMap({
     
     if (!userMarkerRef.current) return;
     
-    const markerElement = userMarkerRef.current.getElement?.();
-    if (!markerElement) return;
+    const el = userMarkerRef.current._icon;
+    if (!el) return;
     
     let jumpCount = 0;
     const maxJumps = 6;
@@ -229,15 +235,15 @@ export default function SuppliersMap({
         return;
       }
       
-      const el = userMarkerRef.current.getElement?.();
-      if (!el) return;
+      const element = userMarkerRef.current._icon;
+      if (!element) return;
       
       if (jumpCount % 2 === 0) {
-        el.style.transform = 'translateY(-12px)';
-        el.style.transition = 'transform 0.2s ease';
+        element.style.transform = 'translateY(-12px)';
+        element.style.transition = 'transform 0.2s ease';
       } else {
-        el.style.transform = 'translateY(0)';
-        el.style.transition = 'transform 0.2s ease';
+        element.style.transform = 'translateY(0)';
+        element.style.transition = 'transform 0.2s ease';
       }
       
       jumpCount++;
@@ -245,8 +251,8 @@ export default function SuppliersMap({
       if (jumpCount >= maxJumps) {
         clearInterval(userMarkerJumpInterval.current!);
         userMarkerJumpInterval.current = null;
-        if (el) {
-          el.style.transform = 'translateY(0)';
+        if (element) {
+          element.style.transform = 'translateY(0)';
         }
       }
     }, 300);
@@ -299,10 +305,9 @@ export default function SuppliersMap({
     marker.setIcon(newIcon);
     
     // ✅ ПРЫЖОК ПОСЛЕ ОБНОВЛЕНИЯ
-    const markerElement = marker.getElement?.();
-    if (markerElement) {
-      bounceMarker(markerElement, 100);
-    }
+    setTimeout(() => {
+      bounceMarker(marker);
+    }, 100);
   };
 
   // ✅ ОБНОВЛЕНИЕ ПОПАПА
@@ -579,11 +584,8 @@ export default function SuppliersMap({
       
       // ✅ ПРЫЖОК ПРИ СОЗДАНИИ
       setTimeout(() => {
-        const el = marker.getElement?.();
-        if (el) {
-          bounceMarker(el, 0);
-        }
-      }, 200 + index * 100);
+        bounceMarker(marker);
+      }, 200 + index * 150);
     });
     
     if (bounds.length > 0 && !isUserInteracting.current) {
@@ -650,6 +652,10 @@ export default function SuppliersMap({
         :global(.custom-div-icon) {
           background: transparent !important;
           border: none !important;
+        }
+        
+        :global(.custom-div-icon div) {
+          animation: none !important;
         }
         
         :global(.animate-pulse-ring) {
