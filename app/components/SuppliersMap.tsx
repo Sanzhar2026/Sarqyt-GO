@@ -59,21 +59,6 @@ export default function SuppliersMap({
   // ✅ ХРАНИМ ID ПОСЕЩЕННЫХ МАГАЗИНОВ
   const visitedSuppliers = useRef<Set<number>>(new Set());
 
-  // ✅ ФУНКЦИЯ ДЛЯ ПРЫЖКА МАРКЕРА
-  const bounceMarker = (marker: any) => {
-    if (!marker) return;
-    const el = marker._icon;
-    if (!el) return;
-    
-    el.style.animation = 'none';
-    void el.offsetHeight;
-    el.style.animation = 'markerBounce 0.5s ease';
-    
-    setTimeout(() => {
-      if (el) el.style.animation = '';
-    }, 500);
-  };
-
   // ✅ ФУНКЦИЯ ДЛЯ ОТМЕТКИ ПРОСМОТРА И ГАШЕНИЯ МАРКЕРА
   const markSupplierAsViewed = async (supplierId: number) => {
     try {
@@ -93,6 +78,7 @@ export default function SuppliersMap({
       
       console.log(`✅ Поставщик ${supplierId} отмечен как просмотренный`);
       
+      // ✅ ГАСИМ МАРКЕР (СТАНОВИТСЯ СЕРЫМ)
       updateMarkerIcon(supplierId, false, 0);
       
       const supplier = suppliers.find(s => s.id === supplierId);
@@ -209,8 +195,6 @@ export default function SuppliersMap({
       mapInstanceRef.current.setView([userLat, userLon], 15);
       if (userMarkerRef.current) {
         userMarkerRef.current.openPopup();
-        // ✅ ПРЫЖОК ПОЛЬЗОВАТЕЛЯ ПРИ КЛИКЕ
-        bounceMarker(userMarkerRef.current);
       }
       setTimeout(() => {
         isUserInteracting.current = false;
@@ -223,6 +207,7 @@ export default function SuppliersMap({
     const marker = markerRefs.current.get(supplierId);
     if (!marker) return;
     
+    // ✅ ВСЕГДА ЗЕЛЕНАЯ ИКОНКА!
     const iconColor = 'bg-green-500';
     
     const badge = hasNewBags && count > 0 
@@ -249,11 +234,6 @@ export default function SuppliersMap({
     });
     
     marker.setIcon(newIcon);
-    
-    // ✅ ПРЫЖОК ПОСЛЕ ОБНОВЛЕНИЯ
-    setTimeout(() => {
-      bounceMarker(marker);
-    }, 100);
   };
 
   // ✅ ОБНОВЛЕНИЕ ПОПАПА
@@ -426,13 +406,14 @@ export default function SuppliersMap({
       bounds.push([userLat, userLon]);
     }
     
-    validSuppliersWithCoords.forEach((supplier, index) => {
+    validSuppliersWithCoords.forEach(supplier => {
       if (!supplier.lat || !supplier.lon || isNaN(supplier.lat) || isNaN(supplier.lon)) return;
       
+      // ✅ ВСЕГДА ЗЕЛЕНАЯ ИКОНКА!
       const isVisited = visitedSuppliers.current.has(supplier.id);
       const hasNewBags = supplier.new_bags_count && supplier.new_bags_count > 0 && !isVisited;
       const newBagsCount = supplier.new_bags_count || 0;
-      const iconColor = 'bg-green-500';
+      const iconColor = 'bg-green-500'; // ✅ ВСЕГДА ЗЕЛЕНАЯ!
       
       const badge = hasNewBags && newBagsCount > 0 
         ? `<div class="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full w-5 h-5 flex items-center justify-center z-20 border-2 border-white">
@@ -526,11 +507,6 @@ export default function SuppliersMap({
       });
       
       bounds.push([supplier.lat, supplier.lon]);
-      
-      // ✅ ПРЫЖОК ПРИ СОЗДАНИИ КАЖДОГО МАРКЕРА
-      setTimeout(() => {
-        bounceMarker(marker);
-      }, 200 + index * 150);
     });
     
     if (bounds.length > 0 && !isUserInteracting.current) {
@@ -613,24 +589,6 @@ export default function SuppliersMap({
           100% {
             transform: scale(0.8);
             opacity: 1;
-          }
-        }
-        
-        @keyframes markerBounce {
-          0% {
-            transform: translateY(0);
-          }
-          30% {
-            transform: translateY(-14px);
-          }
-          50% {
-            transform: translateY(-6px);
-          }
-          70% {
-            transform: translateY(-12px);
-          }
-          100% {
-            transform: translateY(0);
           }
         }
         
