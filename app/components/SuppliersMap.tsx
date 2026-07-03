@@ -55,34 +55,26 @@ export default function SuppliersMap({
   const isMapCreated = useRef(false);
   const mapPositionRef = useRef<{ lat: number; lon: number; zoom: number } | null>(null);
   const isUserInteracting = useRef(false);
-  const userMarkerJumpInterval = useRef<NodeJS.Timeout | null>(null);
   
+  // ✅ ХРАНИМ ID ПОСЕЩЕННЫХ МАГАЗИНОВ
   const visitedSuppliers = useRef<Set<number>>(new Set());
 
   // ✅ ФУНКЦИЯ ДЛЯ ПРЫЖКА МАРКЕРА
   const bounceMarker = (marker: any) => {
     if (!marker) return;
-    
-    // Получаем DOM элемент маркера
     const el = marker._icon;
     if (!el) return;
     
-    // Убираем предыдущую анимацию
     el.style.animation = 'none';
-    // Force reflow
     void el.offsetHeight;
-    // Запускаем анимацию
-    el.style.animation = 'markerBounce 0.6s ease';
+    el.style.animation = 'markerBounce 0.5s ease';
     
-    // Убираем анимацию после завершения
     setTimeout(() => {
-      if (el) {
-        el.style.animation = '';
-      }
-    }, 600);
+      if (el) el.style.animation = '';
+    }, 500);
   };
 
-  // ✅ ФУНКЦИЯ ДЛЯ ОТМЕТКИ ПРОСМОТРА
+  // ✅ ФУНКЦИЯ ДЛЯ ОТМЕТКИ ПРОСМОТРА И ГАШЕНИЯ МАРКЕРА
   const markSupplierAsViewed = async (supplierId: number) => {
     try {
       visitedSuppliers.current.add(supplierId);
@@ -211,60 +203,14 @@ export default function SuppliersMap({
     }
   }, [userLat, userLon]);
 
-  // ✅ ФУНКЦИЯ ДЛЯ ПРЫЖКА МАРКЕРА ПОЛЬЗОВАТЕЛЯ
-  const startUserMarkerJump = () => {
-    if (userMarkerJumpInterval.current) {
-      clearInterval(userMarkerJumpInterval.current);
-      userMarkerJumpInterval.current = null;
-    }
-    
-    if (!userMarkerRef.current) return;
-    
-    const el = userMarkerRef.current._icon;
-    if (!el) return;
-    
-    let jumpCount = 0;
-    const maxJumps = 6;
-    
-    userMarkerJumpInterval.current = setInterval(() => {
-      if (!userMarkerRef.current) {
-        if (userMarkerJumpInterval.current) {
-          clearInterval(userMarkerJumpInterval.current);
-          userMarkerJumpInterval.current = null;
-        }
-        return;
-      }
-      
-      const element = userMarkerRef.current._icon;
-      if (!element) return;
-      
-      if (jumpCount % 2 === 0) {
-        element.style.transform = 'translateY(-12px)';
-        element.style.transition = 'transform 0.2s ease';
-      } else {
-        element.style.transform = 'translateY(0)';
-        element.style.transition = 'transform 0.2s ease';
-      }
-      
-      jumpCount++;
-      
-      if (jumpCount >= maxJumps) {
-        clearInterval(userMarkerJumpInterval.current!);
-        userMarkerJumpInterval.current = null;
-        if (element) {
-          element.style.transform = 'translateY(0)';
-        }
-      }
-    }, 300);
-  };
-
   const centerOnUser = () => {
     if (mapInstanceRef.current && userLat && userLon) {
       isUserInteracting.current = true;
       mapInstanceRef.current.setView([userLat, userLon], 15);
       if (userMarkerRef.current) {
         userMarkerRef.current.openPopup();
-        startUserMarkerJump();
+        // ✅ ПРЫЖОК ПОЛЬЗОВАТЕЛЯ ПРИ КЛИКЕ
+        bounceMarker(userMarkerRef.current);
       }
       setTimeout(() => {
         isUserInteracting.current = false;
@@ -272,7 +218,7 @@ export default function SuppliersMap({
     }
   };
 
-  // ✅ ФУНКЦИЯ ОБНОВЛЕНИЯ ИКОНКИ МАРКЕРА
+  // ✅ ФУНКЦИЯ ОБНОВЛЕНИЯ ИКОНКИ МАРКЕРА - ВСЕГДА ЗЕЛЕНАЯ!
   const updateMarkerIcon = (supplierId: number, hasNewBags: boolean, count: number) => {
     const marker = markerRefs.current.get(supplierId);
     if (!marker) return;
@@ -291,7 +237,7 @@ export default function SuppliersMap({
           <div class="absolute -inset-3 rounded-full border-[6px] border-green-500 animate-pulse-ring" style="width: 30px; height: 30px;"></div>
         ` : ''}
         ${badge}
-        <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10 supplier-marker"></div>
+        <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10"></div>
       </div>
     `;
     
@@ -468,10 +414,9 @@ export default function SuppliersMap({
     
     if (showUserLocation && userLat && userLon) {
       const userIcon = window.L.divIcon({
-        html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow relative z-10"></div>`,
+        html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow"></div>`,
         iconSize: window.L.point(16, 16),
-        className: 'custom-div-icon',
-        iconAnchor: window.L.point(8, 8)
+        className: 'custom-div-icon'
       });
       
       userMarkerRef.current = window.L.marker([userLat, userLon], { icon: userIcon })
@@ -501,7 +446,7 @@ export default function SuppliersMap({
             <div class="absolute -inset-3 rounded-full border-[6px] border-green-500 animate-pulse-ring" style="width: 30px; height: 30px;"></div>
           ` : ''}
           ${badge}
-          <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10 supplier-marker"></div>
+          <div class="w-4 h-4 ${iconColor} rounded-full border-2 border-white shadow relative z-10"></div>
         </div>
       `;
       
@@ -582,7 +527,7 @@ export default function SuppliersMap({
       
       bounds.push([supplier.lat, supplier.lon]);
       
-      // ✅ ПРЫЖОК ПРИ СОЗДАНИИ
+      // ✅ ПРЫЖОК ПРИ СОЗДАНИИ КАЖДОГО МАРКЕРА
       setTimeout(() => {
         bounceMarker(marker);
       }, 200 + index * 150);
@@ -604,10 +549,6 @@ export default function SuppliersMap({
         mapInstanceRef.current = null;
         markerRefs.current.clear();
         isMapCreated.current = false;
-      }
-      if (userMarkerJumpInterval.current) {
-        clearInterval(userMarkerJumpInterval.current);
-        userMarkerJumpInterval.current = null;
       }
     };
     
@@ -652,10 +593,6 @@ export default function SuppliersMap({
         :global(.custom-div-icon) {
           background: transparent !important;
           border: none !important;
-        }
-        
-        :global(.custom-div-icon div) {
-          animation: none !important;
         }
         
         :global(.animate-pulse-ring) {
