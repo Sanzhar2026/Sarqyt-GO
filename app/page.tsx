@@ -1,4 +1,4 @@
-// app/page.tsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ (ТОЛЬКО РЕАЛЬНЫЙ GPS)
+// app/page.tsx - С ОБЕРТКОЙ В BrowserGuard
 
 'use client';
 
@@ -7,11 +7,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { Store, Gift } from 'lucide-react';
+import { Store, Gift, MapPin } from 'lucide-react';
 import OfferCard from './components/OfferCard';
 import { useWebSocket } from './hooks/useWebSocket';
 import { setGlobalHideBottomNav } from './layout';
 import { useLanguage } from './components/LanguageSwitcher';
+import BrowserGuard from './components/BrowserGuard';
 
 const SuppliersMap = dynamic(() => import('./components/SuppliersMap'), { ssr: false });
 
@@ -33,8 +34,8 @@ interface SurpriseBag {
   supplier_lon?: number;
   business_type?: string;
   address?: string;
-  working_time?: string;        // ✅ ДОБАВЛЯЕМ!
-  opening_time?: string;        // ✅ ДОБАВЛЯЕМ!
+  working_time?: string;
+  opening_time?: string;
   closing_time?: string;    
   rating?: number;
   total_reviews?: number;
@@ -45,10 +46,9 @@ interface LocationData {
   lat: number;
   lon: number;
   city: string;
-  source: 'geolocation' | 'default';
+  source: 'geolocation' | 'cached';
 }
 
-// ✅ ФУНКЦИЯ РАСЧЕТА РАССТОЯНИЯ
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
   const R = 6371;
@@ -62,7 +62,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
   const { lang, setLang, t } = useLanguage();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -76,59 +76,161 @@ export default function HomePage() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
   
   const isMountedRef = useRef(true);
   const initialLoadDoneRef = useRef(false);
+  const geoWatchIdRef = useRef<number | null>(null);
 
-  // ✅ useEffect #1 - ЗАПРОС ГЕОЛОКАЦИИ (ТОЛЬКО РЕАЛЬНЫЙ GPS, БЕЗ ДЕФОЛТОВ!)
+  // ✅ ПРОВЕРЯЕМ КЭШ ПРИ ЗАГРУЗКЕ
   useEffect(() => {
-    setLocationLoading(true);
-    setLocationError(null);
+    const cachedLocation = localStorage.getItem('userLocation');
+    if (cachedLocation) {
+      try {
+        const parsed = JSON.parse(cachedLocation);
+        const cacheAge = Date.now() - (parsed.timestamp || 0);
+        const CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
+        
+        if (cacheAge < CACHE_MAX_AGE) {
+          console.log('📦 Используем кэшированную локацию:', parsed.city);
+          setLocation({
+            lat: parsed.lat,
+            lon: parsed.lon,
+            city: parsed.city,
+            source: 'cached'
+          });
+          setLocationLoading(false);
+          return;
+        } else {
+          localStorage.removeItem('userLocation');
+        }
+      } catch (e) {
+        localStorage.removeItem('userLocation');
+      }
+    }
     
+    requestGeolocation();
+  }, []);
+
+  const requestGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationError('Геолокация не поддерживается вашим браузером');
+      setLocationError('Геолокация не поддерживается');
       setLocationLoading(false);
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    console.log('📍 Запрос геолокации...');
+    setLocationLoading(true);
+    setLocationError(null);
+    setIsRetrying(false);
+
+    if (geoWatchIdRef.current) {
+      navigator.geolocation.clearWatch(geoWatchIdRef.current);
+    }
+
+    geoWatchIdRef.current = navigator.geolocation.watchPosition(
       async (position) => {
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude, accuracy } = position.coords;
+        console.log(`📍 GPS: ${latitude}, ${longitude}, точность: ${accuracy}м`);
         
+        if (accuracy > 100) {
+          console.log(`⚠️ Точность низкая (${accuracy}м), ждем...`);
+          return;
+        }
+
+        if (geoWatchIdRef.current) {
+          navigator.geolocation.clearWatch(geoWatchIdRef.current);
+          geoWatchIdRef.current = null;
+        }
+
         try {
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ru&zoom=10`
           );
           const data = await response.json();
           const city = data.address?.city || data.address?.town || data.address?.village || 'Актобе';
-          setLocation({
+          
+          const locationData = {
             lat: latitude,
             lon: longitude,
             city: city,
-            source: 'geolocation'
-          });
-        } catch (e) {
-          setLocation({
+            source: 'geolocation' as const
+          };
+          
+          localStorage.setItem('userLocation', JSON.stringify({
+            ...locationData,
+            timestamp: Date.now()
+          }));
+          
+          setLocation(locationData);
+          setLocationLoading(false);
+          setLocationError(null);
+          console.log('✅ Город:', city);
+        } catch (error) {
+          console.warn('⚠️ Ошибка определения города:', error);
+          const locationData = {
             lat: latitude,
             lon: longitude,
             city: 'Актобе',
-            source: 'geolocation'
-          });
+            source: 'geolocation' as const
+          };
+          localStorage.setItem('userLocation', JSON.stringify({
+            ...locationData,
+            timestamp: Date.now()
+          }));
+          setLocation(locationData);
+          setLocationLoading(false);
         }
-        setLocationLoading(false);
       },
-      (err) => {
-        console.warn('⚠️ GPS ошибка:', err.message);
-        setLocationError('Не удалось определить местоположение. Разрешите доступ к геолокации.');
+      (error) => {
+        console.warn('⚠️ Ошибка GPS:', error.message);
+        
+        if (geoWatchIdRef.current) {
+          navigator.geolocation.clearWatch(geoWatchIdRef.current);
+          geoWatchIdRef.current = null;
+        }
+
+        const cachedLocation = localStorage.getItem('userLocation');
+        if (cachedLocation) {
+          try {
+            const parsed = JSON.parse(cachedLocation);
+            console.log('📦 Используем кэш при ошибке:', parsed.city);
+            setLocation({
+              lat: parsed.lat,
+              lon: parsed.lon,
+              city: parsed.city,
+              source: 'cached'
+            });
+            setLocationLoading(false);
+            setLocationError(`GPS: ${error.message}. Используем сохраненную локацию`);
+            return;
+          } catch (e) {}
+        }
+
+        setLocationError(`Не удалось определить местоположение: ${error.message}`);
         setLocationLoading(false);
+        
+        if (error.code === 1) {
+          setLocationError('Разрешите доступ к геолокации в настройках браузера');
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      { 
+        enableHighAccuracy: true, 
+        timeout: 15000, 
+        maximumAge: 60000 
+      }
     );
   }, []);
 
-  // ✅ useEffect #2 - ЛОГ ДЛЯ ОТЛАДКИ
+  const retryGeolocation = useCallback(() => {
+    setIsRetrying(true);
+    localStorage.removeItem('userLocation');
+    setLocation(null);
+    requestGeolocation();
+  }, [requestGeolocation]);
+
   useEffect(() => {
-    console.log('📍 ГЛАВНАЯ location из хука:', location);
+    console.log('📍 Локация:', location);
   }, [location]);
 
   const getAuthToken = useCallback(() => {
@@ -322,6 +424,10 @@ export default function HomePage() {
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+      if (geoWatchIdRef.current) {
+        navigator.geolocation.clearWatch(geoWatchIdRef.current);
+        geoWatchIdRef.current = null;
+      }
     };
   }, []);
 
@@ -381,19 +487,19 @@ export default function HomePage() {
     );
   }
 
-  // ✅ ПОКАЗЫВАЕМ ОШИБКУ ЕСЛИ НЕТ GPS
-  if (locationError || !location) {
+  if (locationError && !location) {
     return (
       <div className="min-h-dvh flex items-center justify-center bg-gray-50 p-6">
         <div className="bg-white rounded-2xl p-8 text-center max-w-md shadow-lg">
           <div className="text-5xl mb-4">📍</div>
           <h2 className="text-xl font-bold mb-2">Не удалось определить местоположение</h2>
-          <p className="text-gray-500 text-sm">{locationError || 'Разрешите доступ к геолокации в браузере'}</p>
+          <p className="text-gray-500 text-sm mb-6">{locationError}</p>
           <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 bg-[#367666] text-white px-6 py-2 rounded-xl hover:bg-[#2a5a4d] transition"
+            onClick={retryGeolocation}
+            disabled={isRetrying}
+            className="bg-[#367666] text-white px-6 py-3 rounded-xl hover:bg-[#2a5a4d] transition disabled:opacity-50"
           >
-            Попробовать снова
+            {isRetrying ? 'Повтор...' : 'Попробовать снова'}
           </button>
         </div>
       </div>
@@ -403,22 +509,37 @@ export default function HomePage() {
   return (
     <div className="min-h-dvh bg-gray-50">
       <div className="bg-[#367666] text-white px-6 pt-6 pb-6">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight">
-            <span className="text-white">SARQYT</span>{' '}
-            <span className="text-[#FFD700]">GO</span>
-          </h1>
-          {user?.phone && (
-            <p className="text-sm text-white/80 mt-1 font-medium">
-              {user.phone}
-            </p>
-          )}
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight">
+              <span className="text-white">SARQYT</span>{' '}
+              <span className="text-[#FFD700]">GO</span>
+            </h1>
+            {user?.phone && (
+              <p className="text-sm text-white/80 mt-1 font-medium">
+                {user.phone}
+              </p>
+            )}
+          </div>
           {location?.city && (
-            <p className="text-xs text-white/60 mt-0.5">
-              📍 {location.city}
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl text-sm flex items-center gap-1.5">
+                <MapPin className="w-4 h-4" />
+                <span>{location.city}</span>
+              </span>
+            </div>
           )}
         </div>
+        {location?.source === 'cached' && (
+          <p className="text-xs text-white/60 mt-1">
+            📦 Используется сохраненная локация
+          </p>
+        )}
+        {locationError && (
+          <p className="text-xs text-yellow-200 mt-1">
+            ⚠️ {locationError}
+          </p>
+        )}
       </div>
 
       <div className="px-6 -mt-4">
@@ -508,7 +629,6 @@ export default function HomePage() {
                 bags.map((bag, bagIdx) => {
                   let distanceText = '0 км';
                   
-                  // ✅ ИСПОЛЬЗУЕМ ТОЛЬКО РЕАЛЬНЫЙ GPS
                   if (location && bag.supplier_lat && bag.supplier_lon) {
                     const dist = calculateDistance(
                       location.lat, 
@@ -536,10 +656,9 @@ export default function HomePage() {
                       onOrderSuccess={() => fetchBags()}
                       businessType={bag.business_type}
                       address={bag.address}
-                       
-                     workingTime={bag.working_time}  // ✅ ДОБАВЛЯЕМ!
-  openingTime={bag.opening_time}   // ✅ ДОБАВЛЯЕМ!
-  closingTime={bag.closing_time}  
+                      workingTime={bag.working_time}
+                      openingTime={bag.opening_time}
+                      closingTime={bag.closing_time}  
                     />
                   );
                 })
@@ -558,5 +677,14 @@ export default function HomePage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ✅ ГЛАВНЫЙ КОМПОНЕНТ С BrowserGuard
+export default function HomePage() {
+  return (
+    <BrowserGuard>
+      <HomePageContent />
+    </BrowserGuard>
   );
 }
