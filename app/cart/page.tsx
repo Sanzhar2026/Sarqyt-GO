@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { LanguageProvider, useLanguage } from '../components/LanguageSwitcher';
-import { getAuthToken } from '@/lib/api';
+import { getAuthToken } from '../../lib/api';
 
 interface CartItem {
   id: number;

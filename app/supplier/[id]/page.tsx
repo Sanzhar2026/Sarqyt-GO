@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import OfferCard from '@/app/components/OfferCard';
+import OfferCard from ' ../../../app/components/OfferCard';
 import SurpriseBagCard from '../../components/SurCard';
 
 interface SurpriseBag {
@@ -266,7 +266,7 @@ export default function SupplierPage() {
                   originalPrice={bag.original_price}
                   discount={bag.discount_percentage}
                   imageUrl={bag.image_url}
-                  pickup_time={bag.pickup_time}  
+              
                   description={bag.description}
                 />
               ) : (
@@ -283,8 +283,7 @@ export default function SupplierPage() {
                   description={bag.description}
                   availableQuantity={bag.available_quantity}
                   address={supplier.address}
-                  pickupStartTime={bag.pickup_start_time}
-                  pickupEndTime={bag.pickup_end_time}
+                
                   distance={distance}  // ✅ ПЕРЕДАЕМ!
                 />
               )

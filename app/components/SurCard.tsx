@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Gift, Heart } from 'lucide-react';
-import { getAuthToken } from '@/lib/auth';
+import { getAuthToken } from '../../lib/auth';
 
 const getImageByTitle = (title: string) => {
   const lowerTitle = title.toLowerCase();
