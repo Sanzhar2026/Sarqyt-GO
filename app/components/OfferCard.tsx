@@ -6,13 +6,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import { Gift, Heart } from 'lucide-react';
-import { getAuthToken } from '@/lib/auth';
+import { getAuthToken } from '../../lib/auth';
 
 interface SurpriseItem {
   product_id: number;
   name: string;
   price: number;
-  quantity: number;
+  quantity: number;    
   icon?: string;
 }
 
