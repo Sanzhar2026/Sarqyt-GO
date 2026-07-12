@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { useLanguage } from '../components/LanguageSwitcher';
 import AvatarCropper from '../components/AvatarCropper';
 import { User, Phone, Mail, Calendar, LogOut, Home, Truck, MessageCircle, PhoneCall, ShieldCheck } from 'lucide-react';
-import { getAuthToken, clearAuthToken } from '@/lib/auth';
+import { getAuthToken, clearAuthToken } from '../../lib/auth';
 
 interface UserData {
   id: number;
