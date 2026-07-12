@@ -237,7 +237,7 @@ function OffersContent() {
                   rating={bag.rating || 0}
                   totalReviews={bag.total_reviews || 0}
                   businessType={bag.business_type || ''}
-                    pickupTime={bag.pickup_time}  // ✅ ДОБАВЛЕНО!
+       
                   distance={distanceText}
                   onOrderSuccess={fetchBags}
                 />
