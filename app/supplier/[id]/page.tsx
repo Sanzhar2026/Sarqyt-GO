@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import OfferCard from ' ../../../app/components/OfferCard';
+import OfferCard from '../../components/OfferCard';
 import SurpriseBagCard from '../../components/SurCard';
 
 interface SurpriseBag {
