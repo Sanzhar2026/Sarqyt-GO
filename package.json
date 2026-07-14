@@ -4,9 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-
     "build": "next build",
-     "vercel-build": "npm install --legacy-peer-deps && npm run build",
+    "vercel-build": "npm install --legacy-peer-deps && npm run build",
     "start": "NODE_OPTIONS='--max-old-space-size=450' next start",
     "start:render": "NODE_OPTIONS='--max-old-space-size=450' next start --port $PORT"
   },
@@ -30,9 +29,9 @@
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.21",
-    "@types/node": "^20",
-    "@types/react": "^18",
+    "@types/node": "^20.19.43",
+    "@types/react": "^18.3.31",
     "@types/react-dom": "^18",
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   }
 }
