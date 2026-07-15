@@ -363,7 +363,7 @@ function HomePageContent() {
     const fetchUser = async () => {
       try {
         const token = getAuthToken();
-        const res = await fetch('https://toogood-production.up.railway.app/api/surprise-bags/api/check-auth', { 
+        const res = await fetch('https://toogood-production.up.railway.app/check-auth', { 
           credentials: 'include',
           headers: {
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
