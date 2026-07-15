@@ -256,7 +256,7 @@ function HomePageContent() {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      let url = '/api/surprise-bags';
+      let url = 'https://toogood-production.up.railway.app/api/surprise-bags';
       if (location?.lat && location?.lon) {
         url += `?lat=${location.lat}&lon=${location.lon}`;
       }
@@ -363,7 +363,7 @@ function HomePageContent() {
     const fetchUser = async () => {
       try {
         const token = getAuthToken();
-        const res = await fetch('/api/check-auth', { 
+        const res = await fetch('https://toogood-production.up.railway.app/api/surprise-bags/api/check-auth', { 
           credentials: 'include',
           headers: {
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
